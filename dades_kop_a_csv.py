@@ -120,6 +120,7 @@ def combine_and_transpose_csv(csv_e, csv_d):
     
     out = os.path.join(datasheets_folder, f'dades_escandall {client} {ref_project}.csv')    # Path to the output combined CSV
     combined_df.to_csv(out, index=False, header=False)                                      # Save the combined data to a new CSV file
+    return combined_df
 
 
 def main():
@@ -139,14 +140,15 @@ def main():
     csv_post_est = os.path.join(csv_folder, fr"estructura {client} {ref_project}.csv")  # Ruta del CSV (estructura) netejat
     csv_post_dds = os.path.join(csv_folder, fr"dades_extra {client} {ref_project}.csv") # Ruta del CSV (dades extra) netejat 
     
-    combine_and_transpose_csv(csv_post_est, csv_post_dds)                                               # Transposar i combinar els fitxers CSV netejats
-    csv_datasheet_esc = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv") # Ruta del CSV (datasheet) generat
-
-    print(f"Processament complet. Fitxers generats:\n- {csv_post_est}\n- {csv_post_dds}\n- {csv_datasheet_esc}")  # Imprimir missatge de finalització del procés
+    dst = combine_and_transpose_csv(csv_post_est, csv_post_dds)                                               # Transposar i combinar els fitxers CSV netejats
+    csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv")           # Ruta del CSV (datasheet) generat
+    print(f"Processament complet. Fitxers generats:\n- {csv_post_est}\n- {csv_post_dds}\n- {csv_datasheet}")  # Imprimir missatge de finalització del procés
     
     os.remove(csv_est)                  # Eliminar el CSV original
     os.remove(csv_dds)                  # Eliminar el CSV original
     os.remove('temp_unprotected.xlsx')  # Eliminar el fitxer Excel temporal
+    
+    return csv_datasheet, dst
 
 # Executar la funció principal només si el fitxer s'executa directament
 if __name__ == "__main__":
