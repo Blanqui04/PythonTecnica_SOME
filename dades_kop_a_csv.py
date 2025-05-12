@@ -60,7 +60,7 @@ def dades_kop(xlsx_path):
     df_dades.to_csv(temp_path_3, index=False)   
     
     return temp_path_2, temp_path_3
-    
+
 
 def tractar_estructura(csv_estructura):
     """

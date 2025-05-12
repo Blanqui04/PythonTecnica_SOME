@@ -2,7 +2,6 @@
 table_mappings = {
     'eines':                    ['nom_matriu', 'num_picades', 'volum_anual', 'volum_projecte', 'cavitats', 'datainici', 'datafinal', 'responsable'],
     'escandalloferta':          ['num_escandall', 'cost'],
-    'escandallofertatecnics':   ['num_escandall', 'num_tecnic'],
     'infoproduccio':            ['id_referencia_some', 'id_referencia_client', 'id_matriu', 'id_material'],       
     'lifetime':                 ['num_oferta', 'datainici', 'datafinal'], 
     'material':                 ['id_material', 'dimensiox', 'dimensioy', 'dimensioz', 'proveidor', 'pes', 'preu'],
@@ -12,25 +11,21 @@ table_mappings = {
     'tipus':                    ['id_tipus', 'descripcio'], 
 }
 
-# Mapatge de columnes del DataFrame a columnes de la base de dades
-column_mapping = {
+# Mapatge de columnes del DataFrame a columnes de la base de dades:
+col_map = {
     'eines': {
-        '1 - Nº Matriu:': 'nom_matriu',
-        '4 - Tool Lifetime': 'num_picades',
-        '5 - Volum Anual:': 'volum_anual',
-        '6 - Volum total Projecte:': 'volum_projecte',
-        '8 - Cavitats:': 'cavitats',
-        '2 - SOP projecte': 'datainici',
-        '3 - EOP projecte': 'datafinal',
-        '14 - Responsable Projecte:': 'responsable',
+        '1 - Nº Matriu:':               'nom_matriu',
+        '4 - Tool Lifetime':            'num_picades',
+        '5 - Volum Anual:':             'volum_anual',
+        '6 - Volum total Projecte:':    'volum_projecte',
+        '8 - Cavitats:':                'cavitats',
+        '2 - SOP projecte':             'datainici',
+        '3 - EOP projecte':             'datafinal',
+        '14 - Responsable Projecte:':   'responsable',
     },
     'escandalloferta': {
-        'df_col1': 'num_escandall',
-        'df_col2': 'cost'
-    },
-    'escandallofertatecnics': {
-        'df_col1': 'num_escandall',
-        'df_col2': 'num_tecnic'
+        '13 - Nº Expedient:':           'num_escandall',
+        '4 - Preu actualitzat:':        'cost'
     },
     'infoproduccio': {
         'df_col1': 'id_referencia_some',
@@ -39,16 +34,16 @@ column_mapping = {
         'df_col4': 'id_material'
     },
     'lifetime': {
-        '13 - Nº Expedient:': 'num_oferta',
-        '2 - SOP projecte': 'datainici',
-        '3 - EOP projecte': 'datafinal',
-        '10 - Data entrega matriu:': 'dataentrega_matriu',
+        '13 - Nº Expedient:':           'num_oferta',
+        '2 - SOP projecte':             'datainici',
+        '3 - EOP projecte':             'datafinal',
+        '10 - Data entrega matriu:':    'dataentrega_matriu',
     },
     'material': {
         '1 - Descripció material:': 'id_material',
-        'BANDA': 'dimensiox',
-        'PAS': 'dimensioy',
-        'GRUIX': 'dimensioz',
+        'BANDA':                    'dimensiox',
+        'PAS':                      'dimensioy',
+        'GRUIX':                    'dimensioz',
         'df_col5': 'proveidor',
         'df_col6': 'pes',
         'df_col7': 'preu'
@@ -79,17 +74,17 @@ column_mapping = {
         'df_col13': 'id_tipus'
     },
     'planol': {
-        'df_col1': 'num_planol',
+        '15 - Plànol actualitzat': 'num_planol',
         'df_col2': 'id_referencia_client',
         'df_col3': 'imatge'
     },
     'tipus': {
-        '12 - Jerarquía:': 'id_tipus',
+        '12 - Jerarquía:':              'id_tipus',
         '6 - Descripció actualitzada:': 'descripcio'
     }
 }
 
-# Taules sense dades del KOP
+# Taules sense dades del KOP:
 altres_taules = {
     'tecnics': {
         'df_col1': 'num_tecnic',
@@ -114,8 +109,39 @@ altres_taules = {
     },
     }
 
+# Columnes a eliminar del CSV obtingudes del KOP:
+col_elim = [r'2 - Mides (BANDA x PAS x GRUIX):', 
+            r'Dades necessàries per estructurar una Matèria prima',
+            r'Dades necessàries per estructurar una Matriu',
+            r'Dades necessàries per estructurar un Component / Material Aux.',
+            r'Dades necessàries per estructurar una peça / conjunt',
+            r'COMPONENT ESTAMPACIÓ 1',
+            r'COMPONENT ESTAMPACIÓ 2',
+            r'COMPONENT 1 COMPRA',
+            r'COMPONENT 2 COMPRA', 
+            r'COMPONENT 3 COMPRA', 
+            r'DADES PER ESTRUCTURAR NOVES PECES', 
+            r'10 - Tractaments:',
+            r'11 - Embalatge:', 
+            r'PD. La resta d\'informació que s\'entra ja l\'aconseguèix la persona que estructura.',
+            r'ENTRADA DADES FORMULARIS',
+            r'7 - SOP:',
+            r'7 - SOP:.1',
+            r'7 - SOP:.2',
+            r'Nº MATRIU SOME']
 
-# Afegir a camps a 'eines':
-# '9 - Matricer:': 'matricer',
-# '7 - Referència/es peça:': 'pcs_matriu'
-# 'Cost' = 'cost' <- Aquest ja hi és, però no trobo la dada al csv extret.
+# Columnes que contenen dates:
+dates = ['10 - Data entrega matriu:', 
+         'DATA ENTREGA PLANNING MATRIU', 
+         'DATA ENTREGA LAYOUT MATRIU', 
+         'DATA FOTs MATRICER', 
+         'DATA PROBA A SOME MATRICER (PPAP)',
+         '2 - SOP projecte',
+         '3 - EOP projecte',
+         'DATA KOP',
+         'DATA ENVIAMENT PSA']  # Afegir aquí totes les columnes que saps que són dates
+
+### Afegir a camps a 'eines':
+    # '9 - Matricer:': 'matricer',
+    # '7 - Referència/es peça:': 'pcs_matriu'
+    # 'Cost' = 'cost' <- Aquest ja hi és, però no trobo la dada al csv extret.
