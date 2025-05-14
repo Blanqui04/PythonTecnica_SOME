@@ -1,13 +1,13 @@
 # Mapatge de taules i les seves columnes corresponents
 table_mappings = {
-    'eines':                    ['nom_matriu', 'num_picades', 'volum_anual', 'volum_projecte', 'cavitats', 'datainici', 'datafinal', 'responsable'],
-    'escandalloferta':          ['num_escandall', 'cost'],
-    'infoproduccio':            ['id_referencia_some', 'id_referencia_client', 'id_matriu', 'id_material'],       
-    'lifetime':                 ['num_oferta', 'datainici', 'datafinal'], 
+    'eines':                    ['nom_matriu', 'num_picades', 'volum_anual', 'volum_projecte', 'cavitats', 'datainici', 'datafinal', 'responsable', 'matricer'],
+    'escandalloferta':          ['num_escandall', 'preuvenda'],
     'material':                 ['id_material', 'dimensiox', 'dimensioy', 'dimensioz', 'proveidor', 'pes', 'preu'],
-    'oferta':                   ['num_oferta', 'cicles', 'num_processos', 'descripcio', 'nomclient', 'telefclient', 'id_referencia_client', 'num_escandall'], 
-    'peþa':                     ['id_referencia_client', 'nom_client', 'planta', 'nom_projecte', 'facturacio', 'facturacio', 'descripcio', 'costos', 'pes', 'embalatges', 'recobriments', 'termics', 'id_tipus'],
-    'planol':                   ['num_planol', 'id_referencia_client', 'imatge'],             
+    'peþa':                     ['id_referencia_client', 'nom_client', 'planta', 'nom_projecte', 'facturacio', 'quantitats', 'descripcio', 'costos', 'pes', 'embalatges', 'recobriments', 'termics', 'id_tipus'],
+    'infoproduccio':            ['id_referencia_some', 'id_referencia_client', 'id_matriu', 'id_material'], 
+    'oferta':                   ['num_oferta', 'cicles', 'num_processos', 'descripcio', 'nomclient', 'mailclient', 'telefclient', 'id_referencia_client', 'num_escandall'], 
+    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu'], 
+    'planol':                   ['num_planol', 'id_referencia_client'],     #'imatge'            
     'tipus':                    ['id_tipus', 'descripcio'], 
 }
 
@@ -19,64 +19,76 @@ col_map = {
         '5 - Volum Anual:':             'volum_anual',
         '6 - Volum total Projecte:':    'volum_projecte',
         '8 - Cavitats:':                'cavitats',
-        '2 - SOP projecte':             'datainici',
-        '3 - EOP projecte':             'datafinal',
+        'S.O.P. CLIENT':                'datainici',
+        'E.O.P. CLIENT':                'datafinal',
         '14 - Responsable Projecte:':   'responsable',
+        '9 - Matricer:':                'matricer',
     },
     'escandalloferta': {
-        '13 - Nº Expedient:':           'num_escandall',
-        '4 - Preu actualitzat:':        'cost'
-    },
-    'infoproduccio': {
-        'df_col1': 'id_referencia_some',
-        'df_col2': 'id_referencia_client',
-        'df_col3': 'id_matriu',
-        'df_col4': 'id_material'
-    },
-    'lifetime': {
-        '13 - Nº Expedient:':           'num_oferta',
-        '2 - SOP projecte':             'datainici',
-        '3 - EOP projecte':             'datafinal',
-        '10 - Data entrega matriu:':    'dataentrega_matriu',
+        '13 - Nº Expedient:':                       'num_escandall',
+        '17 - Preu Peça (Oferta a Client)':         'preuvenda'
     },
     'material': {
-        '1 - Descripció material:': 'id_material',
-        'BANDA':                    'dimensiox',
-        'PAS':                      'dimensioy',
-        'GRUIX':                    'dimensioz',
-        'df_col5': 'proveidor',
-        'df_col6': 'pes',
-        'df_col7': 'preu'
-    },
-    'oferta': {
-        '13 - Nº Expedient:': 'num_oferta',
-        'df_col2': 'cicles',
-        'df_col3': 'num_processos',
-        'df_col4': 'descripcio',
-        'df_col5': 'nomclient',
-        'df_col6': 'telefclient',
-        'df_col7': 'id_referencia_client',
-        'df_col8': 'num_escandall'
+        '1 - Descripció material:':     'id_material',
+        'BANDA':                        'dimensiox',
+        'PAS':                          'dimensioy',
+        'GRUIX':                        'dimensioz',
+        '3 - Proveïdor:':               'proveidor',
+        '7 - Pes estimat del Rull:':    'pes',
+        '4 - Preu actualitzat:':        'preu'
     },
     'peþa': {
-        'df_col1': 'id_referencia_client',
-        'df_col2': 'nom_client',
-        'df_col3': 'planta',
-        'df_col4': 'nom_projecte',
-        'df_col5': 'facturacio',
-        'df_col6': 'facturacio',
-        'df_col7': 'descripcio',
-        'df_col8': 'costos',
-        'df_col9': 'pes',
-        'df_col10': 'embalatges',
-        'df_col11': 'recobriments',
-        'df_col12': 'termics',
-        'df_col13': 'id_tipus'
+        #'df_col2':     'id_referencia_client',
+        '1 - Client:':                      'nom_client',
+        '2 - Tipus:  SQB / KSW / MIXTE:':   'planta',
+        '11 - Projecte:':                   'nom_projecte',
+        #'df_col5': 'facturacio',
+        'LOT PRODUCCIÓ INFORMAT A CLIENT':  'quantitats',
+        '6 - Descripció actualitzada:':     'descripcio',
+        '12 - Pes Brut:':                   'pes_brut',
+        '13 - Pes Net:':                    'pes',
+        '16 - Cost Peça (Intern SOME)':     'costos',
+        '17 - Preu Peça (Oferta a Client)': 'preu',
+        #'df_col10': 'embalatges',
+        #'df_col11': 'recobriments',
+        #'df_col12': 'termics',
+        '12 - Jerarquía:':                  'id_tipus'
+    },
+    'infoproduccio': {
+        #'df_col1':                 'id_referencia_some',
+        #'df_col2':                 'id_referencia_client',
+        '1 - Nº Matriu:':           'id_matriu',
+        '1 - Descripció material:': 'id_material'
+    },
+    'oferta': {
+        '13 - Nº Expedient:':           'num_oferta',
+        'CPM':                          'cicles',
+        #'df_col3':              'num_processos',
+        #'df_col4':              'descripcio',
+        '1 - Client:':                  'nomclient',
+        #'df_col5':              'mailclient'
+        #'df_col6':              'telefclient',
+        #'df_col2':                     'id_referencia_client',
+        '13 - Nº Expedient:':           'num_escandall'
+    },
+    'lifetime': {
+        '13 - Nº Expedient:':                       'num_oferta',
+        'S.O.P. CLIENT':                            'datainici',
+        'E.O.P. CLIENT':                            'datafinal',
+        'DATA KOP':                                 'data_kop',
+        'DATA ENVIAMENT PSA':                       'data_psa',
+        'DATA ENTREGA PLANNING MATRIU':             'data_planning_mat',
+        'DATA ENTREGA LAYOUT MATRIU':               'data_layout_mat',
+        'DATA FOTs MATRICER':                       'data_fots_mat',
+        'DATA PROBA A SOME MATRICER (PPAP)':        'data_pmat_some',       
+        'DATA PRIMERES MOSTRES  F.O.T A CLIENT':    'data_fot_client',
+        'DATA ENTREGA PECES PPAP A CLIENT':         'data_ent_pcs_ppap',
+        '10 - Data entrega matriu:':                'dataentregamatriu'
     },
     'planol': {
-        '15 - Plànol actualitzat': 'num_planol',
-        'df_col2': 'id_referencia_client',
-        'df_col3': 'imatge'
+        '15 - Plànol actualitzat':          'num_planol',
+        '13 - Nº Expedient:':               'id_referencia_client',
+        #'df_col3': 'imatge'
     },
     'tipus': {
         '12 - Jerarquía:':              'id_tipus',
@@ -128,7 +140,13 @@ col_elim = [r'2 - Mides (BANDA x PAS x GRUIX):',
             r'7 - SOP:',
             r'7 - SOP:.1',
             r'7 - SOP:.2',
-            r'Nº MATRIU SOME']
+            r'Nº MATRIU SOME',
+            r'7 - Referència/es peça:',
+            r'2 - SOP projecte',
+            r'3 - EOP projecte',
+            r'7 - Referència client:'
+            #r'* cpm o (peces/hora) per CT'
+            ]
 
 # Columnes que contenen dates:
 dates = ['10 - Data entrega matriu:', 
@@ -136,12 +154,11 @@ dates = ['10 - Data entrega matriu:',
          'DATA ENTREGA LAYOUT MATRIU', 
          'DATA FOTs MATRICER', 
          'DATA PROBA A SOME MATRICER (PPAP)',
-         '2 - SOP projecte',
-         '3 - EOP projecte',
+         'S.O.P. CLIENT',
+         'E.O.P. CLIENT',
          'DATA KOP',
          'DATA ENVIAMENT PSA']  # Afegir aquí totes les columnes que saps que són dates
 
 ### Afegir a camps a 'eines':
-    # '9 - Matricer:': 'matricer',
-    # '7 - Referència/es peça:': 'pcs_matriu'
+    # 
     # 'Cost' = 'cost' <- Aquest ja hi és, però no trobo la dada al csv extret.
