@@ -14,7 +14,7 @@ csv_folder = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 
 client = 'ZF'    # Nom del client a cercar
-ref_project = 'A027Y916'             # Referència del projecte a cercar
+ref_project = 'A027Y915'             # Referència del projecte a cercar
 
 def trobar_arxiu_excel(client, ref_project):
     """
@@ -31,7 +31,7 @@ def trobar_arxiu_excel(client, ref_project):
                     for file in sub_files:
                         if file.endswith('.xlsx') or file.endswith('.xls'):
                             excel_path = os.path.join(sub_root, file)
-                            print(f"Arxiu Excel trobat: {excel_path}")
+                            print(f"Arxiu Excel trobat: \n {excel_path} \n")
                             return excel_path
     return None
 

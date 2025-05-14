@@ -31,8 +31,14 @@ def datasheet_dep(csv):
         df['BANDA'] = df['BANDA'].str.strip()               # Elimina espais innecessaris de les noves columnes
         df['PAS'] = df['PAS'].str.strip()                   # "
         df['GRUIX'] = df['GRUIX'].str.strip()               # "
-        df = df.drop(columns = col_elim, errors='ignore')   # Elimina les columnes especificades
-    
+        
+    if '* cpm o (peces/hora) per CT' in df.columns:
+        df[['CPM', 'OEE']] = df['* cpm o (peces/hora) per CT'].str.split('/', expand=True)
+        df['CPM'] = df['CPM'].str.strip()
+        df['OEE'] = df['OEE'].str.replace('OEE: ', '', regex=False).str.strip() if 'OEE' in df else None
+        
+    df = df.drop(columns = col_elim, errors='ignore')   # Elimina les columnes especificades
+        
     for col in dates:
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors='coerce').dt.date  # Converteix al format de només data (sense hora)
@@ -40,8 +46,7 @@ def datasheet_dep(csv):
     # Desa el DataFrame actualitzat en un nou fitxer CSV
     output_csv = "dades_escandall_actualitzat.csv"
     df.to_csv(output_csv, index=False)
-    print(f"DataFrame desat al fitxer: {output_csv}")
-    
+        
     return df
 
 
@@ -51,18 +56,19 @@ def importar_csv_a_sql(df, tab, col):
     # Conectar a la base de dades
     try:
         connection = psycopg2.connect(
-            host     = db_params['host'],
-            database = db_params['database'],
-            user     = db_params['user'],
-            password = db_params['password']
+            host=db_params['host'],
+            database=db_params['database'],
+            user=db_params['user'],
+            password=db_params['password']
         )
-        print("Conexió exitosa a la base de dades")
-        cursor = connection.cursor()    
+        print("Visca! Connexió exitosa a la base de dades!! \n")
+        cursor = connection.cursor()
 
         # Itera sobre les assignacions de taula
         for table_name, columns in tab.items():
             print(f"Inserting data into table: {table_name}")
-            print(f"Columns to insert: {columns}")
+            print(f"Columns to insert: {columns} \n")
+            
             # Obté el mapatge de columnes per a la taula actual
             if table_name not in col:
                 print(f"Error: No column mapping defined for table {table_name}")
@@ -70,33 +76,35 @@ def importar_csv_a_sql(df, tab, col):
             
             tab_col_mapping = col[table_name]
             renamed_df = df.rename(columns=tab_col_mapping)     # Reanomena les columnes del DataFrame segons el mapatge
-
+            renamed_df['id_referencia_client'] = ref_project    # Afegir 'id_referencia_client' al DataFrame amb el nom de la referència del client pel projecte
+            renamed_df['id_referencia_some'] = 51007698         # Buscar d'alguna manera la referència some, i inserir-la aquí
+            
             # Filtra el DataFrame per a les columnes rellevants de la taula actual
-            table_df = renamed_df[columns].dropna(how='all')    # Deixeu anar les files on totes les columnes són NaN
+            table_df = renamed_df[columns].dropna(how='all')  # Deixeu anar les files on totes les columnes són NaN
             print(f"Data for {table_name}:")
             print(table_df)
             
-            for col_name in columns:
-                if col_name not in renamed_df.columns:
-                    print(f"Warning: Column {col_name} missing for table {table_name}. Adding default value.")
+            out_csv = f"dades_{table_name}.csv"
+            table_df.to_csv(out_csv, index=False)
 
-            # Insereix dades a la taula SQL
             for index, row in table_df.iterrows():
                 # Crea dinàmicament la consulta INSERT
                 placeholders = ', '.join(['%s'] * len(columns))
                 insert_query = f"""INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders});"""
-                values = [row[col] for col in columns]                                      # Mapa les columnes del DataFrame a les columnes de la taula
-                print(f" Executing query: \n {insert_query} \n With values: \n {values}")   # Imprimeix la consulta SQL i els valors        
-                cursor.execute(insert_query, values)                                        # Executa la consulta amb els valors corresponents
 
-        connection.commit()     # Publica l'operació per desar els canvis
+                # Inserció de dades
+                row_values = [row[col] for col in columns]
+                print(f" Executing query: \n {insert_query} \n With values: \n {row_values} \n")
+                cursor.execute(insert_query, row_values)
+
+        connection.commit()  # Publica l'operació per desar els canvis
         print("Dades importades amb èxit!")
 
-        cursor.close()          # Tanca el cursor
-        connection.close()      # Tanca la connexió a la base de dades
+        cursor.close()  # Tanca el cursor
+        connection.close()  # Tanca la connexió a la base de dades
         print("Connexió tancada.")
 
-    except Exception as e:  
+    except Exception as e:
         print(f"Meeeerda... Error: {e}")
 
 
