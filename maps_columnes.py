@@ -3,12 +3,12 @@ table_mappings = {
     'eines':                    ['nom_matriu', 'num_picades', 'volum_anual', 'volum_projecte', 'cavitats', 'datainici', 'datafinal', 'responsable', 'matricer'],
     'escandalloferta':          ['num_escandall', 'preuvenda'],
     'material':                 ['id_material', 'dimensiox', 'dimensioy', 'dimensioz', 'proveidor', 'pes', 'preu'],
-    'peþa':                     ['id_referencia_client', 'nom_client', 'planta', 'nom_projecte', 'facturacio', 'quantitats', 'descripcio', 'costos', 'pes', 'embalatges', 'recobriments', 'termics', 'id_tipus'],
+    'tipus':                    ['id_tipus', 'descripcio'],
+    'peça':                     ['id_referencia_client', 'nom_client', 'planta', 'nom_projecte', 'facturacio', 'quantitats', 'descripcio', 'costos', 'pes', 'embalatges', 'recobriments', 'termics', 'id_tipus'],
+    'planol':                   ['num_planol', 'id_referencia_client'],     #'imatge'
     'infoproduccio':            ['id_referencia_some', 'id_referencia_client', 'id_matriu', 'id_material'], 
     'oferta':                   ['num_oferta', 'cicles', 'num_processos', 'descripcio', 'nomclient', 'mailclient', 'telefclient', 'id_referencia_client', 'num_escandall'], 
-    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu'], 
-    'planol':                   ['num_planol', 'id_referencia_client'],     #'imatge'            
-    'tipus':                    ['id_tipus', 'descripcio'], 
+    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu']                
 }
 
 # Mapatge de columnes del DataFrame a columnes de la base de dades:
@@ -37,22 +37,31 @@ col_map = {
         '7 - Pes estimat del Rull:':    'pes',
         '4 - Preu actualitzat:':        'preu'
     },
-    'peþa': {
-        #'df_col2':     'id_referencia_client',
-        '1 - Client:':                      'nom_client',
-        '2 - Tipus:  SQB / KSW / MIXTE:':   'planta',
-        '11 - Projecte:':                   'nom_projecte',
-        #'df_col5': 'facturacio',
-        'LOT PRODUCCIÓ INFORMAT A CLIENT':  'quantitats',
-        '6 - Descripció actualitzada:':     'descripcio',
-        '12 - Pes Brut:':                   'pes_brut',
-        '13 - Pes Net:':                    'pes',
-        '16 - Cost Peça (Intern SOME)':     'costos',
-        '17 - Preu Peça (Oferta a Client)': 'preu',
-        #'df_col10': 'embalatges',
-        #'df_col11': 'recobriments',
-        #'df_col12': 'termics',
-        '12 - Jerarquía:':                  'id_tipus'
+    'tipus': {
+        '12 - Jerarquía:':              'id_tipus',
+        '6 - Descripció actualitzada:': 'descripcio'
+    },
+    'peça': {
+        #'df_col2':                                 'id_referencia_client',
+        '1 - Client:':                              'nom_client',
+        '2 - Tipus:  SQB / KSW / MIXTE:':           'planta',
+        '11 - Projecte:':                           'nom_projecte',
+        '3 - Tipus Facturació: A / B / C:':         'facturacio',
+        'LOT PRODUCCIÓ INFORMAT A CLIENT':          'quantitats',
+        '6 - Descripció actualitzada:':             'descripcio',
+        '12 - Pes Brut:':                           'pes_brut',
+        '13 - Pes Net:':                            'pes',
+        '16 - Cost Peça (Intern SOME)':             'costos',
+        '17 - Preu Peça (Oferta a Client)':         'preu',
+        'Caixa:':                                   'embalatges',
+        '* Descripció complerta del tractament 2:': 'recobriments',
+        '* Descripció complerta del tractament 1:': 'termics',
+        '12 - Jerarquía:':                          'id_tipus'
+    },
+    'planol': {
+        '15 - Plànol actualitzat':          'num_planol',
+        '13 - Nº Expedient:':               'id_referencia_client',
+        #'df_col3': 'imatge'
     },
     'infoproduccio': {
         #'df_col1':                 'id_referencia_some',
@@ -84,15 +93,6 @@ col_map = {
         'DATA PRIMERES MOSTRES  F.O.T A CLIENT':    'data_fot_client',
         'DATA ENTREGA PECES PPAP A CLIENT':         'data_ent_pcs_ppap',
         '10 - Data entrega matriu:':                'dataentregamatriu'
-    },
-    'planol': {
-        '15 - Plànol actualitzat':          'num_planol',
-        '13 - Nº Expedient:':               'id_referencia_client',
-        #'df_col3': 'imatge'
-    },
-    'tipus': {
-        '12 - Jerarquía:':              'id_tipus',
-        '6 - Descripció actualitzada:': 'descripcio'
     }
 }
 
@@ -128,10 +128,14 @@ col_elim = [r'2 - Mides (BANDA x PAS x GRUIX):',
             r'Dades necessàries per estructurar un Component / Material Aux.',
             r'Dades necessàries per estructurar una peça / conjunt',
             r'COMPONENT ESTAMPACIÓ 1',
+            r'1 - Descripció:',
+            r'2 - Plànol:',
             r'COMPONENT ESTAMPACIÓ 2',
+            r'1 - Descripció:.1',
+            r'2 - Plànol:.1', 
             r'COMPONENT 1 COMPRA',
-            r'COMPONENT 2 COMPRA', 
-            r'COMPONENT 3 COMPRA', 
+            r'COMPONENT 2 COMPRA',
+            r'COMPONENT 3 COMPRA',
             r'DADES PER ESTRUCTURAR NOVES PECES', 
             r'10 - Tractaments:',
             r'11 - Embalatge:', 
@@ -145,6 +149,8 @@ col_elim = [r'2 - Mides (BANDA x PAS x GRUIX):',
             r'2 - SOP projecte',
             r'3 - EOP projecte',
             r'7 - Referència client:'
+            r'11.1 - EUROPA',
+            r'11.2 - OVERSEAS'
             #r'* cpm o (peces/hora) per CT'
             ]
 
@@ -160,5 +166,4 @@ dates = ['10 - Data entrega matriu:',
          'DATA ENVIAMENT PSA']  # Afegir aquí totes les columnes que saps que són dates
 
 ### Afegir a camps a 'eines':
-    # 
     # 'Cost' = 'cost' <- Aquest ja hi és, però no trobo la dada al csv extret.
