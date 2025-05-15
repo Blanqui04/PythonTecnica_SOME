@@ -2,7 +2,8 @@ import os
 import psycopg2
 import pandas as pd
 from maps_columnes import table_mappings, col_map, col_elim, dates
-from dades_kop_a_csv import client, ref_project, datasheets_folder
+from kop_csv import client, ref_project, datasheets_folder
+from datetime import datetime, timedelta
 
 """ Codi per importar dades dels fitxers CSV genereta a la BBDD PostgreSQL.
 """
@@ -15,38 +16,68 @@ db_params = {
 }
 
 csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv") # Ruta del CSV (datasheet) generat
-print(f"Ruta del CSV: {csv_datasheet}")  # Imprimir la ruta del fitxer CSV generat
+print(f"Ruta del CSV: {csv_datasheet} \n")  # Imprimir la ruta del fitxer CSV generat 
+
+def cw_date(cw):
+    """
+    Convert a date in format cwXX/YY (or variations like cw XX/YY, cw.XX/YY) to YYYY-MM-DD.
+    """
+    try:
+        if isinstance(cw, str) and cw.lower().replace(' ', '').startswith('cw'):    # Remove spaces and periods
+            cleaned_cw = cw.replace(' ', '').replace('.', '')
+            week, year = map(int, cleaned_cw[2:].split('/'))
+            # Handle two-digit years
+            if year < 100:
+                year += 2000
+            first_day_of_year = datetime(year, 1, 1)
+            date = first_day_of_year + timedelta(weeks=week - 2)
+            
+            return (date - timedelta(days=date.weekday())).strftime('%Y-%m-%d')
+        return cw
+    except Exception as e:
+        print(f"Error converting {cw}: {e}")
+        return cw
+
 
 def datasheet_dep(csv):
-    """Tractament del 'datasheet' extret del KOP: Columnes buides, repetides, innecessàries, format de data, etc.
     """
-    
-    df = pd.read_csv(csv)  # Llegir el fitxer CSV
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]    # Elimina les columnes innecessàries
-    df = df.where(pd.notnull(df), None)                     # Substitueix NaN per None per compatibilitat SQL
+    Tractament del 'datasheet' extret del KOP: Columnes buides, repetides, innecessàries, format de data, etc.
+    """
+    # Read the CSV file
+    df = pd.read_csv(csv)
+    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Remove unnecessary columns
+    df = df.where(pd.notnull(df), None)  # Replace NaN with None for SQL compatibility
 
-    # Separar la columna de mides del materal en 3 columnes (Banda, Pas, Gruix)
+    # Split the material dimensions column into separate columns (Banda, Pas, Gruix)
     if '2 - Mides (BANDA x PAS x GRUIX):' in df.columns:
         df[['BANDA', 'PAS', 'GRUIX']] = df['2 - Mides (BANDA x PAS x GRUIX):'].str.split('x', expand=True)
-        df['BANDA'] = df['BANDA'].str.strip()               # Elimina espais innecessaris de les noves columnes
-        df['PAS'] = df['PAS'].str.strip()                   # "
-        df['GRUIX'] = df['GRUIX'].str.strip()               # "
-        
+        df['BANDA'] = df['BANDA'].str.strip().str.replace(',', '.', regex=False)  # Clean up values
+        df['PAS'] = df['PAS'].str.strip().str.replace(',', '.', regex=False)
+        df['GRUIX'] = df['GRUIX'].str.strip().str.replace(',', '.', regex=False)
+
+    # Split the CPM and OEE column into separate columns
     if '* cpm o (peces/hora) per CT' in df.columns:
         df[['CPM', 'OEE']] = df['* cpm o (peces/hora) per CT'].str.split('/', expand=True)
         df['CPM'] = df['CPM'].str.strip()
         df['OEE'] = df['OEE'].str.replace('OEE: ', '', regex=False).str.strip() if 'OEE' in df else None
-        
-    df = df.drop(columns = col_elim, errors='ignore')   # Elimina les columnes especificades
-        
-    for col in dates:
-        if col in df.columns:
-            df[col] = pd.to_datetime(df[col], errors='coerce').dt.date  # Converteix al format de només data (sense hora)
 
-    # Desa el DataFrame actualitzat en un nou fitxer CSV
-    output_csv = "dades_escandall_actualitzat.csv"
-    df.to_csv(output_csv, index=False)
-        
+    df = df.drop(columns=col_elim, errors='ignore') # Drop unnecessary columns
+    
+    # Aplicar la funció cw_date a cada data en el DataFrame
+    for column in df.columns:
+        df[column] = df[column].apply(cw_date)
+
+     # Only process columns in the 'dates' list
+    for column in dates:
+        if column in df.columns:
+            df[column] = df[column].apply(cw_date)
+            df[column] = pd.to_datetime(df[column], errors='coerce').dt.date
+
+    # Save the updated DataFrame to a new CSV file
+    out_csv = "dades_KOP_act.csv"
+    df.to_csv(out_csv, index=False)
+    print(f"DataFrame processed and saved to: {out_csv}")
+
     return df
 
 
@@ -56,10 +87,10 @@ def importar_csv_a_sql(df, tab, col):
     # Conectar a la base de dades
     try:
         connection = psycopg2.connect(
-            host=db_params['host'],
-            database=db_params['database'],
-            user=db_params['user'],
-            password=db_params['password']
+            host = db_params['host'],
+            database = db_params['database'],
+            user = db_params['user'],
+            password = db_params['password']
         )
         print("Visca! Connexió exitosa a la base de dades!! \n")
         cursor = connection.cursor()
@@ -91,7 +122,6 @@ def importar_csv_a_sql(df, tab, col):
                 # Crea dinàmicament la consulta INSERT
                 placeholders = ', '.join(['%s'] * len(columns))
                 insert_query = f"""INSERT INTO {table_name} ({', '.join(columns)}) VALUES ({placeholders});"""
-
                 # Inserció de dades
                 row_values = [row[col] for col in columns]
                 print(f" Executing query: \n {insert_query} \n With values: \n {row_values} \n")
@@ -116,6 +146,5 @@ def main():
     importar_csv_a_sql(dataframe, table_mappings, col_map)   # Cridar la funció per importar el CSV a SQL
 
 
-# Executar la funció principal només si el fitxer s'executa directament
-if __name__ == "__main__":
+if __name__ == "__main__":  # Executar la funció principal només si el fitxer s'executa directament
     main()

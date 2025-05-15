@@ -14,7 +14,7 @@ csv_folder = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 
 client = 'ZF'    # Nom del client a cercar
-ref_project = 'A027Y915'             # Referència del projecte a cercar
+ref_project = 'A027Y916'             # Referència del projecte a cercar
 
 def trobar_arxiu_excel(client, ref_project):
     """
@@ -31,7 +31,7 @@ def trobar_arxiu_excel(client, ref_project):
                     for file in sub_files:
                         if file.endswith('.xlsx') or file.endswith('.xls'):
                             excel_path = os.path.join(sub_root, file)
-                            print(f"Arxiu Excel trobat: \n {excel_path} \n")
+                            print(f"Arxiu Excel trobat: \n{excel_path} \n")
                             return excel_path
     return None
 
@@ -111,15 +111,28 @@ def combine_and_transpose_csv(csv_e, csv_d):
     """
     Funció per transposar els fitxers CSV netejats i combinar-los en un únic fitxer CSV, preparat pel datasheet.
     """
-    df_estr = pd.read_csv(csv_e, header=None)   # Read the structure CSV
-    df_dades = pd.read_csv(csv_d, header=None)  # Read the extra data CSV
+    # Llegir els fitxers CSV
+    df_estr = pd.read_csv(csv_e, header=None)   # Llegir el CSV de l'estructura
+    df_dades = pd.read_csv(csv_d, header=None)  # Llegir el CSV de les dades extres
 
-    df_estr_transposed = df_estr.T                                              # Transpose the structure data
-    df_dades_transposed = df_dades.T                                            # Transpose the extra data
-    combined_df = pd.concat([df_estr_transposed, df_dades_transposed], axis=1)  # Combine the transposed data
-    
-    out = os.path.join(datasheets_folder, f'dades_escandall {client} {ref_project}.csv')    # Path to the output combined CSV
-    combined_df.to_csv(out, index=False, header=False)                                      # Save the combined data to a new CSV file
+    # Eliminar salts de línia i espais innecessaris de totes les cel·les
+    df_estr = df_estr.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) else x)
+    df_dades = df_dades.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) else x)
+
+    df_est_transposed = df_estr.T                                              # Transposar les dades de l'estructura
+    df_dades_transposed = df_dades.T                                           # Transposar les dades extres
+
+    # Combinar les dades transposades
+    combined_df = pd.concat([df_est_transposed, df_dades_transposed], axis=1)  # Combinar les dades transposades
+
+    # Garantir que només hi hagi dues files al CSV combinat
+    if len(combined_df) > 2:
+        combined_df = combined_df.iloc[:2]  # Retallar a només dues files
+
+    # Guardar el CSV combinat
+    out = os.path.join(datasheets_folder, f'dades_escandall {client} {ref_project}.csv')    # Ruta del fitxer CSV combinat
+    combined_df.to_csv(out, index=False, header=False)                                      # Guardar les dades combinades en un nou fitxer CSV
+    print(f"Fitxer combinat desat a: {out}")
     return combined_df
 
 
