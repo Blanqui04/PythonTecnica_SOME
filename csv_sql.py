@@ -1,9 +1,10 @@
 import os
 import psycopg2
 import pandas as pd
+from csv_func import datasheet_dep, info_embalatge, info_processos
 from maps_columnes import table_mappings, col_map, col_elim, dates
 from kop_csv import client, ref_project, datasheets_folder
-from datetime import datetime, timedelta
+
 
 """ Codi per importar dades dels fitxers CSV genereta a la BBDD PostgreSQL.
 """
@@ -16,70 +17,6 @@ db_params = {
 }
 
 csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv") # Ruta del CSV (datasheet) generat
-print(f"Ruta del CSV: {csv_datasheet} \n")  # Imprimir la ruta del fitxer CSV generat 
-
-def cw_date(cw):
-    """
-    Convert a date in format cwXX/YY (or variations like cw XX/YY, cw.XX/YY) to YYYY-MM-DD.
-    """
-    try:
-        if isinstance(cw, str) and cw.lower().replace(' ', '').startswith('cw'):    # Remove spaces and periods
-            cleaned_cw = cw.replace(' ', '').replace('.', '')
-            week, year = map(int, cleaned_cw[2:].split('/'))
-            # Handle two-digit years
-            if year < 100:
-                year += 2000
-            first_day_of_year = datetime(year, 1, 1)
-            date = first_day_of_year + timedelta(weeks=week - 2)
-            
-            return (date - timedelta(days=date.weekday())).strftime('%Y-%m-%d')
-        return cw
-    except Exception as e:
-        print(f"Error converting {cw}: {e}")
-        return cw
-
-
-def datasheet_dep(csv):
-    """
-    Tractament del 'datasheet' extret del KOP: Columnes buides, repetides, innecessàries, format de data, etc.
-    """
-    # Read the CSV file
-    df = pd.read_csv(csv)
-    df = df.loc[:, ~df.columns.str.contains('^Unnamed')]  # Remove unnecessary columns
-    df = df.where(pd.notnull(df), None)  # Replace NaN with None for SQL compatibility
-
-    # Split the material dimensions column into separate columns (Banda, Pas, Gruix)
-    if '2 - Mides (BANDA x PAS x GRUIX):' in df.columns:
-        df[['BANDA', 'PAS', 'GRUIX']] = df['2 - Mides (BANDA x PAS x GRUIX):'].str.split('x', expand=True)
-        df['BANDA'] = df['BANDA'].str.strip().str.replace(',', '.', regex=False)  # Clean up values
-        df['PAS'] = df['PAS'].str.strip().str.replace(',', '.', regex=False)
-        df['GRUIX'] = df['GRUIX'].str.strip().str.replace(',', '.', regex=False)
-
-    # Split the CPM and OEE column into separate columns
-    if '* cpm o (peces/hora) per CT' in df.columns:
-        df[['CPM', 'OEE']] = df['* cpm o (peces/hora) per CT'].str.split('/', expand=True)
-        df['CPM'] = df['CPM'].str.strip()
-        df['OEE'] = df['OEE'].str.replace('OEE: ', '', regex=False).str.strip() if 'OEE' in df else None
-
-    df = df.drop(columns=col_elim, errors='ignore') # Drop unnecessary columns
-    
-    # Aplicar la funció cw_date a cada data en el DataFrame
-    for column in df.columns:
-        df[column] = df[column].apply(cw_date)
-
-     # Only process columns in the 'dates' list
-    for column in dates:
-        if column in df.columns:
-            df[column] = df[column].apply(cw_date)
-            df[column] = pd.to_datetime(df[column], errors='coerce').dt.date
-
-    # Save the updated DataFrame to a new CSV file
-    out_csv = "dades_KOP_act.csv"
-    df.to_csv(out_csv, index=False)
-    print(f"DataFrame processed and saved to: {out_csv}")
-
-    return df
-
 
 def importar_csv_a_sql(df, tab, col):
     """ Funció per importar un fitxer CSV a una taula SQL.
@@ -95,27 +32,25 @@ def importar_csv_a_sql(df, tab, col):
         print("Visca! Connexió exitosa a la base de dades!! \n")
         cursor = connection.cursor()
 
-        # Itera sobre les assignacions de taula
-        for table_name, columns in tab.items():
+        for table_name, columns in tab.items():                 # Itera sobre les assignacions de taula
             print(f"Inserting data into table: {table_name}")
             print(f"Columns to insert: {columns} \n")
             
-            # Obté el mapatge de columnes per a la taula actual
-            if table_name not in col:
+            if table_name not in col:                           # Obté el mapatge de columnes per a la taula actual
                 print(f"Error: No column mapping defined for table {table_name}")
                 continue
             
-            tab_col_mapping = col[table_name]
-            renamed_df = df.rename(columns=tab_col_mapping)     # Reanomena les columnes del DataFrame segons el mapatge
+            tab_col_mapping = col[table_name]                   # print(tab_col_mapping) per veure la relacio entre camps per a aquella taula
+            renamed_df = df.rename(columns = tab_col_mapping)   # Reanomena les columnes del DataFrame segons el mapatge
             renamed_df['id_referencia_client'] = ref_project    # Afegir 'id_referencia_client' al DataFrame amb el nom de la referència del client pel projecte
             renamed_df['id_referencia_some'] = 51007698         # Buscar d'alguna manera la referència some, i inserir-la aquí
-            
+                                  
             # Filtra el DataFrame per a les columnes rellevants de la taula actual
             table_df = renamed_df[columns].dropna(how='all')  # Deixeu anar les files on totes les columnes són NaN
             print(f"Data for {table_name}:")
-            print(table_df)
+            print(f"{table_df} \n")
             
-            out_csv = f"dades_{table_name}.csv"
+            out_csv = f"{ref_project}_{table_name}.csv"
             table_df.to_csv(out_csv, index=False)
 
             for index, row in table_df.iterrows():
@@ -138,12 +73,55 @@ def importar_csv_a_sql(df, tab, col):
         print(f"Meeeerda... Error: {e}")
 
 
+def importar_oferta_csv(csv_path, db_params):
+    """Importa dades de la taula oferta des d'un CSV i elimina el fitxer si tot va bé."""
+    try:
+        df = pd.read_csv(csv_path)
+        connection = psycopg2.connect(**db_params)
+        cursor = connection.cursor()
+        print("Connexió a la base de dades per a OFERTA establerta.")
+
+        # Assegura't que les columnes coincideixen amb la taula oferta
+        oferta_columns = [
+            'num_oferta', 'cicles', 'num_processos', 'descripcio',
+            'id_client', 'id_referencia_client', 'num_escandall', 'oee'
+        ]
+        # Si falta alguna columna, afegeix-la amb None
+        for col in oferta_columns:
+            if col not in df.columns:
+                df[col] = None
+
+        for _, row in df.iterrows():
+            placeholders = ', '.join(['%s'] * len(oferta_columns))
+            insert_query = f"""INSERT INTO oferta ({', '.join(oferta_columns)}) VALUES ({placeholders});"""
+            row_values = [row[col] for col in oferta_columns]
+            cursor.execute(insert_query, row_values)
+
+        connection.commit()
+        print("Dades d'oferta importades amb èxit!")
+
+        cursor.close()
+        connection.close()
+
+        # Elimina el fitxer CSV només si tot ha anat bé
+        os.remove(csv_path)
+        print(f"Fitxer {csv_path} eliminat.")
+
+    except Exception as e:
+        print(f"Error important oferta: {e}")
+
+
 def main():
+    """ Funció principal per executar el procés complet de tractament de dades.
     """
-    Funció principal per executar el procés complet de tractament de dades.
-    """
-    dataframe = datasheet_dep(csv_datasheet)                 # Cridar la funció per netejar el CSV
-    importar_csv_a_sql(dataframe, table_mappings, col_map)   # Cridar la funció per importar el CSV a SQL
+    df = datasheet_dep(csv_datasheet)                       # Cridar la funció per netejar el CSV
+    dataframe = info_embalatge(df)
+    info_processos(dataframe)
+    oferta_csv = os.path.join(os.path.dirname(__file__), f"{ref_project}_oferta.csv")
+    df_oferta = pd.read_csv(oferta_csv)
+    importar_csv_a_sql(df_oferta, {'oferta': table_mappings['oferta']}, col_map)
+    os.remove(oferta_csv)
+    importar_csv_a_sql(dataframe, table_mappings, col_map)  # Cridar la funció per importar el CSV a SQL
 
 
 if __name__ == "__main__":  # Executar la funció principal només si el fitxer s'executa directament
