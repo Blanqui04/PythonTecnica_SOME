@@ -13,13 +13,14 @@ adress_kop = r'5-FOLLOW-UP\1-KOP'
 csv_folder = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 
-client = 'ZF'    # Nom del client a cercar
-ref_project = 'A027Y916'             # Referència del projecte a cercar
+client = 'JOYSON SAFETY SYSTEMS'    # Nom del client a cercar
+ref_project = '3146375'             # Referència del projecte a cercar
 
 def trobar_arxiu_excel(client, ref_project):
     """
     Funció per cercar l'arxiu Excel (KOP) a client especificat
     dins la carpeta del projecte que contingui la referència especificada.
+    Ara també accepta arxius .xlsm (amb macros).
     """
     client_folder = os.path.join(master_folder, client) # Construir la ruta del client
         
@@ -29,7 +30,7 @@ def trobar_arxiu_excel(client, ref_project):
                 kop_folder = os.path.join(root, dir, adress_kop)            # Construir la ruta completa del projecte              
                 for sub_root, sub_dirs, sub_files in os.walk(kop_folder):   # Cercar l'arxiu Excel dins la carpeta del projecte
                     for file in sub_files:
-                        if file.endswith('.xlsx') or file.endswith('.xls'):
+                        if file.endswith(('.xlsx', '.xls', '.xlsm')):
                             excel_path = os.path.join(sub_root, file)
                             print(f"Arxiu Excel trobat: \n{excel_path} \n")
                             return excel_path
