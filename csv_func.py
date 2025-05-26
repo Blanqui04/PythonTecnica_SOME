@@ -1,7 +1,7 @@
 import os
 import re
 import pandas as pd
-from maps_columnes import col_elim, dates
+from maps_columnes import col_elim
 from kop_csv import client, ref_project
 from datetime import datetime, timedelta
 
@@ -72,7 +72,7 @@ def datasheet_dep(csv):
 
 
 def info_embalatge(dg):
-    col_bbdd_emb = ['regio', 'peces_caixa', 'id', 'caixa_descripcio',
+    col_bbdd_emb = ['regio', 'peces_caixa', 'caixa_codi', 'caixa_descripcio',
                     'pallet_codi', 'pallet_descripcio', 'tapa_altres', 'caixes_pallet']
 
     embalatge_cols = ['regio_exp', 'pcs_cx', 'codi_caixa', 'descripcio_caixa',
@@ -146,7 +146,7 @@ def info_oferta(dg, tract_df = None):
         if col not in dg.columns:
             dg[col] = ""
 
-    ofertact_rows = []
+    ctoferta_rows = []
     oferta_rows = []
 
     for idx, row in dg.iterrows():
@@ -190,9 +190,9 @@ def info_oferta(dg, tract_df = None):
                     cpm = None
                     oee = None
 
-                ofertact_rows.append({
+                ctoferta_rows.append({
                     'num_oferta': ref_id,
-                    'centre_treball': ct_val,
+                    'centretreball': ct_val,
                     'descripcio': d_val,
                     'cicles': cpm,
                     'oee': oee
@@ -215,24 +215,20 @@ def info_oferta(dg, tract_df = None):
             'id_client': client })
 
     oferta_df = pd.DataFrame(oferta_rows)
-    ofertact_df = pd.DataFrame(ofertact_rows)
-    ctoferta_df = ofertact_df[['num_oferta', 'centre_treball']].copy()
+    ctoferta_df = pd.DataFrame(ctoferta_rows)
 
     #print(f"Oferta: \n {oferta_df} \n")
     #print(f"Oferta_ct: \n {ofertact_df} \n")
-    #print(f"ctoferta: \n {ctoferta_df} \n")
 
     oferta_out_csv = f"{ref_project}_oferta.csv"
-    ofertact_out_csv = f"{ref_project}_ofertact.csv"
     ctoferta_out_csv = f"{ref_project}_ctoferta.csv"
     
     oferta_df.to_csv(oferta_out_csv, index=False)
-    ofertact_df.to_csv(ofertact_out_csv, index=False)
     ctoferta_df.to_csv(ctoferta_out_csv, index=False)
     
     #print(f"DataFrame processed and saved to: {oferta_out_csv}, {ofertact_out_csv} and {ctoferta_out_csv} \n")
 
-    return oferta_df, ofertact_df, ctoferta_df
+    return oferta_df, ctoferta_df
 
 
 def info_matriu(dg):
@@ -396,26 +392,27 @@ def info_escandallofertatecnics(dg):
 
 def info_lifetime(dg):
     col_bbdd_lft = ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu']
-    cols_lft = ['13 - Nº Expedient:','S.O.P. CLIENT','E.O.P. CLIENT','10 - Data entrega matriu:']
-    
-    for column in dates:    # Only process columns in the 'dates' list
+    cols_lft = ['13 - Nº Expedient:', 'S.O.P. CLIENT', 'E.O.P. CLIENT', '10 - Data entrega matriu:']
+    dates = ['S.O.P. CLIENT', 'E.O.P. CLIENT', '10 - Data entrega matriu:']  # Define the date columns
+
+    for column in dates:
         if column in dg.columns:
             dg[column] = dg[column].apply(cw_date)
-            dg[column] = pd.to_datetime(dg[column], errors='coerce').dt.date
-    
+            dg[column] = pd.to_datetime(dg[column], errors='coerce')
+            dg[column] = dg[column].where(dg[column].notna(), None)
+
     for col in cols_lft:
         if col not in dg.columns:
-            dg[col] = ""
-            
+            dg[col] = None
+
     lifetime_df = dg[cols_lft].copy()
     lifetime_df.columns = col_bbdd_lft
-    #print(f"Lifetime: \n {lifetime_df} \n")
-    
+
     out_csv = f"{ref_project}_lifetime.csv"
-    lifetime_df.to_csv(out_csv, index = False)
-    #print(f"DataFrame processed and saved to: {out_csv} \n")
-    
+    lifetime_df.to_csv(out_csv, index=False)
+
     return lifetime_df
+
     
 
 def info_tractaments(dg):
@@ -453,7 +450,7 @@ def info_tractaments(dg):
             # Only add if at least one field is not empty and not "0"
             if not (is_empty(desc) and is_empty(prov) and is_empty(preu)):
                 rows.append({
-                    'num_oferta': ordre,
+                    #'num_oferta': ordre,
                     'ordre': i + 1,
                     'descripcio': desc,
                     'proveidor': prov,
@@ -508,15 +505,13 @@ def info_part(dg):
     part_cols = [
         '1 - Client:', '2 - Tipus:  SQB / KSW / MIXTE:', '11 - Projecte:', '3 - Tipus Facturació: A / B / C:',
         'LOT PRODUCCIÓ INFORMAT A CLIENT', '6 - Descripció actualitzada:',
-        '16 - Cost Peça (Intern SOME)', '13 - Pes Net:', '12 - Jerarquía:',
-        'codi_caixa'
+        '16 - Cost Peça (Intern SOME)', '13 - Pes Net:', '12 - Jerarquía:'
     ]
 
     part_cols_v2 = [
         '22 - Client:', '23 - Tipus:  SQB / KSW / MIXTE:', '11 - Projecte:', '24 - Tipus Facturació: A / B / C:',
         'LOT PRODUCCIÓ INFORMAT A CLIENT', '26 - Descripció actualitzada:',
-        '33 - Cost Peça (Intern SOME)', '30 - Pes Net:', '12 - Jerarquía:',
-        'codi_caixa'
+        '33 - Cost Peça (Intern SOME)', '30 - Pes Net:', '12 - Jerarquía:'
     ]
 
     # Decide which set of columns to use based on existence
@@ -568,7 +563,8 @@ def info_part(dg):
     except Exception:
         # If there's a problem, return a DataFrame with zeros/None
         part_df = pd.DataFrame([{k: 0 if 'cost' in k or 'pes' in k or 'quantitat' in k else None for k in col_bbdd_pt}])
-
+        
+    part_df['id_embalatge'] = None
     part_df['id_tractament'] = None  # Leave id_tractament as None/blank/null
     part_df['id_referencia_client'] = ref_project  # Add the reference project column
 
@@ -639,11 +635,12 @@ def info_tipus(dg):
 
     return tipus_df
 
+
 def main(return_all=False):
     df = datasheet_dep(csv_datasheet)
     tt_df = info_tractaments(df)
     emb_df = info_embalatge(df)
-    of_df, ofct_df, ctof_df = info_oferta(df, tt_df)
+    of_df, ctof_df = info_oferta(df, tt_df)
     matr_df = info_matriu(df)
     cli_df = info_client(df)
     mat_df = info_material(df)
@@ -658,7 +655,6 @@ def main(return_all=False):
     if return_all:
         return {
             'oferta': of_df,
-            'ofertact': ofct_df,
             'ctoferta': ctof_df,
             'tractament': tt_df,
             'embalatge': emb_df,

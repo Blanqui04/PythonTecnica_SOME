@@ -1,18 +1,19 @@
 # Mapatge de taules i les seves columnes corresponents
 table_mappings = {
+    'tipus':                    ['id_tipus', 'descripcio'],
     'client':                   ['id_client', 'nom_contacte'],
+    'material':                 ['id_material', 'dimensiox', 'dimensioy', 'dimensioz', 'proveidor', 'pes', 'preu'],
     'eines':                    ['nom_matriu', 'num_picades', 'volum_anual', 'volum_projecte', 'cavitats', 'responsable', 'matricer'],
-    'peca':                     ['id_referencia_client', 'nom_client', 'planta', 'nom_projecte', 'facturacio', 'quantitats', 'descripcio', 'costos', 'pes', 'id_tipus', 'id_embalatge', 'id_tractament'],   # preu
-    'embalatge':                ['id', 'regio', 'caixa_descripcio', 'tapa_altres', 'pallet_codi', 'pallet_descripcio', 'peces_caixa', 'caixes_pallet', 'id_referencia_client'],
+    'peca':                     ['id_referencia_client', 'nom_client', 'planta', 'nom_projecte', 'facturacio', 'quantitats', 'descripcio', 'costos', 'pes', 'id_tipus', 'id_embalatge', 'id_tractament'],
+    'embalatge':                ['caixa_codi', 'regio', 'caixa_descripcio', 'tapa_altres', 'pallet_codi', 'pallet_descripcio', 'peces_caixa', 'caixes_pallet', 'id_referencia_client'],
+    'tractament':               ['ordre', 'descripcio', 'proveidor', 'preu', 'id_referencia_client'],
+    'planol':                   ['num_planol', 'id_referencia_client'],
+    'infoproduccio':            ['id_referencia_some', 'id_referencia_client', 'id_matriu', 'id_material'],
     'escandalloferta':          ['num_escandall', 'preuvenda'],
     'escandallofertatecnics':   ['num_escandall', 'num_tecnic'],
-    'material':                 ['id_material', 'dimensiox', 'dimensioy', 'dimensioz', 'proveidor', 'pes', 'preu'],
-    'tipus':                    ['id_tipus', 'descripcio'],
-    'planol':                   ['num_planol', 'id_referencia_client'],     #'imatge' <- Convertir plànol a .json i posar a la bbdd??
-    'infoproduccio':            ['id_referencia_some', 'id_referencia_client', 'id_matriu', 'id_material'],
     'oferta':                   ['num_oferta', 'num_processos', 'id_referencia_client', 'num_escandall', 'id_client'],
-    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu'],
-    'tractament':               ['id', 'ordre', 'descripcio', 'proveidor', 'preu', 'id_referencia_client']
+    'ctoferta':                 ['num_oferta', 'centretreball', 'oee', 'cicles'],
+    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu']
 }
 
 ## ------------------ % Altres taules de la base de dades que no s'omplena partir del KOP de comercial % ----------------------------##
@@ -57,12 +58,12 @@ col_elim = [#r'2 - Mides (BANDA x PAS x GRUIX):',
             ]
 
 # Columnes que contenen dates:
-dates = ['10 - Data entrega matriu:', 
-         'DATA ENTREGA PLANNING MATRIU', 
-         'DATA ENTREGA LAYOUT MATRIU', 
-         'DATA FOTs MATRICER', 
-         'DATA PROBA A SOME MATRICER (PPAP)',
-         'S.O.P. CLIENT',
-         'E.O.P. CLIENT',
-         'DATA KOP',
-         'DATA ENVIAMENT PSA']  # Afegir aquí totes les columnes que saps que són dates
+#dates = ['10 - Data entrega matriu:', 
+         #'DATA ENTREGA PLANNING MATRIU', 
+         #'DATA ENTREGA LAYOUT MATRIU', 
+         #'DATA FOTs MATRICER', 
+         #'DATA PROBA A SOME MATRICER (PPAP)',
+         #'S.O.P. CLIENT',
+         #'E.O.P. CLIENT',
+         #'DATA KOP',
+         #'DATA ENVIAMENT PSA']  # Afegir aquí totes les columnes que saps que són dates
