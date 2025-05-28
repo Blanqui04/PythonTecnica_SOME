@@ -13,7 +13,8 @@ table_mappings = {
     'escandallofertatecnics':   ['num_escandall', 'num_tecnic'],
     'oferta':                   ['num_oferta', 'num_processos', 'id_referencia_client', 'num_escandall', 'id_client'],
     'ctoferta':                 ['num_oferta', 'centretreball', 'oee', 'cicles'],
-    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu']
+    'lifetime':                 ['num_oferta', 'datainici', 'datafinal', 'dataentregamatriu'],
+    'element':                  ['id_referencia_client', 'id_element', 'tolerancia_superior', 'tolerancia_inferior', 'descripcio', 'classe', 'lim_sup', 'lim_inf', 'propietat']
 }
 
 ## ------------------ % Altres taules de la base de dades que no s'omplena partir del KOP de comercial % ----------------------------##

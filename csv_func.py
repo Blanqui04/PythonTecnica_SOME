@@ -2,6 +2,7 @@ import os
 import re
 import pandas as pd
 from maps_columnes import col_elim
+from lectura_qa_zf import qa
 from kop_csv import client, ref_project
 from datetime import datetime, timedelta
 
@@ -414,7 +415,6 @@ def info_lifetime(dg):
     return lifetime_df
 
     
-
 def info_tractaments(dg):
     # Define the columns for each tractament
     tractament_cols = [
@@ -667,7 +667,8 @@ def main(return_all=False):
             'infoproduccio': prod_df,
             'peca': part_df,
             'planol': planol_df,
-            'tipus': tipus_df
+            'tipus': tipus_df,
+            'element': qa
         }
     print("Procés completat correctament.")
 
