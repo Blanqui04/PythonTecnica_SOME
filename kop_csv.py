@@ -14,7 +14,7 @@ csv_folder = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 
 client = 'ZF'                           # Nom del client a cercar
-ref_project = 'A023Y759A'            # Referència del projecte a cercar
+ref_project = 'A024K188A'            # Referència del projecte a cercar
 
 def trobar_arxiu_excel(client, ref_project):
     """
