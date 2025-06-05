@@ -8,7 +8,7 @@ import os
 output_dir = r'C:\Github\PythonTecnica_SOME'
 os.makedirs(output_dir, exist_ok=True)
 
-# ------------------------ Constants and Style Setup ------------------------ #
+# ------------------------------------------ Constants and Style Setup ------------------------------------------ #
 font_name = 'Times new roman'
 vermell = "#830B0B"
 verd = "#156315"
@@ -19,20 +19,21 @@ save = False  # Save plots?
 display = True  # Show plots?
 np.random.seed(42)
 
-# -------------------- Sample Data (for now, hardcoded) -------------------- #
+# ------------------------------------------ Sample Data (for now, hardcoded) ------------------------------------------ #
 def get_sample_data():
     # Example: 4 elements, 5 values each
     data = [
         {'Element': 'Dimensio_1', 'Nominal': 10.0, 'Tol-': -0.1, 'Tol+': 0.2, 'Values': [10.01, 9.98, 10.05, 10.00, 10.02]},
         {'Element': 'Dimensio_2', 'Nominal': 5.0, 'Tol-': -0.05, 'Tol+': 0.05, 'Values': [5.01, 4.99, 5.00, 5.02, 4.98]},
-        {'Element': 'Dimensio_3.1', 'Nominal': 25.3, 'Tol-': -0.15, 'Tol+': 0.25, 'Values': [25.19, 25.24, 25.28, 25.21, 25.31]},
-        {'Element': 'Dimensio_3.2', 'Nominal': 25.3, 'Tol-': -0.15, 'Tol+': 0.25, 'Values': [25.41, 25.49, 25.38, 25.33, 25.45]}
+        {'Element': 'Dimensio_3.1', 'Nominal': 24.9, 'Tol-': -0.15, 'Tol+': 0.5, 'Values': [25.19, 25.24, 25.28, 25.21, 25.31]},
+        {'Element': 'Dimensio_3.2', 'Nominal': 24.9, 'Tol-': -0.15, 'Tol+': 0.5, 'Values': [25.41, 25.49, 25.38, 25.33, 25.45]},
+        {'Element': 'Dimensio_4', 'Nominal': 0, 'Tol-': 0, 'Tol+': 0.5, 'Values': [0.423, 0.394, 0.411, 0.402, 0.386]}
     ]
     return pd.DataFrame(data)
 
-# -------------------------- Statistical Analysis -------------------------- #
+# ------------------------------------------ Statistical Analysis ------------------------------------------ #
 def analyze_sample(sample_data):
-    mu, _ = stats.norm.fit(sample_data)
+    mu = np.mean(sample_data)
     std = np.std(sample_data, ddof=1)
     shapiro_test = stats.shapiro(sample_data)
     ks_test = stats.kstest(sample_data, 'norm', args=(mu, std))
@@ -56,7 +57,7 @@ def analyze_sample(sample_data):
     print(f"Mu: {mu:.4f}, Std: {std:.4f}, Normality Checks: {normality_checks}")
     return mu, std, normality_checks, is_normal
 
-# ----------------------- Plot Histogram & Q-Q Plot ------------------------ #
+# ------------------------------------------ Plot Histogram & Q-Q Plot ------------------------------------------ #
 def plt_sample_analysis(sample_data, nominal_value, tolerance, element_name, sv=True, dsp=False):
     kde_kwargs = {"fill": True, "linewidth": 1}
     (osm, osr), (slope, intercept, r) = stats.probplot(sample_data, dist="norm")
@@ -64,9 +65,9 @@ def plt_sample_analysis(sample_data, nominal_value, tolerance, element_name, sv=
     plt.figure(figsize=(10, 5))
     plt.subplot(1, 2, 1)
     sns.histplot(sample_data, kde=True, color=blau, edgecolor=negre, **kde_kwargs)
-    plt.axvline(nominal_value, color=verd, linestyle='--', linewidth=1, label=f'Valor nominal ($x_0$={nominal_value:.2f})')
     plt.axvline(nominal_value + tolerance[0], color=vermell, linestyle='--', linewidth=1, label=f'Límit inferior ({nominal_value + tolerance[0]:.2f})')
     plt.axvline(nominal_value + tolerance[1], color=vermell, linestyle='--', linewidth=1, label=f'Límit superior ({nominal_value + tolerance[1]:.2f})')
+    plt.axvline(nominal_value, color=verd, linestyle='--', linewidth=1, label=f'Valor nominal ($x_0$={nominal_value:.2f})')
     plt.title(f'Histograma de la mostra - {element_name}', fontsize=14, fontname=font_name)
     plt.xlabel('Valor', fontsize=11, fontname=font_name)
     plt.ylabel('Freqüència', fontsize=11, fontname=font_name)
@@ -88,7 +89,7 @@ def plt_sample_analysis(sample_data, nominal_value, tolerance, element_name, sv=
     if dsp:
         plt.show()
 
-# -------------------- Generate Synthetic Data and Plot -------------------- #
+# ------------------------------------------ Generate Synthetic Data and Plot ------------------------------------------ #
 def ext_sample(mu, std, n_vals=100, non_negative=False):
     if non_negative:
         samples = []
@@ -100,7 +101,7 @@ def ext_sample(mu, std, n_vals=100, non_negative=False):
     else:
         return np.random.normal(mu, std, n_vals)
 
-#-------------------- Plot with the extrapolated values --------------------- #
+# ------------------------------------------ Plot with the extrapolated values ------------------------------------------ #
 def plt_extrapolated_sample(ext_dt, nom_vl, tol, mu, std, element_name, sv=True, dsp=False):
     xmin, xmax = min(ext_dt), max(ext_dt)
     x = np.linspace(xmin, xmax, 100)
@@ -110,9 +111,9 @@ def plt_extrapolated_sample(ext_dt, nom_vl, tol, mu, std, element_name, sv=True,
     plt.hist(ext_dt, bins=30, density=False, alpha=0.6, color=blau, edgecolor='k', label='Dades extrapolades')
     plt.plot(x, p * len(ext_dt) * (xmax - xmin) / 30, negre, linewidth=1,
              label=fr'$\bar{{x}}$ = {mu:.4f}     $\sigma$ = {std:.4f}')
-    plt.axvline(nom_vl, color=verd, linestyle='--', linewidth=1, label=fr'Valor nominal: $x_0$ = {nom_vl:.2f}')
     plt.axvline(nom_vl + tol[0], color=vermell, linestyle='--', linewidth=1, label=f'Límit inferior: ({nom_vl + tol[0]:.2f})')
     plt.axvline(nom_vl + tol[1], color=vermell, linestyle='--', linewidth=1, label=f'Límit superior: ({nom_vl + tol[1]:.2f})')
+    plt.axvline(nom_vl, color=verd, linestyle='--', linewidth=1, label=fr'Valor nominal: $x_0$ = {nom_vl:.2f}')
     plt.fill_between(x, 0, p * len(ext_dt) * (xmax - xmin) / 30,
                      where=(x < nom_vl + tol[0]) | (x > nom_vl + tol[1]),
                      color="#fca4a4", alpha=0.4)
@@ -129,7 +130,7 @@ def plt_extrapolated_sample(ext_dt, nom_vl, tol, mu, std, element_name, sv=True,
     if dsp:
         plt.show()
 
-# --------------------------------- Main ---------------------------------- #
+# ------------------------------------------ Main ------------------------------------------ #
 def main(n_vals=100):
     os.makedirs(output_dir, exist_ok=True)  # Crear carpeta si no existeix
 
@@ -164,4 +165,4 @@ def main(n_vals=100):
 
 if __name__ == "__main__":
     # You can change n_vals here (e.g., 30, 50, 100, 500)
-    main(n_vals=30)
+    main(n_vals=1000)
