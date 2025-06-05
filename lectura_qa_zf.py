@@ -133,12 +133,14 @@ def fix_decimal_separator(df, columns=None):
             )
     return df
 
+def main():
+    df = llegir_qa(path)
+    qa_df = qa_rename(df)
+    qa_df_exp = expand_nx_dimensions(qa_df)
+    qa = neteja_symbols_i_referencia(qa_df_exp, ref_client)
+    qa = fix_decimal_separator(qa, columns=['valor_nominal', 'tolerancia_superior', 'tolerancia_inferior', 'lim_sup', 'lim_inf'])
+    qa.to_csv(os.path.join(f"{ref_project}_element.csv"), index=False)
+    return qa
 
-
-df = llegir_qa(path)
-qa_df = qa_rename(df)
-
-qa_df_exp = expand_nx_dimensions(qa_df)
-qa = neteja_symbols_i_referencia(qa_df_exp, ref_client)
-qa = fix_decimal_separator(qa, columns=['valor_nominal', 'tolerancia_superior', 'tolerancia_inferior', 'lim_sup', 'lim_inf'])
-qa.to_csv(os.path.join(f"{ref_project}_element.csv"), index=False)
+if __name__ == "__main__":
+    main()

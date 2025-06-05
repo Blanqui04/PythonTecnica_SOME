@@ -2,9 +2,10 @@ import os
 import re
 import pandas as pd
 from maps_columnes import col_elim
-from lectura_qa_zf import qa
 from kop_csv import client, ref_project
 from datetime import datetime, timedelta
+from lectura_qa_zf import main as qa_main
+qa = qa_main()
 
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv") # Ruta del CSV (datasheet) generat
@@ -136,6 +137,15 @@ def info_oferta(dg, tract_df = None):
     ct_cols = [f'* Centre Treball{"" if i == 0 else f".{i}"}' for i in range(5)]
     d_cols = [f'* Descripció CT{"" if i == 0 else f".{i}"}' for i in range(5)]
     cpm_cols = [f'* cpm o (peces/hora) per CT{"" if i == 0 else f".{i}"}' for i in range(5)]
+    
+    press_map = {
+    '250': 'PR250',
+    '400': 'PR400',
+    '500': 'PR500',
+    '160': 'PR160',
+    '100': 'PR100',
+    '125': 'PR125'
+}
 
     for col in ct_cols:
         if col not in dg.columns:
@@ -160,6 +170,10 @@ def info_oferta(dg, tract_df = None):
             cpm_val = row[cpm_cols[i]]
 
             if pd.notnull(ct_val) and str(ct_val).strip() != "" and pd.notnull(d_val) and str(d_val).strip() != "":
+                ct_val_clean = re.sub(r'^\s*c\.?t\.?-\s*', '', str(ct_val), flags=re.IGNORECASE)
+                match = re.match(r'Premsa\s*(\d{3})\s*Tn', ct_val_clean, re.IGNORECASE)
+                if match and match.group(1) in press_map:
+                    ct_val_clean = press_map[match.group(1)]
                 cpm = None
                 oee = None
 
@@ -193,7 +207,7 @@ def info_oferta(dg, tract_df = None):
 
                 ctoferta_rows.append({
                     'num_oferta': ref_id,
-                    'centretreball': ct_val,
+                    'centretreball': ct_val_clean,
                     'descripcio': d_val,
                     'cicles': cpm,
                     'oee': oee
