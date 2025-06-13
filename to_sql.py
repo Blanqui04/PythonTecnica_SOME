@@ -25,7 +25,7 @@ def importar_dataframe_a_sql(df, tab_name, cols):
     """Importa un DataFrame a una taula SQL.
     """
     try:
-        connection = psycopg2.connect(**db_params)  # Connecta amb la base de dades utilitzant els paràmetres definits
+        connection = psycopg2.connect(**db_params) #type: ignore # Connecta amb la base de dades utilitzant els paràmetres definits
         cursor = connection.cursor()
         print(f"Inserting data into table: {tab_name}")
         
@@ -51,7 +51,7 @@ def main():
 
     # Per cada taula definida al mapping, importa el DataFrame corresponent
     for table_name, columns in table_mappings.items():
-        df = dfs.get(table_name)    # Obté el DataFrame corresponent a la taula
+        df = dfs.get(table_name)    # type: ignore # Obté el DataFrame corresponent a la taula
         
         if df is not None and not df.empty:                         # Comprova que el DataFrame existeix i no està buit
             df = df[[col for col in columns if col in df.columns]]  # Reordena les columnes del DataFrame segons l'ordre de la taula SQL

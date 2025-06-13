@@ -13,8 +13,8 @@ adress_kop = r'5-FOLLOW-UP\1-KOP'
 csv_folder = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 
-client = 'JOYSON SAFETY SYSTEMS'                           # Nom del client a cercar
-ref_project = '3146374'            # Referència del projecte a cercar
+client = 'AUTOLIV'                           # Nom del client a cercar
+ref_project = '666429500'            # Referència del projecte a cercar
 
 def trobar_arxiu_excel(client, ref_project):
     """
