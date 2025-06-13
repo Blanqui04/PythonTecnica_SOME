@@ -5,7 +5,6 @@ from maps_columnes import col_elim
 from kop_csv import client, ref_project
 from datetime import datetime, timedelta
 from lectura_qa_zf import main as qa_main
-qa = qa_main()
 
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv") # Ruta del CSV (datasheet) generat
@@ -227,7 +226,8 @@ def info_oferta(dg, tract_df = None):
             'num_processos': ct_count + tract_count,
             'id_referencia_client': ref_project,
             'num_escandall': ref_id,
-            'id_client': client })
+            'id_client': client.capitalize() if isinstance(client, str) else client
+        })
 
     oferta_df = pd.DataFrame(oferta_rows)
     ctoferta_df = pd.DataFrame(ctoferta_rows)
@@ -349,6 +349,23 @@ def info_material(dg):
                 versio_2 = True
             else:
                 dg[col] = ""
+                
+    if '7 - Pes estimat del Rull:' in dg.columns:
+        dg['7 - Pes estimat del Rull:'] = (
+            dg['7 - Pes estimat del Rull:']
+            .astype(str)
+            .str.extract(r'(\d+)')[0]   # Extract only digits
+            .fillna(0)
+            .astype(int)
+        )
+    if '21 - Pes estimat del Rull:' in dg.columns:
+        dg['21 - Pes estimat del Rull:'] = (
+            dg['21 - Pes estimat del Rull:']
+            .astype(str)
+            .str.extract(r'(\d+)')[0]
+            .fillna(0)
+            .astype(int)
+        )
     
     if versio_2:
         material_df = dg[cols_v2].copy()
@@ -656,7 +673,7 @@ def main(return_all=False):
     emb_df = info_embalatge(df)
     of_df, ctof_df = info_oferta(df, tt_df)
     matr_df = info_matriu(df)
-    cli_df = info_client(df)
+    #cli_df = info_client(df)
     mat_df = info_material(df)
     escof_df = info_escandalloferta(df)
     escoftec_df = info_escandallofertatecnics(df)
@@ -665,6 +682,7 @@ def main(return_all=False):
     part_df = info_part(df)
     planol_df = info_planol(df)
     tipus_df = info_tipus(df)
+    qa = qa_main()
 
     if return_all:
         return {
@@ -673,7 +691,7 @@ def main(return_all=False):
             'tractament': tt_df,
             'embalatge': emb_df,
             'eines': matr_df,
-            'client': cli_df,
+            #'client': cli_df,
             'material': mat_df,
             'escandalloferta': escof_df,
             'escandallofertatecnics': escoftec_df,

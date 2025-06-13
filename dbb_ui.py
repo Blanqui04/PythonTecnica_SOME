@@ -9,7 +9,6 @@ from PyQt5.QtGui import QFont, QPixmap
 
 from kop_csv import main as l_kop, ref_project, client
 from csv_func import main as l_csv
-from lectura_qa_zf import main as l_qa
 from to_sql import main as act_bbdd
 
 dir_images = os.path.join(os.path.dirname(__file__), "ui_images")
@@ -37,7 +36,7 @@ class DatabaseUI(QWidget):
     def setup_window(self):
         # Detect screen size and set window size to half the area, centered
         screen = QApplication.primaryScreen()
-        screen_rect = screen.availableGeometry()
+        screen_rect = screen.availableGeometry() # type: ignore
         screen_width = screen_rect.width()
         screen_height = screen_rect.height()
         # Calculate half area (sqrt(0.5) ≈ 0.707 for each dimension)
@@ -51,14 +50,14 @@ class DatabaseUI(QWidget):
         self.move(x, y)
         # Set default font (easy to change here)
         default_font = QFont("Segoe UI", 12)  # Change font family and size here
-        QApplication.instance().setFont(default_font)
+        QApplication.instance().setFont(default_font) # type: ignore
 
     def init_ui(self):
         # Top layout
         logo = QLabel()
         logo_path = os.path.join(dir_images, "logo_some.png")
         logo_pixmap = QPixmap(logo_path)
-        logo.setPixmap(logo_pixmap.scaledToHeight(48, Qt.SmoothTransformation))
+        logo.setPixmap(logo_pixmap.scaledToHeight(48, Qt.SmoothTransformation)) # type: ignore
 
         num_oferta = QLineEdit()
         num_oferta.setPlaceholderText("Num_Oferta")
@@ -104,17 +103,12 @@ class DatabaseUI(QWidget):
 
         btn = QPushButton("Llegir KOP")
         btn.setMinimumHeight(60)
-        btn.clicked.connect(l_kop)
+        btn.clicked.connect(l_kop) # type: ignore
         left_buttons.addWidget(btn)
         
         btn = QPushButton("Processar CSV")
         btn.setMinimumHeight(60)
-        btn.clicked.connect(l_csv)
-        left_buttons.addWidget(btn)
-        
-        btn = QPushButton("Processar plànol")
-        btn.setMinimumHeight(60)
-        btn.clicked.connect(l_qa)
+        btn.clicked.connect(l_csv) # type: ignore
         left_buttons.addWidget(btn)
         
         btn = QPushButton("Actualitzar B.B.D.D.")
@@ -145,7 +139,7 @@ class DatabaseUI(QWidget):
         visualizer.setStyleSheet("background-color: lightgray;")  # Fons gris clar per destacar l'àrea
         visualizer.setMinimumSize(300, 650)  # Mida mínima (amplada, alçada) perquè mai sigui massa petit
         visualizer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # Permet que creixi tant com pugui dins el layout
-        visualizer.setAlignment(Qt.AlignCenter)  # Centra el text dins del QLabel
+        visualizer.setAlignment(Qt.AlignCenter)  # type: ignore # Centra el text dins del QLabel
 
         # Layout central vertical per centrar el visualitzador
         center_vbox = QVBoxLayout()  # Layout vertical per centrar el visualitzador dins l'espai central
