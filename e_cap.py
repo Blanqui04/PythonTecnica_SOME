@@ -15,7 +15,7 @@ def get_sample_data():
     data = [
     # Non-normal distribution (bimodal)
     {'Element': 'Dimensio_Anomaly', 'Nominal': 30.0, 'Tol-': -0.2, 'Tol+': 0.2,
-     'Values': [29.85, 29.87, 30.15, 30.18, 29.86, 30.17, 29.88, 30.16, 29.84, 30.19]},
+     'Values': [29.85, 29.87, 29.86, 30.15, 30.18, 30.17, 30.16, 29.84, 29.88, 30.19]},
     # Linear dimension (normal case)
     {'Element': 'Dimensio_1', 'Nominal': 25.0, 'Tol-': -0.2, 'Tol+': 0.2,
      'Values': [25.02, 24.98, 25.01, 24.99, 25.06, 25.03, 24.97, 25.04, 24.96, 25.04]},
@@ -24,7 +24,7 @@ def get_sample_data():
      'Values': [18500, 19200, 21000, 19800, 18750, 20200, 19500, 18900, 20000, 19300]},
     # Diameter (tight tolerance)
     {'Element': 'Diameter_1', 'Nominal': 12.5, 'Tol-': -0.05, 'Tol+': 0.05,
-     'Values': [12.48, 12.52, 12.50, 12.47, 12.51, 12.49, 12.53, 12.46, 12.50, 12.48]},
+     'Values': [12.41, 12.46, 12.43, 12.47, 12.50, 12.49, 12.44, 12.46, 12.48, 12.48]},
     # Angle (in degrees)
     {'Element': 'Angle_1', 'Nominal': 90.0, 'Tol-': -1.0, 'Tol+': 1.0,
      'Values': [89.8, 90.1, 90.0, 89.9, 90.2, 89.7, 90.3, 89.6, 90.0, 90.1]},
@@ -38,8 +38,7 @@ def get_sample_data():
     {'Element': 'Position_1', 'Nominal': 0.0, 'Tol-': 0.0, 'Tol+': 0.2,
      'Values': [0.08, 0.15, 0.12, 0.18, 0.10, 0.14, 0.11, 0.13, 0.09, 0.16]}]
     
-    mesures = pd.DataFrame(data)
-    print(f"DataFrame with sample data:\n{mesures}")
+    mesures = pd.DataFrame(data) #print(f"DataFrame with sample data:\n{mesures}")
     
     return mesures
 
@@ -154,7 +153,9 @@ def extrapolar(mostra_orig, nominal, tol_inf, max_attempts=100):
         tuple: Mostra final, estadístic A² d'Anderson-Darling i p-valor aproximat.
     """
     extrap = input("Vols extrapolar? (s/n): ").strip().lower() == 's'
+    extrapolate_selected = False  # True if extrap, False otherwise
     if extrap:
+        extrapolate_selected = True
         options = [50, 60, 70, 80, 90, 100, 125, 150]
         print("Selecciona el nombre de valors a extrapolar:")
         for idx, val in enumerate(options):
@@ -163,10 +164,11 @@ def extrapolar(mostra_orig, nominal, tol_inf, max_attempts=100):
         n_vals = options[sel-1]
     else:
         n_vals = None  # No extrapolació, només valors reals
+    print(extrapolate_selected)
         
     if n_vals is None or n_vals <= len(mostra_orig):
         print("No s'ha seleccionat extrapolació o el nombre de valors és menor o igual a la mostra original.")
-        return mostra_orig, None, None
+        return mostra_orig, None, None, extrapolate_selected
     
     n_orig = len(mostra_orig)
     if n_orig > n_vals:
@@ -198,11 +200,11 @@ def extrapolar(mostra_orig, nominal, tol_inf, max_attempts=100):
             print(f"Attempt {attempt+1}: A² = {A_2:.4f}, p ≈ {pval:.4f}")
             if pval >= 0.05:
                 print("Sample is probably normal (p >= 0.05).")
-                return sample, A_2, pval
+                return sample, A_2, pval, extrapolate_selected
             attempt += 1
 
     print("Warning: Could not achieve p >= 0.05 after max attempts.")
-    return sample, A_2, pval
+    return sample, A_2, pval, extrapolate_selected
 
 # ------------------------------ Càlcul d'indicadors de capacitat del procés (CP, CPK, PP, PPK) ------------------------------ #
 def index_proces(mostra, nominal_value, tolerance):
@@ -232,25 +234,46 @@ def main():
         element = str(row['Element']).replace(' ', '_')
         nominal = row['Nominal']
         tolerance = [row['Tol-'], row['Tol+']]
-        sample_data = np.array(row['Values'], dtype=float)
+        sample_data = [float(round(x, 6)) for x in row['Values']]
 
         mu, std, test_result, _, _ = analisi_mostra(sample_data)
-        print(f"\nIs {element} normal? {test_result}")
         pp, ppk = index_proces(sample_data, nominal, tolerance)
+        mu, std, pp, ppk = [round(x, 6) for x in (mu, std, pp, ppk)]
+        print(f"\nL'{element} és normal? - {test_result}")
+        print(f"Mitjana: {mu:.4f}, Desviació estàndard: {std:.4f}")
         print(f"Índex de rendiment del procés: PP = {pp:.4f}, PPK = {ppk:.4f}\n")
 
-        final_values, A_2, pval = extrapolar(sample_data, nominal, tolerance[0])
-        if A_2 is None or pval is None:
+        final_values, A_2, pval, extrap = extrapolar(sample_data, nominal, tolerance[0])
+        # If no extrapolation, set extrapolated values to empty list
+        if extrap is False:
+            final_values = []
+            A_2 = ''
+            pval = ''
             print(f"Could not extrapolate {element} to achieve normality.")
-            continue
         else:
+            final_values = [float(round(x, 6)) for x in final_values]
+            A_2 = float(round(A_2, 6))
+            pval = float(round(pval, 6))
             print(f"Anderson-Darling A² = {A_2:.4f}, p-valor ≈ {pval:.4f}")
 
-        pp, ppk = index_proces(sample_data, nominal, tolerance)
-        print(f"Process Performance: PP = {pp:.4f}, PPK = {ppk:.4f}")
+        # Prepare the DataFrame for this element
+        data_dict = {
+            'Element': [element],
+            'Nominal': [nominal],
+            'Tolerance': [tolerance],
+            'Original Values': [list(sample_data)],
+            'Mean': [mu],
+            'Std': [std],
+            'Extrapolated Values': [list(final_values)],
+            'PP': [pp],
+            'PPK': [ppk],
+            'P-value': [pval]
+        }
+        element_df = pd.DataFrame(data_dict)
 
-        out_csv = os.path.join(output_dir, f"{element}_extrapolated.csv")
-        pd.DataFrame({'Extrapolated_Value': final_values}).to_csv(out_csv, index=False)
+        out_csv = os.path.join(output_dir, f"{element}_summary.csv")
+        element_df.to_csv(out_csv, index=False)
+        print(f"Saved for {element} to {out_csv}\n")
 
 if __name__ == "__main__":
     main()
