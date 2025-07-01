@@ -1,16 +1,11 @@
+import os
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter
+import pandas as pd
 import scipy.stats as stats
 from scipy.special import gamma
-import seaborn as sns
-import pandas as pd
-import os
 
 output_dir = r'C:\Github\PythonTecnica_SOME\estudi de capacitat'
 os.makedirs(output_dir, exist_ok=True)
-
-# 
 
 # ------------------------------------------ Sample Data (for now, hardcoded) ------------------------------------------ #
 def get_sample_data():
@@ -23,25 +18,24 @@ def get_sample_data():
     {'Element': 'Dimensio_Anomaly', 'Nominal': 30.0, 'Tol-': -0.2, 'Tol+': 0.2,
      'Values': [29.85, 29.87, 29.86, 30.15, 30.18, 30.17, 30.16, 29.84, 29.88, 30.19]},
     # Linear dimension (normal case)
-    {'Element': 'Dimensio_1', 'Nominal': 25.0, 'Tol-': -0.2, 'Tol+': 0.2,
-     'Values': [25.02, 24.98, 25.01, 24.99, 25.06, 25.03, 24.97, 25.04, 24.96, 25.04]},
+    {'Element': 'Dimensio_1', 'Nominal': 25.0, 'Tol-': -0.25, 'Tol+': 0.25,
+     'Values': [25.021, 24.983, 25.015, 24.992, 25.027, 25.031, 24.986, 25.012, 24.979, 25.022]},
     # Traction test (one-sided tolerance, only minimum required)
-    {'Element': 'Traccio_1', 'Nominal': 18000, 'Tol-': 0, 'Tol+': 50000,
+    {'Element': 'Traccio_1', 'Nominal': 17500, 'Tol-': 0, 'Tol+': 52500,
      'Values': [18500, 19200, 21000, 19800, 18750, 20200, 19500, 18900, 20000, 19300]},
     # Angle (in degrees)
     {'Element': 'Angle_1', 'Nominal': 90.0, 'Tol-': -1.0, 'Tol+': 1.0,
      'Values': [89.8, 90.1, 90.0, 89.9, 90.2, 89.7, 90.3, 89.6, 90.0, 90.1]},
     # GD&T - flatness (unilateral tolerance)
     {'Element': 'Flatness_1', 'Nominal': 0.0, 'Tol-': 0.0, 'Tol+': 0.3,
-     'Values': [0.05, 0.12, 0.09, 0.07, 0.11, 0.13, 0.08, 0.10, 0.06, 0.14]},
+     'Values': [0.021, 0.135, 0.097, 0.065, 0.113, 0.104, 0.082, 0.101, 0.055, 0.043]},
     # Linear dimension with asymmetric tolerance
     {'Element': 'Dimensio_2', 'Nominal': 50.0, 'Tol-': -0.3, 'Tol+': 0.1,
      'Values': [49.85, 49.90, 50.05, 49.95, 50.00, 49.80, 49.88, 49.92, 50.01, 49.89]},
     # GD&T - position tolerance
-    {'Element': 'Position_1', 'Nominal': 0.0, 'Tol-': 0.0, 'Tol+': 0.2,
-     'Values': [0.08, 0.15, 0.12, 0.18, 0.10, 0.14, 0.11, 0.13, 0.09, 0.16]}
+    {'Element': 'Position_1', 'Nominal': 0.0, 'Tol-': 0.0, 'Tol+': 0.5,
+     'Values': [0.083, 0.151, 0.122, 0.134, 0.102, 0.111, 0.117, 0.095, 0.0912, 0.096]}
     ]
-    
     mesures = pd.DataFrame(data) #print(f"DataFrame with sample data:\n{mesures}")
     
     return mesures
@@ -227,7 +221,7 @@ def detect_element_type(element_name):
     name = element_name.lower()
     gdt_keywords = ['flatness', 'position', 'parallelism', 'perpendicularity',
                     'cylindricity', 'concentricity', 'symmetry', 'profile', 'runout']
-    traccio_keywords = ['force', 'traction', 'compression', 'hysteresi', 'hysteresis']
+    traccio_keywords = ['force', 'traction', 'compression', 'hysteresi', 'hysteresis', 'f']
 
     gdt = any(kw in name for kw in gdt_keywords)
     traccio = any(kw in name for kw in traccio_keywords)
@@ -330,7 +324,7 @@ def main():
             'Std (short term)': [std_short],
             'CP (long term)': [cp],
             'CPK (long term)': [cpk],
-            "ppm (short term)": [ppm_short],
+            "PPM (short term)": [ppm_short],
             'Std (long term)': [std_long],
             'PP (long term)': [pp],
             'PPK (long term)': [ppk],
