@@ -26,10 +26,10 @@ verd = "#135E13"
 blau = "#1e72ad"
 negre = "#000000"
 gris = "#A0A0A0"
-gold_r = (1 + np.sqrt(5)) / 2 
-save = True  # Save plots?
+gold_r = (1 + np.sqrt(5)) / 2
+save = False  # Save plots?
 display = True  # Show plots?
-lan = 'en'
+lan = 'ca'
 
 # ------------------------------------------ Plot Histogram & Q-Q Plot (mostra real)------------------------------------------ #
 def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, ad=None, ad_res=None, save=False, display=False, language='en'):
@@ -66,7 +66,21 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     # ----------- Histogram + KDE -----------
     ax = axs[0]
     ax.grid(True, linestyle='--', alpha=0.4, zorder=0)
-    sns_hist = sns.histplot(mostra, kde=True, color=blau, edgecolor=negre, ax=ax, **kde_kwargs)
+
+    # Calculate the visible X range for the histogram
+    data_min = min(np.min(mostra), lsl)
+    data_max = max(np.max(mostra), usl)
+    x_range = data_max - data_min
+
+    # Target about 20 bins, but keep between 10 and 40 for best visibility
+    target_bins = 10
+    bin_width = x_range / target_bins if x_range > 0 else 1
+    num_bins = int(x_range / bin_width)
+    num_bins = max(5, min(num_bins, 20))
+
+    sns_hist = sns.histplot(
+        mostra, kde=True, bins=num_bins, color=blau, edgecolor=negre, ax=ax, **kde_kwargs
+    )
     x_min, x_max = ax.get_xlim()
     x_range = abs(x_max - x_min)
     
@@ -114,26 +128,42 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     pdf_short_sc = pdf_short * kde_ymax / np.max(pdf_short)
     ax.plot(x_sh, pdf_short_sc, color=taronja, linestyle='--', linewidth=0.8, label=f'{tr['short_term_norm']}')
 
+    # Calcular límits normals
+    normal_max = mean + 3 * std
+    normal_min = mean - 3 * std
+
+    # Calcular si la distància entre USL i normal_max és molt gran
+    show_usl = True
+    if (abs(usl - normal_max) - abs(normal_max)) > 1 * abs(normal_max):
+        # USL massa lluny, ajusta límit superior i no mostris etiqueta USL
+        x_min = min(min(mostra), normal_min, lsl)
+        x_max = normal_max
+        show_usl = False
+    else:
+        # Mostra USL i ajusta límits per incloure-ho tot
+        x_min = min(min(mostra), normal_min, lsl)
+        x_max = max(max(mostra), normal_max, usl)
+        show_usl = True
+
+    x_margin = 0.02 * (x_max - x_min)
+    ax.set_xlim(x_min - x_margin, x_max + x_margin)
+    
     # Plot LSL, USL, Nominal, Mean
     ax.axvline(lsl, color=vermell, linestyle='-', linewidth=0.8)  # No label
-    ax.axvline(usl, color=vermell, linestyle='-', linewidth=0.8)  # No label
+    if show_usl:
+        ax.axvline(usl, color=vermell, linestyle='-', linewidth=0.8)  # No label
     ax.axvline(nominal, color=verd, linestyle='-', linewidth=0.8)
     ax.axvline(mean, color=negre, linestyle='--', linewidth=0.8)
-    
+
     # Add LSL/USL as text above the lines
     ymax = ax.get_ylim()[1]
     ax.text(lsl, ymax * 0.94, f'LSL ({lsl:.2f})', color=vermell, fontsize=9, fontname=font_name,
             ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
-    ax.text(usl, ymax * 0.94, f'USL ({usl:.2f})', color=vermell, fontsize=9, fontname=font_name,
-            ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
+    if show_usl:
+        ax.text(usl, ymax * 0.94, f'USL ({usl:.2f})', color=vermell, fontsize=9, fontname=font_name,
+                ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
     ax.text(nominal, ymax * 0.94, f'$x_{{0}}$ ({nominal:.3f})', color=verd, fontsize=9, fontname=font_name,
             ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
-
-    # Calculate x_min and x_max to always include lsl and usl
-    x_min = min(min(mostra), mean - 3*std, lsl)
-    x_max = max(max(mostra), mean + 3*std, usl)
-    x_margin = 0.02 * (x_max - x_min)
-    ax.set_xlim(x_min - x_margin, x_max + x_margin)
 
     ax.set_title(tr['histogram_kde'], fontsize=13, fontname=font_name)
     ax.set_xlabel(tr['value'], fontsize=11, fontname=font_name)
@@ -192,85 +222,109 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
         plt.close()
 
 # ------------------------------------------ Plot with the extrapolated values ------------------------------------------ #
-def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name, pp=None, ppk=None, pval=None, is_normal=None, save=True, display=False, language='ca'):
+def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name,
+                            pp=None, ppk=None, pval=None, is_normal=None,
+                            save=True, display=False, language='ca'):
     tr = translations[language]
-    x = np.linspace(mu - 3*std, mu + 3*std, 200)
-    p = stats.norm.pdf(x, mu, std)
-    hist_range = max(max(mostra), mu + 3*std) - min(min(mostra), mu - 3*std)
     lsl = nominal + tol[0]
     usl = nominal + tol[1]
+
+    # x-range for normal curve (±3σ)
+    x = np.linspace(mu - 3 * std, mu + 3 * std, 200)
+    p = stats.norm.pdf(x, mu, std)
+
+    # Histogram bin width for proper scaling of normal curve
+    bin_width = (max(mostra) - min(mostra)) / 30  # same as bins=30 in histplot
+    normal_scaled = p * len(mostra) * bin_width
 
     plt.figure(figsize=(10, 10 / gold_r))
     plt.grid(True, linestyle='--', alpha=0.4)
     ax = plt.gca()
 
     ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))
-    ax.tick_params(axis='x', labelsize=10, rotation=0)
+    ax.tick_params(axis='x', labelsize=10)
     ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f'{x:.2f}'))
-    ax.tick_params(axis='y', labelsize=10, rotation=0)
-    for label in ax.get_xticklabels():
+    ax.tick_params(axis='y', labelsize=10)
+
+    for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontname('Times New Roman')
-    for label in ax.get_yticklabels():
-        label.set_fontname('Times New Roman')
-    
+
     # Histogram and KDE
     sns.histplot(
         mostra, bins=30, kde=True, stat="count", alpha=0.6, color=blau, edgecolor='k',
         label=tr['histogram_kde'] if 'histogram_kde' in tr else "Histogram and KDE"
     )
-    # Normal fit line
-    plt.plot(
-        x, p * len(mostra) * hist_range / 30, negre, linewidth=1,
-        label=f"$\\bar{{x}}$ = {mu:.4f}, $\\sigma$ = {std:.4f}"
-    )
-    # LSL, USL, Nominal
-    plt.axvline(nominal + tol[0], color=vermell, linestyle='-', linewidth=0.75)
-    plt.axvline(nominal + tol[1], color=vermell, linestyle='-', linewidth=0.75)
-    plt.axvline(nominal, color=verd, linestyle='-', linewidth=0.75)
-    plt.axvline(mu, color=negre, linestyle='--', linewidth=0.75)
-    plt.fill_between(
-        x, 0, p * len(mostra) * hist_range / 30,
-        where=(x < nominal + tol[0]) | (x > nominal + tol[1]),
+
+    # Normal distribution curve
+    plt.plot(x, normal_scaled, negre, linewidth=1,
+             label=f"$\\bar{{x}}$ = {mu:.4f}, $\\sigma$ = {std:.4f}")
+
+    # Vertical lines: LSL, nominal, mu, USL
+    ymax = ax.get_ylim()[1]
+    if lsl != nominal:
+        ax.axvline(lsl, color=vermell, linestyle='-', linewidth=0.75)
+        ax.text(lsl, ymax * 0.94, f'LSL ({lsl:.2f})', color=vermell, fontsize=9,
+                fontname=font_name, ha='center', va='bottom',
+                bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
+
+    ax.axvline(nominal, color=verd, linestyle='-', linewidth=0.75)
+    ax.text(nominal, ymax * 0.95, f'$x_{{0}}$ ({nominal:.2f})', color=verd, fontsize=9,
+            fontname=font_name, ha='center', va='bottom',
+            bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
+
+    ax.axvline(mu, color=negre, linestyle='--', linewidth=0.75)
+
+    # Shaded rejection zones
+    ax.fill_between(
+        x, 0, normal_scaled,
+        where=(x < lsl) | (x > usl),
         color=vermell_clar, alpha=0.4
     )
-    ymax = ax.get_ylim()[1]
-    ax.text(lsl, ymax * 0.95, f'LSL ({lsl:.2f})', color=vermell, fontsize=9, fontname=font_name,
-            ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
-    ax.text(usl, ymax * 0.95, f'USL ({usl:.2f})', color=vermell, fontsize=9, fontname=font_name,
-            ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
-    ax.text(nominal, ymax * 0.95, f'$x_{{0}}$ ({nominal:.2f})', color=verd, fontsize=9, fontname=font_name,
-            ha='center', va='bottom', bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
 
-    plt.xlabel(tr['distribution_xlabel'] if 'distribution_xlabel' in tr else 'Measured Values', fontsize=14, fontname=font_name)
-    plt.ylabel(tr['distribution_ylabel'] if 'distribution_ylabel' in tr else 'Frequency', fontsize=14, fontname=font_name)
+    # USL logic and axis limits
+    x_min_val = min(min(mostra), mu - 3 * std, lsl, nominal)
+    x_max_val = max(max(mostra), mu + 3 * std, usl, nominal)
+    x_margin = 0.02 * (x_max_val - x_min_val)
+    ax.set_xlim(x_min_val - x_margin, x_max_val + x_margin)
+
+    if usl != nominal:
+        ax.axvline(usl, color=vermell, linestyle='-', linewidth=0.75)
+        ax.text(usl, ymax * 0.95, f'USL ({usl:.2f})', color=vermell, fontsize=9,
+                fontname=font_name, ha='center', va='bottom',
+                bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
+
+    # Axis labels
+    plt.xlabel(tr['distribution_xlabel'] if 'distribution_xlabel' in tr else 'Measured Values',
+               fontsize=14, fontname=font_name)
+    plt.ylabel(tr['distribution_ylabel'] if 'distribution_ylabel' in tr else 'Frequency',
+               fontsize=14, fontname=font_name)
+
     # Title
     ax.set_title(
-        tr['distribution_title'].format(element=element_name) if 'distribution_title' in tr else f'Measurement Distribution - {element_name}',
+        tr['distribution_title'].format(element=element_name) if 'distribution_title' in tr
+        else f'Measurement Distribution - {element_name}',
         fontsize=16, fontname=font_name, pad=22
     )
 
-    # Subtitle (as a second text, not superposed)
+    # Subtitle (pp, ppk, pval, normality)
     subtitle = ""
     if pp is not None and ppk is not None:
         subtitle += (tr['subtitle_pp_ppk'].format(pp=pp, ppk=ppk) + "   ") if 'subtitle_pp_ppk' in tr else f"Pp = {pp:.3f}, Ppk = {ppk:.3f}   "
     if pval is not None:
         subtitle += (tr['subtitle_pval'].format(pval=pval) + "   ") if 'subtitle_pval' in tr else f"p-value = {pval:.4f}   "
     if is_normal is not None:
-        subtitle += (tr['subtitle_normal'].format(normal=tr['yes'] if is_normal else tr['no']) if 'subtitle_normal' in tr and 'yes' in tr and 'no' in tr
+        subtitle += (tr['subtitle_normal'].format(normal=tr['yes'] if is_normal else tr['no'])
+                     if 'subtitle_normal' in tr and 'yes' in tr and 'no' in tr
                      else f"Normal: {'Yes' if is_normal else 'No'}")
 
     if subtitle.strip():
-        # Place subtitle just below the title, using axes coordinates
         ax.text(
             0.5, 1.01, subtitle.strip(),
-            fontsize=11,
-            fontname=font_name,
-            color="#444444",
-            ha='center',
-            va='bottom',
-            transform=ax.transAxes
+            fontsize=11, fontname=font_name, color="#444444",
+            ha='center', va='bottom', transform=ax.transAxes
         )
-    
+
+    # Legend & output
     plt.legend(fontsize=12, prop={'family': font_name})
     plt.tight_layout()
     if save:
@@ -282,7 +336,7 @@ def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name, pp=None
         plt.close()
         
 # ------------------------------------------ Gràfic I ------------------------------------------ #
-def i_chart(mostra, nominal, tol, mu, mr, element, pp=None, ppk=None, save=True, display=False, language='en'):
+def i_chart(mostra, nominal, tol, mu, mr, element, cp=None, cpk=None, save=True, display=False, language='en'):
     """
     Professional I-Chart for automotive capability studies.
     """
@@ -290,7 +344,6 @@ def i_chart(mostra, nominal, tol, mu, mr, element, pp=None, ppk=None, save=True,
     indices = np.arange(1, len(mostra) + 1)
     LSL = nominal + tol[0]
     USL = nominal + tol[1]
-    CL = mu
     D4 = 2.659816
     UCL = mu + D4 * mr
     LCL = mu - D4 * mr
@@ -319,22 +372,14 @@ def i_chart(mostra, nominal, tol, mu, mr, element, pp=None, ppk=None, save=True,
     )
 
     # Control limits
-    plt.axhline(UCL, color=vermell, linestyle="-", linewidth=1, zorder=2, label=tr['ucl_label'].format(ucl=UCL))
-    plt.axhline(LCL, color=vermell, linestyle="-", linewidth=1, zorder=2, label=tr['lcl_label'].format(lcl=LCL))
-
-    # Specification limits (red solid)
-    #plt.axhline(USL, color=gris, linestyle="--", alpha=0.5, linewidth=0.5, zorder=5, label=tr['usl_label'].format(usl=USL))
-    #plt.axhline(LSL, color=gris, linestyle="--", alpha=0.5, linewidth=0.5, zorder=5, label=tr['lsl_label'].format(lsl=LSL))
+    plt.axhline(UCL, color=vermell, linestyle="-", linewidth=0.8, zorder=2, label=tr['ucl_label'].format(ucl=UCL))
+    plt.axhline(LCL, color=vermell, linestyle="-", linewidth=0.8, zorder=2, label=tr['lcl_label'].format(lcl=LCL))
 
     # Mean (black solid)
-    plt.axhline(CL, color=verd, linestyle="-", linewidth=0.8, zorder=2, label=tr['mean_legend'].format(mean=mu))
+    plt.axhline(mu, color=negre, linestyle="-", linewidth=0.8, zorder=2, label=f'$\\bar{{x}}$ = {mu:.4f}')
 
-    # Nominal (green dash-dot)
-    #plt.axhline(nominal, color="#156315", linestyle="-", linewidth=0.8, zorder=2, label=tr['nominal_label'].format(nominal=nominal))
-    
     # Title and subtitle with blank space between them and the chart
     ax = plt.gca()
-    # Title
     ax.set_title(
         tr['individual_chart'].format(element=element),
         fontsize=15,
@@ -342,7 +387,7 @@ def i_chart(mostra, nominal, tol, mu, mr, element, pp=None, ppk=None, save=True,
         pad=30  # More space below title
     )
     # Subtitle (as a second text, not superposed)
-    subtitle = f"{tr['process performance']}: Pp = {pp:.2f}, Ppk = {ppk:.2f}" if pp is not None and ppk is not None else ""
+    subtitle = f"{tr['process capability']}: Cp = {cp:.2f}, Cpk = {cpk:.2f}" if cp is not None and cpk is not None else ""
     if subtitle:
         ax.text(
             0.5, 1.03, subtitle,  # y > 1 for space below title
@@ -412,7 +457,7 @@ def rm_chart(mostra, element_name, save=True, display=False, language='en'):
 
     # Control lines
     plt.axhline(UCL, color=vermell, linestyle="-", linewidth=0.75, zorder=2, label=tr['ucl_label'].format(ucl=UCL))
-    plt.axhline(MR_bar, color=negre, linestyle="-", linewidth=0.75, zorder=2, label=f'$\\bar{{MR}}$ = {MR_bar:.3f}')
+    plt.axhline(MR_bar, color=negre, linestyle="-", linewidth=0.75, zorder=2, label=tr['cl_label'].format(cl=MR_bar))
     plt.axhline(LCL, color=vermell, linestyle="-", linewidth=0.75, zorder=2, label=tr['lcl_label'].format(lcl=LCL))
 
     # Titles and labels
@@ -533,10 +578,10 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     for label in ax.get_xticklabels():
         label.set_fontsize(9)
         label.set_fontname("Times New Roman")
-    title = tr['process_capability_plot'] if 'process_capability_plot' in tr else "Process Capability Plot"
-    subtitle = f"{tr['mean']}: {mean:.5f}"
+    title = tr['process_capability_plot'].format(element=element) if 'process_capability_plot' in tr else "Process Capability Plot"
+    subtitle = f"{tr['mean']}: {mean:.4f}"
     ax.set_title(title, fontsize=15, fontname="Times New Roman", pad=28)
-    ax.text(0.5, 1.02, subtitle, transform=ax.transAxes, ha='center', fontsize=11, fontname="Times New Roman", color=gris, va='bottom')
+    ax.text(0.5, 1.02, subtitle, transform=ax.transAxes, ha='center', fontsize=11, fontname="Times New Roman", color="#444444", va='bottom')
     plt.grid(True, axis='both', linestyle='--', alpha=0.4)
 
     # Info box on the right using Table for full control
@@ -547,16 +592,16 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     # Short term table
     short_table = Table(axbox, bbox=[0, 0.55, 1, 0.35])
     # Header: one cell spanning both columns
-    short_table.add_cell(0, 0, width=0.5, height=0.18, text=curt_text, loc='center', facecolor="#e6e6f2")
+    short_table.add_cell(0, 0, width=0.5, height=0.25, text=curt_text, loc='center', facecolor="#e6e6f2")
     # Data rows
-    short_table.add_cell(1, 0, width=wd, height=0.13, text=labels["Cp"], loc='left', facecolor="#f9f9f9")
-    short_table.add_cell(1, 1, width=wd, height=0.13, text=f"{cp:.4f}", loc='left')
-    short_table.add_cell(2, 0, width=wd, height=0.13, text=labels["Cpk"], loc='left', facecolor="#f9f9f9")
-    short_table.add_cell(2, 1, width=wd, height=0.13, text=f"{cpk:.4f}", loc='left')
-    short_table.add_cell(3, 0, width=wd, height=0.13, text=labels["PPM"], loc='left', facecolor="#f9f9f9")
-    short_table.add_cell(3, 1, width=wd, height=0.13, text=f"{ppm_short:.2f}", loc='left')
-    short_table.add_cell(4, 0, width=wd, height=0.13, text=labels["Desv.Est."], loc='left', facecolor="#f9f9f9")
-    short_table.add_cell(4, 1, width=wd, height=0.13, text=f"{std_short:.5f}", loc='left')
+    short_table.add_cell(1, 0, width=wd, height=0.2, text=labels["Cp"], loc='left', facecolor="#f9f9f9")
+    short_table.add_cell(1, 1, width=wd, height=0.2, text=f"{cp:.2f}", loc='left')
+    short_table.add_cell(2, 0, width=wd, height=0.2, text=labels["Cpk"], loc='left', facecolor="#f9f9f9")
+    short_table.add_cell(2, 1, width=wd, height=0.2, text=f"{cpk:.2f}", loc='left')
+    short_table.add_cell(3, 0, width=wd, height=0.2, text=labels["PPM"], loc='left', facecolor="#f9f9f9")
+    short_table.add_cell(3, 1, width=wd, height=0.2, text=f"{ppm_short:.2f}", loc='left')
+    short_table.add_cell(4, 0, width=wd, height=0.2, text=labels["Desv.Est."], loc='left', facecolor="#f9f9f9")
+    short_table.add_cell(4, 1, width=wd, height=0.2, text=f"{std_short:.4f}", loc='left')
 
     # Style header
     header_cell = short_table[(0, 0)]
@@ -595,16 +640,16 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     # Long term table
     long_table = Table(axbox, bbox=[0, 0.05, 1, 0.35])
     # Header: one cell spanning both columns
-    long_table.add_cell(0, 0, width=0.5, height=0.18, text=llarg_text, loc='center', facecolor="#e6e6f2")
+    long_table.add_cell(0, 0, width=0.5, height=0.25, text=llarg_text, loc='center', facecolor="#e6e6f2")
     # Data rows
-    long_table.add_cell(1, 0, width=wd, height=0.13, text=labels["Pp"], loc='left', facecolor="#f9f9f9")
-    long_table.add_cell(1, 1, width=wd, height=0.13, text=f"{pp:.4f}", loc='left')
-    long_table.add_cell(2, 0, width=wd, height=0.13, text=labels["Ppk"], loc='left', facecolor="#f9f9f9")
-    long_table.add_cell(2, 1, width=wd, height=0.13, text=f"{ppk:.4f}", loc='left')
-    long_table.add_cell(3, 0, width=wd, height=0.13, text=labels["PPM"], loc='left', facecolor="#f9f9f9")
-    long_table.add_cell(3, 1, width=wd, height=0.13, text=f"{ppm_long:.2f}", loc='left')
-    long_table.add_cell(4, 0, width=wd, height=0.13, text=labels["Desv.Est."], loc='left', facecolor="#f9f9f9")
-    long_table.add_cell(4, 1, width=wd, height=0.13, text=f"{std_long:.5f}", loc='left')
+    long_table.add_cell(1, 0, width=wd, height=0.2, text=labels["Pp"], loc='left', facecolor="#f9f9f9")
+    long_table.add_cell(1, 1, width=wd, height=0.2, text=f"{pp:.2f}", loc='left')
+    long_table.add_cell(2, 0, width=wd, height=0.2, text=labels["Ppk"], loc='left', facecolor="#f9f9f9")
+    long_table.add_cell(2, 1, width=wd, height=0.2, text=f"{ppk:.2f}", loc='left')
+    long_table.add_cell(3, 0, width=wd, height=0.2, text=labels["PPM"], loc='left', facecolor="#f9f9f9")
+    long_table.add_cell(3, 1, width=wd, height=0.2, text=f"{ppm_long:.2f}", loc='left')
+    long_table.add_cell(4, 0, width=wd, height=0.2, text=labels["Desv.Est."], loc='left', facecolor="#f9f9f9")
+    long_table.add_cell(4, 1, width=wd, height=0.2, text=f"{std_long:.4f}", loc='left')
 
     # Style header
     header_cell = long_table[(0, 0)]
@@ -671,7 +716,7 @@ def main():
 # ----------------------------------------------------- Gràfics ----------------------------------------------------- #
         plt_sample_analysis(mostra, nominal, tolerance, element, std_short, pval_ad, ad_stat, is_normal, save, display, lan) # Gràfics d’anàlisi
         MR_bar = rm_chart(mostra, element, save, display, lan)  
-        i_chart(mostra, nominal, tolerance, mu, MR_bar, element, pp, ppk, save, display, lan)  # I-Chart
+        i_chart(mostra, nominal, tolerance, mu, MR_bar, element, cp, cpk, save, display, lan)  # I-Chart
         capability_chart(element, mu, std_short, std_long, usl, lsl, pp, ppk, ppm_long, cp, cpk, ppm_short, save, display, lan)
 
         final_values, A_2, pval_e, extrap = extrapolar(mostra, nominal, tolerance[0])
