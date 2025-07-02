@@ -4,19 +4,16 @@ import pandas as pd
 import seaborn as sns
 import scipy.stats as stats
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-import matplotlib.ticker as ticker
 from matplotlib.table import Table
 import matplotlib.gridspec as gridspec
 from matplotlib.ticker import FuncFormatter
-# ------------- Traduccions
+# ------------- Traduccions ------------- #
 from translation_dict import translations
 # ------------------------------------------ Sample Data Retrieval ------------------------------------------ #
-from e_cap import get_sample_data, analisi_mostra, pvalor_approx, extrapolar, index_proces, ppm_calc
+from e_cap_zf import get_sample_data, analisi_mostra, pvalor_approx, extrapolar, index_proces, ppm_calc
 
 output_dir = r'C:\Github\PythonTecnica_SOME\estudi de capacitat'
 os.makedirs(output_dir, exist_ok=True)
-
 # ------------------------------------------ Constants and Style Setup ------------------------------------------ #
 font_name = 'Times new roman'
 taronja = "#B96900"
@@ -25,10 +22,10 @@ vermell_clar = "#fab3b3"
 verd = "#135E13"
 blau = "#1e72ad"
 negre = "#000000"
-gris = "#A0A0A0"
+gris = "#BBBBBB"
 gold_r = (1 + np.sqrt(5)) / 2
-save = False  # Save plots?
-display = True  # Show plots?
+save = True  # Save plots?
+display = False  # Show plots?
 lan = 'ca'
 
 # ------------------------------------------ Plot Histogram & Q-Q Plot (mostra real)------------------------------------------ #
@@ -42,28 +39,25 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     
     fig, axs = plt.subplots(1, 2, figsize=(10, 10/gold_r))
     fig.subplots_adjust(top=0.70)  # Leave space for main title and subtitle
-    # ----------- Main Title and Subtitle -----------
+# ----------- Main Title and Subtitle -----------
     fig.suptitle(
         tr['normality_analysis'].format(element=element),
         fontsize=16,
         fontname=font_name,
-        y=0.94
-    )
+        y=0.94)
     subtitle = ""
     if pval_ad is not None and ad_res is not None:
         subtitle = (
             f"{tr['mean']}: {mean:.4f}   "
             f"AD: {ad:.4f}   "
             f"{tr['p_value']}: {pval_ad:.4f}   "
-            f"{tr['normality']}: {tr['yes'] if ad_res else tr['no']}"
-        )
+            f"{tr['normality']}: {tr['yes'] if ad_res else tr['no']}")
     if subtitle:
         fig.text(
             0.5, 0.87, subtitle,
             ha='center', va='center',
-            fontsize=11, fontname=font_name, color="#444444"
-        )
-    # ----------- Histogram + KDE -----------
+            fontsize=11, fontname=font_name, color="#444444")
+# ----------- Histogram + KDE -----------
     ax = axs[0]
     ax.grid(True, linestyle='--', alpha=0.4, zorder=0)
 
@@ -72,15 +66,12 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     data_max = max(np.max(mostra), usl)
     x_range = data_max - data_min
 
-    # Target about 20 bins, but keep between 10 and 40 for best visibility
     target_bins = 10
     bin_width = x_range / target_bins if x_range > 0 else 1
     num_bins = int(x_range / bin_width)
     num_bins = max(5, min(num_bins, 20))
 
-    sns_hist = sns.histplot(
-        mostra, kde=True, bins=num_bins, color=blau, edgecolor=negre, ax=ax, **kde_kwargs
-    )
+    sns_hist = sns.histplot(mostra, kde=True, bins=num_bins, color=blau, edgecolor=negre, ax=ax, **kde_kwargs)
     x_min, x_max = ax.get_xlim()
     x_range = abs(x_max - x_min)
     
@@ -105,8 +96,7 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     for label in ax.get_yticklabels():
         label.set_fontname(font_name)
 
-    # Troba la línia de la KDE de seaborn de manera robusta
-    kde_line = None
+    kde_line = None # Troba la línia de la KDE de seaborn de manera robusta
     max_points = 0
     for line in sns_hist.lines:
         ydata = line.get_ydata()
@@ -118,15 +108,14 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     else:
         kde_ymax = 1  # Fallback
 
-    x_lg = np.linspace(mean-3*std, mean+3*std, 100)
-    pdf_long = stats.norm.pdf(x_lg, loc=mean, scale=std)
-    pdf_long_sc = pdf_long * kde_ymax / np.max(pdf_long)
-    ax.plot(x_lg, pdf_long_sc, color=negre, linewidth=0.8, label=f'{tr['long_term_norm']}')
-    
-    x_sh = np.linspace(mean-3*std_short, mean+3*std_short, 100)
-    pdf_short = stats.norm.pdf(x_sh, loc=mean, scale=std_short)
-    pdf_short_sc = pdf_short * kde_ymax / np.max(pdf_short)
-    ax.plot(x_sh, pdf_short_sc, color=taronja, linestyle='--', linewidth=0.8, label=f'{tr['short_term_norm']}')
+    # Overlay long-term and short-term normal curves, scaled to KDE peak
+    for std_val, color, ls, label_key in [
+        (std, negre, '-', 'long_term_norm'),
+        (std_short, taronja, '--', 'short_term_norm')]:
+        x_vals = np.linspace(mean - 3 * std_val, mean + 3 * std_val, 100)
+        pdf = stats.norm.pdf(x_vals, loc=mean, scale=std_val)
+        pdf_scaled = pdf * kde_ymax / np.max(pdf) if np.max(pdf) > 0 else pdf
+        ax.plot(x_vals, pdf_scaled, color=color, linestyle=ls, linewidth=0.8, label=tr[label_key])
 
     # Calcular límits normals
     normal_max = mean + 3 * std
@@ -200,7 +189,6 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
 
     # Plot the 95% confidence band as a shaded area
     ax.fill_between(osm, lower_bound, upper_bound, color=gris, alpha=0.25, label=tr['confidence_qq'])
-    
     ax.plot(osm, slope * np.array(osm) + intercept, color=vermell, linewidth=2, zorder=2, label=tr['normal_fit'])   # Plot the Q-Q line (fit to your data)
     ax.scatter(osm, osr, color=blau, edgecolor=negre, linewidths=0.5, s=50, zorder=3, label=tr['sample_quantiles']) # Plot the sample quantiles as points
 
@@ -214,7 +202,7 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
     plt.tight_layout(rect=[0, 0, 1, 0.90])
     
     if save:
-        filename = os.path.join(output_dir, fr'{element}_normalitat.png')
+        filename = os.path.join(output_dir, fr'1 - {element} - Analisi_norm - {language}.png')
         plt.savefig(filename, format='png')
         plt.close()
     if display:
@@ -222,14 +210,12 @@ def plt_sample_analysis(mostra, nominal, tol, element, std_short, pval_ad=None, 
         plt.close()
 
 # ------------------------------------------ Plot with the extrapolated values ------------------------------------------ #
-def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name,
-                            pp=None, ppk=None, pval=None, is_normal=None,
-                            save=True, display=False, language='ca'):
+def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name, pp=None, ppk=None, 
+                            pval=None, is_normal=None, save=True, display=False, language='ca'):
     tr = translations[language]
     lsl = nominal + tol[0]
     usl = nominal + tol[1]
 
-    # x-range for normal curve (±3σ)
     x = np.linspace(mu - 3 * std, mu + 3 * std, 200)
     p = stats.norm.pdf(x, mu, std)
 
@@ -250,14 +236,10 @@ def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name,
         label.set_fontname('Times New Roman')
 
     # Histogram and KDE
-    sns.histplot(
-        mostra, bins=30, kde=True, stat="count", alpha=0.6, color=blau, edgecolor='k',
-        label=tr['histogram_kde'] if 'histogram_kde' in tr else "Histogram and KDE"
-    )
+    sns.histplot(mostra, bins=30, kde=True, stat="count", alpha=0.6, color=blau, edgecolor='k', 
+                 label=tr['histogram_kde'] if 'histogram_kde' in tr else "Histogram and KDE")
 
-    # Normal distribution curve
-    plt.plot(x, normal_scaled, negre, linewidth=1,
-             label=f"$\\bar{{x}}$ = {mu:.4f}, $\\sigma$ = {std:.4f}")
+    plt.plot(x, normal_scaled, negre, linewidth=1, label=f"$\\bar{{x}}$ = {mu:.4f}, $\\sigma$ = {std:.4f}") # Normal distribution curve
 
     # Vertical lines: LSL, nominal, mu, USL
     ymax = ax.get_ylim()[1]
@@ -278,8 +260,7 @@ def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name,
     ax.fill_between(
         x, 0, normal_scaled,
         where=(x < lsl) | (x > usl),
-        color=vermell_clar, alpha=0.4
-    )
+        color=vermell_clar, alpha=0.4)
 
     # USL logic and axis limits
     x_min_val = min(min(mostra), mu - 3 * std, lsl, nominal)
@@ -300,35 +281,30 @@ def plt_extrapolated_sample(mostra, nominal, tol, mu, std, element_name,
                fontsize=14, fontname=font_name)
 
     # Title
-    ax.set_title(
-        tr['distribution_title'].format(element=element_name) if 'distribution_title' in tr
-        else f'Measurement Distribution - {element_name}',
-        fontsize=16, fontname=font_name, pad=22
-    )
+    ax.set_title(tr['distribution_title'].format(element=element_name) if 'distribution_title' in tr
+                 else f'Measurement Distribution - {element_name}',fontsize=16, fontname=font_name, pad=22)
 
     # Subtitle (pp, ppk, pval, normality)
     subtitle = ""
     if pp is not None and ppk is not None:
-        subtitle += (tr['subtitle_pp_ppk'].format(pp=pp, ppk=ppk) + "   ") if 'subtitle_pp_ppk' in tr else f"Pp = {pp:.3f}, Ppk = {ppk:.3f}   "
+        subtitle += (tr['subtitle_pp_ppk'].format(pp=pp, ppk=ppk) + "   ") if 'subtitle_pp_ppk' in tr else f"Pp = {pp:.2f}, Ppk = {ppk:.2f}   "
     if pval is not None:
         subtitle += (tr['subtitle_pval'].format(pval=pval) + "   ") if 'subtitle_pval' in tr else f"p-value = {pval:.4f}   "
     if is_normal is not None:
         subtitle += (tr['subtitle_normal'].format(normal=tr['yes'] if is_normal else tr['no'])
                      if 'subtitle_normal' in tr and 'yes' in tr and 'no' in tr
                      else f"Normal: {'Yes' if is_normal else 'No'}")
-
     if subtitle.strip():
         ax.text(
             0.5, 1.01, subtitle.strip(),
             fontsize=11, fontname=font_name, color="#444444",
-            ha='center', va='bottom', transform=ax.transAxes
-        )
+            ha='center', va='bottom', transform=ax.transAxes)
 
     # Legend & output
     plt.legend(fontsize=12, prop={'family': font_name})
     plt.tight_layout()
     if save:
-        filename = os.path.join(output_dir, fr'{element_name}_extrapolada.png')
+        filename = os.path.join(output_dir, fr'5 - {element_name} - Extrapolacio_mesures - {language}.png')
         plt.savefig(filename, format='png')
         plt.close()
     if display:
@@ -355,37 +331,19 @@ def i_chart(mostra, nominal, tol, mu, mr, element, cp=None, cpk=None, save=True,
     plt.grid(True, linestyle=":", alpha=0.4, zorder=0)
 
     # Plot points and lines
-    plt.plot(
-        indices,
-        mostra,
-        color="#1f77b4",
-        linewidth=1,
-        zorder=3
-    )
-    plt.scatter(
-        indices,
-        mostra,
-        color=point_colors,
-        edgecolor="black",
-        s=60,
-        zorder=4
-    )
+    plt.plot(indices, mostra, color=blau, linewidth=1, zorder=3)
+    plt.scatter(indices, mostra, color=point_colors, edgecolor=negre, s=60, zorder=4)
 
     # Control limits
     plt.axhline(UCL, color=vermell, linestyle="-", linewidth=0.8, zorder=2, label=tr['ucl_label'].format(ucl=UCL))
+    plt.axhline(mu, color=negre, linestyle="-", linewidth=0.8, zorder=2, label=tr['cl_label'].format(cl=mu))
     plt.axhline(LCL, color=vermell, linestyle="-", linewidth=0.8, zorder=2, label=tr['lcl_label'].format(lcl=LCL))
-
-    # Mean (black solid)
-    plt.axhline(mu, color=negre, linestyle="-", linewidth=0.8, zorder=2, label=f'$\\bar{{x}}$ = {mu:.4f}')
 
     # Title and subtitle with blank space between them and the chart
     ax = plt.gca()
-    ax.set_title(
-        tr['individual_chart'].format(element=element),
-        fontsize=15,
-        fontname="Times New Roman",
-        pad=30  # More space below title
-    )
+    ax.set_title(tr['individual_chart'].format(element=element), 
+                 fontsize=15, fontname="Times New Roman", pad=30)  # More space below title
+
     # Subtitle (as a second text, not superposed)
     subtitle = f"{tr['process capability']}: Cp = {cp:.2f}, Cpk = {cpk:.2f}" if cp is not None and cpk is not None else ""
     if subtitle:
@@ -396,8 +354,7 @@ def i_chart(mostra, nominal, tol, mu, mr, element, cp=None, cpk=None, save=True,
             color="#444444",
             ha='center',
             va='bottom',
-            transform=ax.transAxes
-        )
+            transform=ax.transAxes)
 
     plt.xlabel(tr['index_piece'], fontsize=12, fontname="Times New Roman")
     plt.ylabel(tr['value_measured'], fontsize=12, fontname="Times New Roman")
@@ -416,11 +373,10 @@ def i_chart(mostra, nominal, tol, mu, mr, element, cp=None, cpk=None, save=True,
         labelspacing=0.2,
         handlelength=0.7,
         handletextpad=0.3,
-        markerscale=0.7,
-    )
+        markerscale=0.7)
 
     if save:
-        filename = os.path.join(output_dir, f"{element}_IChart.png")
+        filename = os.path.join(output_dir, fr"3 - {element} - Diagrama_I - {language}.png")
         plt.savefig(filename, format="png")
         plt.close()
     if display:
@@ -438,15 +394,13 @@ def rm_chart(mostra, element_name, save=True, display=False, language='en'):
     mr = np.abs(np.diff(mostra))
     indices = np.arange(2, len(mostra) + 1)  # MR is defined from the second observation
 
-    # Control line, CL.
     MR_bar = np.mean(mr)
     d2 = 1.128
     sigma_est = MR_bar / d2
-    # D4 and D3 for n=2
-    D4 = 3.267
-    D3 = 0
-    UCL = D4 * MR_bar
-    LCL = D3 * MR_bar  # Always 0 by definition
+    D_4 = 3.267
+    D_3 = 0
+    UCL = D_4 * MR_bar
+    LCL = D_3 * MR_bar  # Always 0 by definition (per subgrups n =2)
 
     plt.figure(figsize=(10, 6))
     plt.grid(True, linestyle=":", alpha=0.4, zorder=0)
@@ -462,12 +416,9 @@ def rm_chart(mostra, element_name, save=True, display=False, language='en'):
 
     # Titles and labels
     ax = plt.gca()
-    ax.set_title(
-        tr['moving_range_chart'].format(element=element_name),
-        fontsize=15,
-        fontname="Times New Roman",
-        pad=30
-    )
+    ax.set_title(tr['moving_range_chart'].format(element=element_name), 
+                 fontsize=15, fontname="Times New Roman", pad=30)
+    
     # Subtitle
     subtitle = tr['estimated_sigma'].format(sigma=sigma_est)
     if subtitle:
@@ -478,8 +429,7 @@ def rm_chart(mostra, element_name, save=True, display=False, language='en'):
             color="#444444",
             ha='center',
             va='bottom',
-            transform=ax.transAxes
-        )
+            transform=ax.transAxes)
 
     plt.xlabel(tr['index_piece'], fontsize=12, fontname="Times New Roman")
     plt.ylabel(tr['mobile_range'], fontsize=12, fontname="Times New Roman")
@@ -497,11 +447,10 @@ def rm_chart(mostra, element_name, save=True, display=False, language='en'):
         labelspacing=0.2,
         handlelength=0.7,
         handletextpad=0.3,
-        markerscale=0.7,
-    )
+        markerscale=0.7)
 
     if save:
-        filename = os.path.join(output_dir, f"{element_name}_MRChart.png")
+        filename = os.path.join(output_dir, fr"4 - {element_name} - Diagrama_MR - {language}.png")
         plt.savefig(filename, format="png")
         plt.close()
     if display:
@@ -513,8 +462,6 @@ def rm_chart(mostra, element_name, save=True, display=False, language='en'):
 # ------------------------------------------------- Gràfica de 'capacitat' ------------------------------------------------- #
 def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_long, cp, cpk, ppm_short, save=False, display=False, language='ca'):
     tr = translations[language]
-
-    # Prepare labels and values
     curt_text = tr['short_term'] if 'short_term' in tr else "Short Term"
     llarg_text = tr['long_term'] if 'long_term' in tr else "Long Term"
     labels = {
@@ -523,28 +470,17 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
         "Cpk": tr['Cpk'] if 'Cpk' in tr else "Cpk",
         "PPM": tr['PPM'] if 'PPM' in tr else "PPM",
         "Pp": tr['Pp'] if 'Pp' in tr else "Pp",
-        "Ppk": tr['Ppk'] if 'Ppk' in tr else "Ppk"
-    }
+        "Ppk": tr['Ppk'] if 'Ppk' in tr else "Ppk"}
 
     fig = plt.figure(figsize=(9, 6))
     gs = gridspec.GridSpec(1, 2, width_ratios=[2.2, 1])
     ax = fig.add_subplot(gs[0])
     plt.rcParams["font.family"] = "Times New Roman"
 
-    x_points = [
-        lsl,
-        usl,
-        mean - 3 * std_short,
-        mean + 3 * std_short,
-        mean - 3 * std_long,
-        mean + 3 * std_long,
-        mean
-    ]
-
+    x_points = [lsl, usl, mean - 3 * std_short, mean + 3 * std_short, mean - 3 * std_long, mean + 3 * std_long, mean]
     x_min = min(x_points)
     x_max = max(x_points)
     x_margin = 0.02 * (x_max - x_min) if x_max > x_min else 1  # Avoid zero margin if all points are equal
-
     # Add margin
     scale_min = x_min - x_margin
     scale_max = x_max + x_margin
@@ -569,12 +505,11 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     ax.text(lsl, 2.5, tr['lsl_label'].format(lsl=lsl), color=vermell, fontsize=9, fontname="Times New Roman", ha='center', va='bottom',
         bbox=dict(facecolor='white', edgecolor='none', boxstyle='round,pad=0.1'))
     ax.set_ylim(-0.3, 2.7)
-    # Collect all relevant X points
 
     ax.set_xlim(scale_min, scale_max)
     ax.set_yticks([])
     ax.set_xlabel(tr['value_measured'] if 'value_measured' in tr else "Measured Value", fontsize=10, fontname="Times New Roman")
-    # Make X axis tick labels smaller and Times New Roman
+
     for label in ax.get_xticklabels():
         label.set_fontsize(9)
         label.set_fontname("Times New Roman")
@@ -582,6 +517,7 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     subtitle = f"{tr['mean']}: {mean:.4f}"
     ax.set_title(title, fontsize=15, fontname="Times New Roman", pad=28)
     ax.text(0.5, 1.02, subtitle, transform=ax.transAxes, ha='center', fontsize=11, fontname="Times New Roman", color="#444444", va='bottom')
+    
     plt.grid(True, axis='both', linestyle='--', alpha=0.4)
 
     # Info box on the right using Table for full control
@@ -591,7 +527,6 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
 
     # Short term table
     short_table = Table(axbox, bbox=[0, 0.55, 1, 0.35])
-    # Header: one cell spanning both columns
     short_table.add_cell(0, 0, width=0.5, height=0.25, text=curt_text, loc='center', facecolor="#e6e6f2")
     # Data rows
     short_table.add_cell(1, 0, width=wd, height=0.2, text=labels["Cp"], loc='left', facecolor="#f9f9f9")
@@ -602,7 +537,6 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     short_table.add_cell(3, 1, width=wd, height=0.2, text=f"{ppm_short:.2f}", loc='left')
     short_table.add_cell(4, 0, width=wd, height=0.2, text=labels["Desv.Est."], loc='left', facecolor="#f9f9f9")
     short_table.add_cell(4, 1, width=wd, height=0.2, text=f"{std_short:.4f}", loc='left')
-
     # Style header
     header_cell = short_table[(0, 0)]
     header_cell.get_text().set_fontname("Times New Roman")
@@ -633,13 +567,10 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
             cell.set_facecolor("#ffffff")
 
     axbox.add_table(short_table)
-
-    # White space between tables
-    axbox.text(0.5, 0.48, "", ha='center', va='center', fontsize=2, color='white')
+    axbox.text(0.5, 0.48, "", ha='center', va='center', fontsize=2, color='white')  # White space between tables
 
     # Long term table
     long_table = Table(axbox, bbox=[0, 0.05, 1, 0.35])
-    # Header: one cell spanning both columns
     long_table.add_cell(0, 0, width=0.5, height=0.25, text=llarg_text, loc='center', facecolor="#e6e6f2")
     # Data rows
     long_table.add_cell(1, 0, width=wd, height=0.2, text=labels["Pp"], loc='left', facecolor="#f9f9f9")
@@ -650,7 +581,6 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
     long_table.add_cell(3, 1, width=wd, height=0.2, text=f"{ppm_long:.2f}", loc='left')
     long_table.add_cell(4, 0, width=wd, height=0.2, text=labels["Desv.Est."], loc='left', facecolor="#f9f9f9")
     long_table.add_cell(4, 1, width=wd, height=0.2, text=f"{std_long:.4f}", loc='left')
-
     # Style header
     header_cell = long_table[(0, 0)]
     header_cell.get_text().set_fontname("Times New Roman")
@@ -684,7 +614,7 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
 
     plt.tight_layout()
     if save:
-        filename = os.path.join(output_dir, f"{element}_Capability_chart.png")
+        filename = os.path.join(output_dir, fr"2 - {element} - Diagrama_capacitat - {language}.png")
         plt.savefig(filename, format="png")
         plt.close()
     if display:
@@ -695,12 +625,14 @@ def capability_chart(element, mean, std_short, std_long, usl, lsl, pp, ppk, ppm_
 def main():
     os.makedirs(output_dir, exist_ok=True)  # Crear carpeta si no existeix
     df = get_sample_data()                  # For now, use hardcoded sample data
+    all_data = []
 
     for i, row in df.iterrows():
         element = str(row['Element']).replace(' ', '_')
         print(f"\nProcessing element: {element} (Row {i+1}/{len(df)})\n")
         nominal = row['Nominal']
         tolerance = [row['Tol-'], row['Tol+']]
+        propietat = row['Propietat']
         mostra = np.array(row['Values'], dtype=float)
 # --------------------------------------------- Càlcul dels paràmetres i indicadors estadístics --------------------------------------------- #
         lsl = nominal + tolerance[0]
@@ -709,39 +641,75 @@ def main():
         pval_ad = pvalor_approx(ad_stat) # Approximate p-value for A² statistic
         mu, std_long, std_short, pval_ad = [round(x, 6) for x in (mu, std_long, std_short, pval_ad)]
     # ------------------- Procés a llarg termini (PPK i PP) ------------------- #
-        cp, cpk = index_proces(element, nominal, mu, std_short, tolerance)
+        cp, cpk = index_proces(propietat, nominal, mu, std_short, tolerance)
         ppm_short = ppm_calc(nominal, tolerance, mu, std_short)
-        pp, ppk = index_proces(element, nominal, mu, std_long, tolerance)
+        pp, ppk = index_proces(propietat, nominal, mu, std_long, tolerance)
         ppm_long = ppm_calc(nominal, tolerance, mu, std_long)
-# ----------------------------------------------------- Gràfics ----------------------------------------------------- #
+    # ------------------- Extrapolació de valors de la mostra ------------------- #
+        final_values, A_2, pval_e, extrap = extrapolar(mostra, nominal, tolerance[0])
+        norm = None
+        norm = pval_e is not None and pval_e > 0.05 if pval_e is not None else None # Determine normality based on p-value
+        print(f"\nFinal sample n={len(final_values)}, Normal: {norm}.")
+    # ----------------------------------- Desar les dades ----------------------------------- #
+        data_dict = {
+            'Element': element,
+            'Nominal': float(nominal),
+            'Tol-': float(tolerance[0]),
+            'Tol+': float(tolerance[1]),
+            'Mean': float(mu),
+            'Std (short term)': float(std_short),
+            'CP (short term)': float(cp),
+            'CPK (short term)': float(cpk),
+            "PPM (short term)": float(ppm_short),
+            'Std (long term)': float(std_long),
+            'PP (long term)': float(pp),
+            'PPK (long term)': float(ppk),
+            "PPM (long term)": float(ppm_long),
+            'P-value': float(pval_e) if pval_e not in (None, '') else '',
+            'Original Values': list(mostra),
+            'Extrapolated Values': list(final_values) if final_values is not None else []
+        }
+        all_data.append(data_dict)
+        
+        max_orig_len = max(len(d['Original Values']) for d in all_data)
+        max_extr_len = max(len(d['Extrapolated Values']) for d in all_data)
+
+        rows = []
+        for d in all_data:
+            row = {k: v for k, v in d.items() if k not in ('Original Values', 'Extrapolated Values')}
+            row.update({f'Original {i+1}': d['Original Values'][i] if i < len(d['Original Values']) else ''
+                        for i in range(max_orig_len)})
+            row.update({f'Extrapolated {i+1}': d['Extrapolated Values'][i] if i < len(d['Extrapolated Values']) else ''
+                        for i in range(max_extr_len)})
+            rows.append(row)
+
+        df_out = pd.DataFrame(rows)
+        df_transposed = df_out.T.reset_index().rename(columns={'index': 'Property'})
+        out_csv_transposed = os.path.join(output_dir, "capstudy_summary.csv")
+        df_transposed.to_csv(out_csv_transposed, index=False)
+# -------------------------------------------------------------- Gràfics -------------------------------------------------------------- #
         plt_sample_analysis(mostra, nominal, tolerance, element, std_short, pval_ad, ad_stat, is_normal, save, display, lan) # Gràfics d’anàlisi
         MR_bar = rm_chart(mostra, element, save, display, lan)  
         i_chart(mostra, nominal, tolerance, mu, MR_bar, element, cp, cpk, save, display, lan)  # I-Chart
         capability_chart(element, mu, std_short, std_long, usl, lsl, pp, ppk, ppm_long, cp, cpk, ppm_short, save, display, lan)
-
-        final_values, A_2, pval_e, extrap = extrapolar(mostra, nominal, tolerance[0])
-        norm = None
-        if pval_e is not None and pval_e > 0.05:
-            norm = True
-        elif pval_e is not None and pval_e <= 0.05:
-            norm = False
-        print(f"\nFinal sample n={len(final_values)}, {norm}.")
-
-        if A_2 is None or pval_e is None:
-            plt_extrapolated_sample(mostra, nominal, tolerance, mu, std_long, element, pp, ppk, pval_ad, is_normal, save, display, lan)
+      
+        if A_2 is None or pval_e is None:   # If Anderson-Darling results are missing, plot original sample and skip extrapolation
+            plt_extrapolated_sample(mostra, nominal, tolerance, mu, std_long, element,
+                                    pp, ppk, pval_ad, is_normal, save, display, lan)
             continue
 
-        print(f"[{element}] Anderson-Darling A² = {A_2:.4f}, p-valor ≈ {pval_e:.4f}")
+        print(f"[{element}] Anderson-Darling A² = {A_2:.4f}, p-value ≈ {pval_e:.4f}")
+        
+        sample_to_plot = final_values if extrap else mostra # Plot extrapolated sample if extrapolation was performed, otherwise plot original
+        pval_to_use = pval_e if extrap else pval_ad
+        norm_to_use = norm if extrap else is_normal
 
-        if extrap:
-            plt_extrapolated_sample(final_values, nominal, tolerance, mu, std_long, element, pp, ppk, pval_e, norm, save, display, lan)
-            continue          
+        plt_extrapolated_sample(sample_to_plot, nominal, tolerance, mu, std_long, element, 
+                                pp, ppk, pval_to_use, norm_to_use, save, display, lan)
 
-        # Save to CSV
-        out_csv = os.path.join(output_dir, f"{element}_extrapolated.csv")
-        pd.DataFrame({'Extrapolated_Value': final_values}).to_csv(out_csv, index=False)
-
-
+        print(f"\nSaved transposed expanded summary for all elements to {out_csv_transposed}\n")
+        
+        
 if __name__ == "__main__":
     # You can change n_vals here (e.g., 30, 50, 100, 500)
     main()

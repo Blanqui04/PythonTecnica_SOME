@@ -3,41 +3,28 @@ import json
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
+# ----------- funcions externes ---------- #
+from from_sql import build_analysis_data, cerca_ecap
 
 output_dir = r'C:\Github\PythonTecnica_SOME\estudi de capacitat'
 os.makedirs(output_dir, exist_ok=True)
 
+# data = [{'Element': 'Diameter_1', 'Nominal': 12.5, 'Tol-': -0.05, 'Tol+': 0.05, 'Values': [12.41, 12.46, 12.43, 12.47, 12.50, 12.49, 12.44, 12.46, 12.48, 12.48]}]
 # ------------------------------------------ Sample Data (for now, hardcoded) ------------------------------------------ #
 def get_sample_data():
-    # Example: 4 elements, 5 values each
-    data = [
-    # Diameter (tight tolerance)
-    {'Element': 'Diameter_1', 'Nominal': 12.5, 'Tol-': -0.05, 'Tol+': 0.05,
-     'Values': [12.41, 12.46, 12.43, 12.47, 12.50, 12.49, 12.44, 12.46, 12.48, 12.48]},
-    # Non-normal distribution (bimodal)
-    {'Element': 'Dimensio_Anomaly', 'Nominal': 30.0, 'Tol-': -0.2, 'Tol+': 0.2,
-     'Values': [29.85, 29.87, 29.86, 30.15, 30.18, 30.17, 30.16, 29.84, 29.88, 30.19]},
-    # Linear dimension (normal case)
-    {'Element': 'Dimensio_1', 'Nominal': 25.0, 'Tol-': -0.25, 'Tol+': 0.25,
-     'Values': [25.021, 24.983, 25.015, 24.992, 25.027, 25.031, 24.986, 25.012, 24.979, 25.022]},
-    # Traction test (one-sided tolerance, only minimum required)
-    {'Element': 'Traccio_1', 'Nominal': 17500, 'Tol-': 0, 'Tol+': 52500,
-     'Values': [18500, 19200, 21000, 19800, 18750, 20200, 19500, 18900, 20000, 19300]},
-    # Angle (in degrees)
-    {'Element': 'Angle_1', 'Nominal': 90.0, 'Tol-': -1.0, 'Tol+': 1.0,
-     'Values': [89.8, 90.1, 90.0, 89.9, 90.2, 89.7, 90.3, 89.6, 90.0, 90.1]},
-    # GD&T - flatness (unilateral tolerance)
-    {'Element': 'Flatness_1', 'Nominal': 0.0, 'Tol-': 0.0, 'Tol+': 0.3,
-     'Values': [0.021, 0.135, 0.097, 0.065, 0.113, 0.104, 0.082, 0.101, 0.055, 0.043]},
-    # Linear dimension with asymmetric tolerance
-    {'Element': 'Dimensio_2', 'Nominal': 50.0, 'Tol-': -0.3, 'Tol+': 0.1,
-     'Values': [49.85, 49.90, 50.05, 49.95, 50.00, 49.80, 49.88, 49.92, 50.01, 49.89]},
-    # GD&T - position tolerance
-    {'Element': 'Position_1', 'Nominal': 0.0, 'Tol-': 0.0, 'Tol+': 0.5,
-     'Values': [0.083, 0.151, 0.122, 0.134, 0.102, 0.111, 0.117, 0.095, 0.0912, 0.096]}
-    ]
-    mesures = pd.DataFrame(data) #print(f"DataFrame with sample data:\n{mesures}")
-    
+    # Get the DataFrame of dimensions from the database
+    ref_client = '666429400'
+    batch_number = 'BATCH001'  # Replace with real batch number as needed
+    df = cerca_ecap()
+    if not df.empty:
+        data = build_analysis_data(df, ref_client, batch_number)
+        mesures = pd.DataFrame(data)
+    else:
+        # Fallback: error message if DB is empty or data is invalid
+        print("Error: No s'han trobat dades vàlides a la base de dades per a l'anàlisi de capacitat.")
+        print(f"Detall del DataFrame rebut: files={df.shape[0]}, columnes={df.shape[1]}")
+        print("Comprova la connexió, la consulta SQL, o que existeixin mesures per aquest client i batch.")
+        mesures = pd.DataFrame()  # Retorna un DataFrame buit per evitar errors posteriors
     return mesures
 
 # ------------------------------------------ Statistical Analysis ------------------------------------------ #
@@ -205,22 +192,29 @@ def extrapolar(mostra_orig, nominal, tol_inf, max_attempts=100):
     return sample, A_2, pval, extrapolate_selected
 
 
-def detect_element_type(element_name):
+def detect_element_type(propietat):
     """
     Detects if the element is a GD&T or a traction/force/compression/hysteresis property.
-    Returns (gdt, traccio)
+    Returns (gdt, traccio). If detection fails, returns (False, False).
     """
-    name = element_name.lower()
-    gdt_keywords = ['flatness', 'position', 'parallelism', 'perpendicularity',
-                    'cylindricity', 'concentricity', 'symmetry', 'profile', 'runout']
+    try:
+        name = str(propietat).lower()
+    except Exception:
+        return False, False
+
+    gdt_keywords = ['gdt object']
     traccio_keywords = ['force', 'traction', 'compression', 'hysteresi', 'hysteresis', 'f']
 
     gdt = any(kw in name for kw in gdt_keywords)
     traccio = any(kw in name for kw in traccio_keywords)
+
+    # If neither detected, always return (False, False)
+    if not gdt and not traccio:
+        return False, False
     return gdt, traccio
 
 # ------------------------------ Càlcul d'indicadors de capacitat del procés (CP, CPK, PP, PPK) ------------------------------ #
-def index_proces(element, nominal_value, mean, desvest, tolerance):
+def index_proces(propietat, nominal_value, mean, desvest, tolerance):
     """
     Calculate process capability indices: Pp, Ppk.
     Args:
@@ -228,19 +222,19 @@ def index_proces(element, nominal_value, mean, desvest, tolerance):
         nominal_value (float): Nominal value of the process.
         tolerance (list or tuple): Tolerance limits [lower, upper].
     """
-    gdt, traccio = detect_element_type(element)
-    
+    gdt, traccio = detect_element_type(propietat)
     pk_inf = (mean - (nominal_value + tolerance[0])) / (3 * desvest)
     pk_sup = (nominal_value + tolerance[1] - mean) / (3 * desvest)
     p = (nominal_value + tolerance[1] - (nominal_value + tolerance[0])) / (6 * desvest)
     
+    # Select process capability index based on property type
     if traccio:
         pk = pk_inf
     elif gdt:
         pk = pk_sup
     else:
-        pk = min(pk_sup, pk_inf)
-        
+        pk = min(pk_inf, pk_sup)
+    
     return p, pk
 
 def ppm_calc(nominal_val, tolerance, mean, desvest):
@@ -274,20 +268,21 @@ def main():
         element = str(row['Element']).replace(' ', '_')
         nominal = row['Nominal']
         tolerance = [row['Tol-'], row['Tol+']]
+        propietat = row.get('Propietat', '')
         sample_data = [float(round(x, 6)) for x in row['Values']]
 
         mu, std_long, std_short, test_result, ad_stat = analisi_mostra(sample_data)
         print(f"\nL'{element} és normal? - {test_result}")
         
         pvalor_mostra = pvalor_approx(ad_stat)
-        cp, cpk = index_proces(element, nominal, mu, std_short, tolerance)
+        cp, cpk = index_proces(propietat, nominal, mu, std_short, tolerance)
         ppm_short = ppm_calc(nominal, tolerance, mu, std_short)
         print(f"AD:{ad_stat:.4f}, P:{pvalor_mostra:.4f}")
         print(f"\nCurt termini\nMitjana: {mu:.5f}, Desviació estàndard: {std_short:.5f}")
         print(f"Índex de capacitat del procés: CP = {cp:.5f}, CPK = {cpk:.5f}")
         print(f"PPM:{ppm_short:.4f}\n")
         
-        pp, ppk = index_proces(element, nominal, mu, std_long, tolerance)
+        pp, ppk = index_proces(propietat, nominal, mu, std_long, tolerance)
         ppm_long = ppm_calc(nominal, tolerance, mu, std_long)
         mu, std_long, pp, ppk, cp, cpk = [round(x, 6) for x in (mu, std_long, pp, ppk, cp, cpk)]
         print(f"\nLlarg termini\nMitjana: {mu:.5f}, Desviació estàndard: {std_long:.5f}")
@@ -331,8 +326,7 @@ def main():
     all_df = pd.DataFrame(all_data)
     all_csv = os.path.join(output_dir, "all_elements_summary.csv")
     all_df.to_csv(all_csv, index=False)
-    print(f"Saved summary for all elements to {all_csv}\n")
-    print(all_df)
+    print(f"Saved summary for all elements to: {all_csv}\n")
     return all_data
 
 if __name__ == "__main__":
