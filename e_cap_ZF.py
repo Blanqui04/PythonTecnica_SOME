@@ -237,7 +237,7 @@ def index_proces(propietat, nominal_value, mean, desvest, tolerance):
     
     return p, pk
 
-def ppm_calc(nominal_val, tolerance, mean, desvest):
+def ppm_calc(element, nominal_val, tolerance, mean, desvest):
     """
     Calculate ppm
     Args:
@@ -253,6 +253,12 @@ def ppm_calc(nominal_val, tolerance, mean, desvest):
     ppm_lower = stats.norm.cdf(z_lower) * 1e6
     ppm_upper = (1 - stats.norm.cdf(z_upper)) * 1e6
     PPM_total = ppm_lower + ppm_upper
+    
+    gdt, traccio = detect_element_type(element)
+    if gdt:
+        PPM_total = ppm_upper
+    elif traccio:
+        PPM_total = ppm_lower
     
     return PPM_total
 
@@ -276,14 +282,14 @@ def main():
         
         pvalor_mostra = pvalor_approx(ad_stat)
         cp, cpk = index_proces(propietat, nominal, mu, std_short, tolerance)
-        ppm_short = ppm_calc(nominal, tolerance, mu, std_short)
+        ppm_short = ppm_calc(propietat, nominal, tolerance, mu, std_short)
         print(f"AD:{ad_stat:.4f}, P:{pvalor_mostra:.4f}")
         print(f"\nCurt termini\nMitjana: {mu:.5f}, Desviació estàndard: {std_short:.5f}")
         print(f"Índex de capacitat del procés: CP = {cp:.5f}, CPK = {cpk:.5f}")
         print(f"PPM:{ppm_short:.4f}\n")
         
         pp, ppk = index_proces(propietat, nominal, mu, std_long, tolerance)
-        ppm_long = ppm_calc(nominal, tolerance, mu, std_long)
+        ppm_long = ppm_calc(propietat, nominal, tolerance, mu, std_long)
         mu, std_long, pp, ppk, cp, cpk = [round(x, 6) for x in (mu, std_long, pp, ppk, cp, cpk)]
         print(f"\nLlarg termini\nMitjana: {mu:.5f}, Desviació estàndard: {std_long:.5f}")
         print(f"Índex de rendiment del procés: PP = {pp:.5f}, PPK = {ppk:.5f}")
@@ -322,11 +328,6 @@ def main():
         }
         all_data.append(data_dict)
 
-    # Save all data to a single CSV
-    all_df = pd.DataFrame(all_data)
-    all_csv = os.path.join(output_dir, "all_elements_summary.csv")
-    all_df.to_csv(all_csv, index=False)
-    print(f"Saved summary for all elements to: {all_csv}\n")
     return all_data
 
 if __name__ == "__main__":

@@ -111,11 +111,11 @@ def info_embalatge(dg):
 
     if 'Caixa:' and 'Pallet:' in dg.columns:
         
-        dg['codi_caixa'] = dg['Caixa:'].str.extract(r'(\d+)')                   # Extract the 'id' using regex to match digits at the start
-        dg['descripcio_caixa'] = dg['Caixa:'].str.extract(r'\d+ - (.+)')        # Extract the 'descripcio' using regex to match everything after the id and hyphen
-        dg['codi_pallet'] = dg['Pallet:'].str.extract(r'(\d+)')                 # Extract the 'id' using regex to match digits at the start
-        dg['descripcio_pallet'] = dg['Pallet:'].str.extract(r'\d+ - (.+)')      # Extract the 'descripcio' using regex to match everything after the id and hyphen
-    
+        dg['codi_caixa'] = dg['Caixa:'].astype(str).str.extract(r'(\d+)')
+        dg['descripcio_caixa'] = dg['Caixa:'].astype(str).str.extract(r'\d+ - (.+)')
+        dg['codi_pallet'] = dg['Pallet:'].astype(str).str.extract(r'(\d+)')
+        dg['descripcio_pallet'] = dg['Pallet:'].astype(str).str.extract(r'\d+ - (.+)')
+        
         embalatge_df = dg[embalatge_cols].copy()
         embalatge_df.columns = col_bbdd_emb
 

@@ -10,7 +10,7 @@ from matplotlib.ticker import FuncFormatter
 # ------------- Traduccions ------------- #
 from translation_dict import translations
 # ------------------------------------------ Sample Data Retrieval ------------------------------------------ #
-from e_cap_zf import get_sample_data, analisi_mostra, pvalor_approx, extrapolar, index_proces, ppm_calc
+from e_cap_ZF import get_sample_data, analisi_mostra, pvalor_approx, extrapolar, index_proces, ppm_calc
 
 output_dir = r'C:\Github\PythonTecnica_SOME\estudi de capacitat'
 os.makedirs(output_dir, exist_ok=True)
@@ -642,9 +642,9 @@ def main():
         mu, std_long, std_short, pval_ad = [round(x, 6) for x in (mu, std_long, std_short, pval_ad)]
     # ------------------- Procés a llarg termini (PPK i PP) ------------------- #
         cp, cpk = index_proces(propietat, nominal, mu, std_short, tolerance)
-        ppm_short = ppm_calc(nominal, tolerance, mu, std_short)
+        ppm_short = ppm_calc(propietat, nominal, tolerance, mu, std_short)
         pp, ppk = index_proces(propietat, nominal, mu, std_long, tolerance)
-        ppm_long = ppm_calc(nominal, tolerance, mu, std_long)
+        ppm_long = ppm_calc(propietat, nominal, tolerance, mu, std_long)
     # ------------------- Extrapolació de valors de la mostra ------------------- #
         final_values, A_2, pval_e, extrap = extrapolar(mostra, nominal, tolerance[0])
         norm = None
@@ -665,7 +665,7 @@ def main():
             'PP (long term)': float(pp),
             'PPK (long term)': float(ppk),
             "PPM (long term)": float(ppm_long),
-            'P-value': float(pval_e) if pval_e not in (None, '') else '',
+            'P-value': float(pval_ad) if pval_ad not in (None, '') else '',
             'Original Values': list(mostra),
             'Extrapolated Values': list(final_values) if final_values is not None else []
         }
