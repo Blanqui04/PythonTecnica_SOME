@@ -1,169 +1,298 @@
 import os
-import openpyxl
+import sys
+import csv
 import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="openpyxl")
+import openpyxl
 import pandas as pd
+# Add other imports as needed from your original script
+# from your_other_modules import dades_kop, tractar_estructura, tractar_dades_extra, combine_and_transpose_csv
 
-""" Script per extreure l'informació de l'arxiu de l'excel del departament comercial KOP,
-    passar-la a SQL per la base de dades de projectes del departament tècnic.
-"""
-warnings.filterwarnings("ignore", category=UserWarning)
+# Configuration constants (can be moved to a config file later)
+MASTER_FOLDER = r'\\server\SOME\Projectes en curs'
+ADDRESS_KOP = r'5-FOLLOW-UP\1-KOP'
+CSV_FOLDER = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
+DATASHEETS_FOLDER = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 
-master_folder = r'\\server\SOME\Projectes en curs'
-adress_kop = r'5-FOLLOW-UP\1-KOP'
-csv_folder = r'C:\Github\PythonTecnica_SOME\dades_escandall_csv'
-datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
-
-client = 'AUTOLIV'                           # Nom del client a cercar
-ref_project = '666429400'            # Referència del projecte a cercar
-
-def trobar_arxiu_excel(client, ref_project):
+class KOPProcessor:
     """
-    Funció per cercar l'arxiu Excel (KOP) a client especificat
-    dins la carpeta del projecte que contingui la referència especificada.
-    Ara també accepta arxius .xlsm (amb macros).
+    Class to handle KOP file processing with dynamic client and project parameters
     """
-    client_folder = os.path.join(master_folder, client) # Construir la ruta del client
+    
+    def __init__(self, client=None, ref_project=None):
+        """
+        Initialize KOP processor with optional client and project parameters
         
-    for root, dirs, files in os.walk(client_folder):    # Cercar la carpeta del projecte que contingui la referència especificada
-        for dir in dirs:
-            if ref_project in dir:
-                kop_folder = os.path.join(root, dir, adress_kop)            # Construir la ruta completa del projecte              
-                for sub_root, sub_dirs, sub_files in os.walk(kop_folder):   # Cercar l'arxiu Excel dins la carpeta del projecte
-                    for file in sub_files:
-                        if file.endswith(('.xlsx', '.xls', '.xlsm')):
-                            excel_path = os.path.join(sub_root, file)
-                            print(f"Arxiu Excel trobat: \n{excel_path} \n")
-                            return excel_path
-    return None
-
-
-def dades_kop(xlsx_path):
-    """ 
-    Funció per extreure les dades necessàries de l'arxiu KOP en format .csv
-    """
-    # Carrega l'arxiu Excel
-    wb = openpyxl.load_workbook(xlsx_path, data_only=True)  # data_only=True per obtenir els valors calculats
-
-    # Desprotegeix els fulls
-    for shit_name in ['ESTRUCTURA', 'Entrada Dades - Extres']:
-        if shit_name in wb.sheetnames:
-            wb[shit_name].protection.sheet = False
-
-    # Guarda l'arxiu temporalment
-    temp_path_1 = 'temp_unprotected.xlsx'
-    temp_path_2 = 'temp_estructura.csv'
-    temp_path_3 = 'temp_dades.csv'
-
-    wb.save(temp_path_1)
-    df_estructura = pd.read_excel(temp_path_1, sheet_name='ESTRUCTURA')         # Llegeix els fulls especificats amb pandas
-    df_dades = pd.read_excel(temp_path_1, sheet_name='Entrada Dades - Extres')  # Llegeix els fulls especificats amb pandas
-    df_estructura.to_csv(temp_path_2, index=False)                              
-    df_dades.to_csv(temp_path_3, index=False)   
+        Args:
+            client (str): Client name to search for
+            ref_project (str): Project reference to search for
+        """
+        self.client = client
+        self.ref_project = ref_project
+        self.master_folder = MASTER_FOLDER
+        self.address_kop = ADDRESS_KOP
+        self.csv_folder = CSV_FOLDER
+        self.datasheets_folder = DATASHEETS_FOLDER
+        
+        # Ensure directories exist
+        self._create_directories()
     
-    return temp_path_2, temp_path_3
-
-
-def tractar_estructura(csv_estructura):
-    """
-    Funció per netejar el CSV generat de l'estructura, qudant-nos amb les dades importants del full.
-    """
-    df = pd.read_csv(csv_estructura, header=None)   # Read the CSV file without headers
-
-    # Drop completely empty rows and columns
-    df.dropna(how='all', inplace=True)              # Drop rows where all elements are NaN
-    df.dropna(how='all', axis=1, inplace=True)      # Drop columns where all elements are NaN
-    df.reset_index(drop=True, inplace=True)         # Reset the index of the DataFrame
+    def _create_directories(self):
+        """Create necessary directories if they don't exist"""
+        try:
+            os.makedirs(self.csv_folder, exist_ok=True)
+            os.makedirs(self.datasheets_folder, exist_ok=True)
+            print(f"Directories ensured: {self.csv_folder}, {self.datasheets_folder}")
+        except Exception as e:
+            print(f"Error creating directories: {e}")
     
-    cleaned_data = []
-    for _, row in df.iterrows():                # Iterate through each row of the DataFrame
-        filtered_row = [str(cell).strip() for cell in row if pd.notna(cell) and str(cell).strip() != '']    # Filter out NaN and empty values, but keep 0
-        if len(filtered_row) > 2:
-            filtered_row = filtered_row[:2]     # Keep only the first 2 columns if more data exists
-        cleaned_data.append(filtered_row)
-
-    csv_post_estructura = os.path.join(csv_folder, fr"estructura {client} {ref_project}.csv")   # Path for the cleaned structure CSV
+    def set_parameters(self, client, ref_project):
+        """
+        Set client and project parameters
+        
+        Args:
+            client (str): Client name
+            ref_project (str): Project reference
+        """
+        self.client = client
+        self.ref_project = ref_project
+        print(f"Parameters set - Client: {client}, Project: {ref_project}")
     
-    cleaned_df = pd.DataFrame(cleaned_data)                             # Create a new DataFrame with the cleaned data
-    cleaned_df.to_csv(csv_post_estructura, index=False, header=False)   # Save the cleaned data to a new CSV file
-
-
-def tractar_dades_extra(csv_dades_extra):
-    """
-    Funció per netejar el CSV generat de les dades extres, quedant-nos amb les dades importants del full.
-    """
-    df = pd.read_csv(csv_dades_extra, usecols=range(7), header=0)   # Read the CSV file, only the first 7 columns
-    df.dropna(how='all', inplace=True)                              # Drop completely empty rows
-    df = df.iloc[:, [1, 2, 5, 6]]                                   # Select the relevant columns (1, 2, 5, 6)
-    df.dropna(how='all', inplace=True)                              # Drop rows where all 4 columns are NaN
-    p_1 = df.iloc[:, :2].dropna(how='all')                          # Part 1: Columns B and C
-    p_2 = df.iloc[:, 2:].dropna(how='all')                          # Part 2: Columns F and G
-
-    # Rename columns for consistency
-    p_1.columns = ['Key', 'Value']
-    p_2.columns = ['Key', 'Value']
+    def trobar_arxiu_excel(self, client=None, ref_project=None):
+        """
+        Function to search for Excel file (KOP) for specified client
+        within the project folder containing the specified reference.
+        Now also accepts .xlsm files (with macros).
+        
+        Args:
+            client (str): Client name (optional, uses instance variable if not provided)
+            ref_project (str): Project reference (optional, uses instance variable if not provided)
+            
+        Returns:
+            str: Path to Excel file if found, None otherwise
+        """
+        # Use provided parameters or fall back to instance variables
+        search_client = client or self.client
+        search_ref_project = ref_project or self.ref_project
+        
+        if not search_client or not search_ref_project:
+            print("Error: Client and project reference must be provided!")
+            return None
+        
+        print(f"Searching for Excel file - Client: {search_client}, Project: {search_ref_project}")
+        
+        try:
+            client_folder = os.path.join(self.master_folder, search_client)
+            
+            if not os.path.exists(client_folder):
+                print(f"Client folder not found: {client_folder}")
+                return None
+            
+            print(f"Searching in client folder: {client_folder}")
+            
+            # Search for project folder containing the specified reference
+            for root, dirs, files in os.walk(client_folder):
+                for dir_name in dirs:
+                    if search_ref_project in dir_name:
+                        kop_folder = os.path.join(root, dir_name, self.address_kop)
+                        print(f"Found project folder: {dir_name}")
+                        print(f"Looking for KOP files in: {kop_folder}")
+                        
+                        if not os.path.exists(kop_folder):
+                            print(f"KOP folder not found: {kop_folder}")
+                            continue
+                        
+                        # Search for Excel file within project folder
+                        for sub_root, sub_dirs, sub_files in os.walk(kop_folder):
+                            for file in sub_files:
+                                if file.endswith(('.xlsx', '.xls', '.xlsm')):
+                                    excel_path = os.path.join(sub_root, file)
+                                    print(f"Excel file found: {excel_path}")
+                                    return excel_path
+            
+            print(f"No Excel file found for client '{search_client}' and project '{search_ref_project}'")
+            return None
+            
+        except Exception as e:
+            print(f"Error searching for Excel file: {e}")
+            return None
     
-    csv_post_dades = os.path.join(csv_folder, fr'dades_extra {client} {ref_project}.csv')  # Path for the cleaned extra data CSV
+    def process_kop_file(self, client=None, ref_project=None):
+        """
+        Main function to execute the complete data processing.
+        """
+        process_client = client or self.client
+        process_ref_project = ref_project or self.ref_project
+
+        if not process_client or not process_ref_project:
+            error_msg = "Error: Client and project reference must be provided!"
+            print(error_msg)
+            return None, error_msg
+
+        try:
+            print(f"Starting KOP processing for Client: {process_client}, Project: {process_ref_project}")
+
+            # Find Excel file
+            escandall_path = self.trobar_arxiu_excel(process_client, process_ref_project)
+            if not escandall_path:
+                error_msg = f"No Excel file found for client '{process_client}' and project '{process_ref_project}'!"
+                print(error_msg)
+                return None, error_msg
+
+            print(f"Processing Excel file: {escandall_path}")
+
+            # Step 1: Extract sheets and save as temp CSVs
+            wb = openpyxl.load_workbook(escandall_path, data_only=True)
+            for sheet_name in ['ESTRUCTURA', 'Entrada Dades - Extres']:
+                if sheet_name in wb.sheetnames:
+                    wb[sheet_name].protection.sheet = False
+            temp_path_1 = os.path.join(self.csv_folder, 'temp_unprotected.xlsx')
+            temp_path_2 = os.path.join(self.csv_folder, 'temp_estructura.csv')
+            temp_path_3 = os.path.join(self.csv_folder, 'temp_dades.csv')
+            wb.save(temp_path_1)
+            df_estructura = pd.read_excel(temp_path_1, sheet_name='ESTRUCTURA')
+            df_dades = pd.read_excel(temp_path_1, sheet_name='Entrada Dades - Extres')
+            df_estructura.to_csv(temp_path_2, index=False)
+            df_dades.to_csv(temp_path_3, index=False)
+
+            # Step 2: Clean structure CSV
+            df = pd.read_csv(temp_path_2, header=None)
+            df.dropna(how='all', inplace=True)
+            df.dropna(how='all', axis=1, inplace=True)
+            df.reset_index(drop=True, inplace=True)
+            cleaned_data = []
+            for _, row in df.iterrows():
+                filtered_row = [str(cell).strip() for cell in row if pd.notna(cell) and str(cell).strip() != '']
+                if len(filtered_row) > 2:
+                    filtered_row = filtered_row[:2]
+                cleaned_data.append(filtered_row)
+            csv_post_est = os.path.join(self.csv_folder, f"estructura {process_client} {process_ref_project}.csv")
+            cleaned_df = pd.DataFrame(cleaned_data)
+            cleaned_df.to_csv(csv_post_est, index=False, header=False)
+
+            # Step 3: Clean extra data CSV
+            df = pd.read_csv(temp_path_3, usecols=range(7), header=0)
+            df.dropna(how='all', inplace=True)
+            df = df.iloc[:, [1, 2, 5, 6]]
+            df.dropna(how='all', inplace=True)
+            p_1 = df.iloc[:, :2].dropna(how='all')
+            p_2 = df.iloc[:, 2:].dropna(how='all')
+            p_1.columns = ['Key', 'Value']
+            p_2.columns = ['Key', 'Value']
+            csv_post_dds = os.path.join(self.csv_folder, f"dades_extra {process_client} {process_ref_project}.csv")
+            result = pd.concat([p_1, p_2], ignore_index=True)
+            result.to_csv(csv_post_dds, index=False, header=False)
+
+            # Step 4: Combine and transpose for datasheet
+            df_estr = pd.read_csv(csv_post_est, header=None)
+            df_dades = pd.read_csv(csv_post_dds, header=None)
+            df_estr = df_estr.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) else x)
+            df_dades = df_dades.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) else x)
+            df_est_transposed = df_estr.T
+            df_dades_transposed = df_dades.T
+            combined_df = pd.concat([df_est_transposed, df_dades_transposed], axis=1)
+            if len(combined_df) > 2:
+                combined_df = combined_df.iloc[:2]
+            csv_datasheet = os.path.join(self.datasheets_folder, f"dades_escandall {process_client} {process_ref_project}.csv")
+            combined_df.to_csv(csv_datasheet, index=False, header=False)
+            print(f"Fitxer combinat desat a: {csv_datasheet}")
+
+            # Optionally, remove temp files
+            for temp_file in [temp_path_1, temp_path_2, temp_path_3]:
+                try:
+                    os.remove(temp_file)
+                except Exception:
+                    pass
+
+            success_msg = f"Processing completed successfully!\nFiles generated:\n- {csv_post_est}\n- {csv_post_dds}\n- {csv_datasheet}"
+
+            return csv_datasheet, success_msg
+
+        except Exception as e:
+            error_msg = f"Error processing KOP file: {str(e)}"
+            print(error_msg)
+            return None, error_msg
     
-    result = pd.concat([p_1, p_2], ignore_index=True)            # Append p_2 below p_1  
-    result.to_csv(csv_post_dades, index=False, header=False)     # Save the cleaned data to a new CSV file
+    def get_status(self):
+        """
+        Get current processor status
+        
+        Returns:
+            dict: Status information
+        """
+        return {
+            'client': self.client,
+            'ref_project': self.ref_project,
+            'csv_folder': self.csv_folder,
+            'datasheets_folder': self.datasheets_folder,
+            'directories_exist': os.path.exists(self.csv_folder) and os.path.exists(self.datasheets_folder)
+        }
 
+# Global processor instance
+_kop_processor = KOPProcessor()
 
-def combine_and_transpose_csv(csv_e, csv_d):
+def main(client=None, ref_project=None):
     """
-    Funció per transposar els fitxers CSV netejats i combinar-los en un únic fitxer CSV, preparat pel datasheet.
-    """
-    # Llegir els fitxers CSV
-    df_estr = pd.read_csv(csv_e, header=None)   # Llegir el CSV de l'estructura
-    df_dades = pd.read_csv(csv_d, header=None)  # Llegir el CSV de les dades extres
-
-    # Eliminar salts de línia i espais innecessaris de totes les cel·les
-    df_estr = df_estr.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) else x)
-    df_dades = df_dades.map(lambda x: str(x).replace('\n', ' ').strip() if pd.notnull(x) else x)
-
-    df_est_transposed = df_estr.T                                              # Transposar les dades de l'estructura
-    df_dades_transposed = df_dades.T                                           # Transposar les dades extres
-
-    # Combinar les dades transposades
-    combined_df = pd.concat([df_est_transposed, df_dades_transposed], axis=1)  # Combinar les dades transposades
-
-    # Garantir que només hi hagi dues files al CSV combinat
-    if len(combined_df) > 2:
-        combined_df = combined_df.iloc[:2]  # Retallar a només dues files
-
-    # Guardar el CSV combinat
-    out = os.path.join(datasheets_folder, f'dades_escandall {client} {ref_project}.csv')    # Ruta del fitxer CSV combinat
-    combined_df.to_csv(out, index=False, header=False)                                      # Guardar les dades combinades en un nou fitxer CSV
-    print(f"Fitxer combinat desat a: {out}")
-    return combined_df
-
-
-def main():
-    """
-    Funció principal per executar el procés complet de tractament de dades.
-    """
-    os.makedirs(csv_folder, exist_ok=True)                      # Create the directory if it doesn't exist
-    os.makedirs(datasheets_folder, exist_ok=True)               # Create the directory if it doesn't exist
-    escandall_path = trobar_arxiu_excel(client, ref_project)    # Trobar l'arxiu Excel
-    if not escandall_path:
-        print("No s'ha trobat cap arxiu Excel per al client i projecte especificats!")
-        return
-
-    csv_est, csv_dds = dades_kop(escandall_path)    # Llegir l'Excel i generar els fitxers CSV temporals
-    tractar_estructura(csv_est)                     # Netejar el CSV
-    tractar_dades_extra(csv_dds)                    # Netejar el CSV
-    csv_post_est = os.path.join(csv_folder, fr"estructura {client} {ref_project}.csv")  # Ruta del CSV (estructura) netejat
-    csv_post_dds = os.path.join(csv_folder, fr"dades_extra {client} {ref_project}.csv") # Ruta del CSV (dades extra) netejat 
+    Main function to be called from UI
     
-    dst = combine_and_transpose_csv(csv_post_est, csv_post_dds)                                               # Transposar i combinar els fitxers CSV netejats
-    csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv")           # Ruta del CSV (datasheet) generat
-    print(f"Processament complet. Fitxers generats:\n- {csv_post_est}\n- {csv_post_dds}\n- {csv_datasheet}")  # Imprimir missatge de finalització del procés
+    Args:
+        client (str): Client name
+        ref_project (str): Project reference
+        
+    Returns:
+        tuple: (csv_datasheet_path, processing_result) or (None, error_message)
+    """
+    global _kop_processor
     
-    os.remove(csv_est)                  # Eliminar el CSV original
-    os.remove(csv_dds)                  # Eliminar el CSV original
-    os.remove('temp_unprotected.xlsx')  # Eliminar el fitxer Excel temporal
+    if client and ref_project:
+        _kop_processor.set_parameters(client, ref_project)
     
-    return csv_datasheet, dst
+    return _kop_processor.process_kop_file()
 
-# Executar la funció principal només si el fitxer s'executa directament
+def set_global_parameters(client, ref_project):
+    """
+    Set global parameters for the processor
+    
+    Args:
+        client (str): Client name
+        ref_project (str): Project reference
+    """
+    global _kop_processor
+    _kop_processor.set_parameters(client, ref_project)
+
+def get_processor_status():
+    """
+    Get current processor status
+    
+    Returns:
+        dict: Status information
+    """
+    global _kop_processor
+    return _kop_processor.get_status()
+
+# Legacy support - maintain original variable names for backward compatibility
+def get_client():
+    """Get current client"""
+    return _kop_processor.client
+
+def get_ref_project():
+    """Get current project reference"""
+    return _kop_processor.ref_project
+
+# Set default values for backward compatibility
+client = None  # Will be set dynamically
+ref_project = None  # Will be set dynamically
+
+# Only execute if run directly (for testing)
 if __name__ == "__main__":
-    main()
+    # Test the processor
+    test_client = 'AUTOLIV'
+    test_ref_project = '665220400'
+    
+    print("Testing KOP processor...")
+    result_path, result_msg = main(test_client, test_ref_project)
+    
+    if result_path:
+        print(f"Success: {result_msg}")
+    else:
+        print(f"Error: {result_msg}")
