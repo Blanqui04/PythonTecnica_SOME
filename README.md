@@ -12,25 +12,51 @@ PythonTecnica_SOME is a modular Python application for processing technical and 
 PythonTecnica_SOME/
 │
 ├── src/                # Main source code (all modules)
-│   ├── __init__.py
-│   ├── csv_func.py
-│   ├── connexio_bbdd.py
-│   ├── dbb_ui.py
-│   ├── dim.py
-│   ├── e_cap.py
-│   ├── e_cap_plots.py
-│   ├── e_cap_report.py
-│   ├── e_cap_ZF.py
-│   ├── from_sql.py
-│   ├── kop_csv.py
-│   ├── lectura_qa_zf.py
-│   ├── maps_columnes.py
-│   ├── mmc calc.py
-│   ├── to_sql.py
-│   └── translation_dict.py
+│   ├── blueprints/
+│   │   │── blueprint_client.py
+│   │   └──  blueprint_manager.py
+│   ├── core/
+│   ├── data_processing/
+│   │   │── utils/
+│   │   │   │── file_writer.py      # Not in use rn helpers to data_transformer.py
+│   │   │   │── format_checker.py   # Not in use rn helpers to data_transformer.py
+│   │   │   └── fragmenter.py       # Not in use rn helpers to data_transformer.py
+│   │   │── __init__.py
+│   │   │── data_processor.py
+│   │   │── data_transformer.py
+│   │   │── excel_reader.py
+│   │   └──  pipeline_manager.py
+│   ├── database/
+│   │   │── database_connection.py
+│   │   └──  database_uploader.py
+│   ├── exceptions/
+│   ├── gui/
+│   │   │── dialogs/
+│   │   └──  main_window.py #empty right now
+│   ├── models/
+│   ├── services/
+│   ├── statistics/
+│   │   │── capability
+│   │   └──  dimensional
+│   └──  utils/
 │
-├── data/               # All input/output data (CSV, Excel, generated files)
-│   └── README.md
+│
+├── data/               # All input/output data CSV, Excel, │   ├── │   ├── imports/
+│   │   │── pending/
+│   │   └── processed/
+│   ├── processed/
+│   │   │── csv/
+│   │   │── export/
+│   │   └── reports/
+│   │       │──dimensional/
+│   │       └── dimensional/
+│   └── temp/
+│       │── excel_processing/
+│       └── report_generation/
+│
+│
+├── config/
+│   └── column_mappings/
 │
 ├── tests/              # Unit and integration tests
 │   ├── __init__.py
@@ -43,12 +69,23 @@ PythonTecnica_SOME/
 │   ├── README.md
 │   ├── icons/
 │   │   └── README.md
+│   ├── i18n/
+│   │   └── README.md
+│   ├── sql/
+│   │   └── README.md
+│   ├── templates/
+│   │   └── ZF_QA_Example.xslx
 │   └── images/
 │       └── README.md
 │
+├── logs/
+│
+├── main_app.py
+├── test_kop_processing.py
+├── Configuració Set-Up.txt
 ├── requirements.txt    # Python dependencies with comments
 ├── README.md           # Project overview and instructions
-└── ...                 # Other legacy or config files
+└── ...                 # Other (now non existant files)
 ```
 
 ---
