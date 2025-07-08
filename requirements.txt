@@ -1,0 +1,13 @@
+pandas
+numpy
+scipy
+openpyxl
+PyQt5
+psycopg2-binary
+SQLAlchemy
+requests
+PyMuPDF
+matplotlib
+statsmodels
+reportlab
+seaborn

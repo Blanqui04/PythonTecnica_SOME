@@ -6,6 +6,9 @@ from kop_csv import client, ref_project
 from datetime import datetime, timedelta
 from lectura_qa_zf import main as qa_main
 
+client = 'AUTOLIV'
+ref_project = 665220400
+
 datasheets_folder = r'C:\Github\PythonTecnica_SOME\datasheets_csv'
 csv_datasheet = os.path.join(datasheets_folder, fr"dades_escandall {client} {ref_project}.csv") # Ruta del CSV (datasheet) generat
 print(f"Ruta del CSV: {csv_datasheet}")  # Imprimir la ruta del fitxer CSV generat 

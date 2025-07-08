@@ -4,9 +4,11 @@ import pandas as pd
 # -------------- Connexió a la BBDD Postgresql -------------- #
 from connexio_bbdd import PostgresConn
 # -------------- Importar funcions externes al script actual -------------- #
-from kop_csv import client, ref_project
 from maps_columnes import table_mappings
 from csv_func import main as generate_dataframes
+
+client = 'AUTOLIV'
+ref_project = 665220400
 
 """ Codi per importar dades dels fitxers CSV genereta a la BBDD PostgreSQL."""
 
