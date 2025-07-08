@@ -2,9 +2,9 @@ import re
 import os
 import glob
 import pandas as pd
-from kop_csv import ref_project
 
-ref_client = ref_project
+ref_client = 'AUTOLIV'
+ref_project = 665220400
 
 cols={'QA-No': 'id_element',
       'Displayed Value': 'descripcio',
