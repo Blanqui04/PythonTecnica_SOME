@@ -1,0 +1,29 @@
+# .gitignore for Python projects
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+*.log
+*.pot
+*.mo
+*.swp
+.DS_Store
+.env
+.venv/
+.envrc
+.idea/
+.vscode/
+*.egg-info/
+dist/
+build/
+.eggs/
+*.bak
+*.tmp
+# VSCode settings
+.vscode/
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+# OS generated files
+Thumbs.db
