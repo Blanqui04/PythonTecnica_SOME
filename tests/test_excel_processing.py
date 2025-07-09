@@ -2,10 +2,14 @@
 import unittest
 import os
 import sys
+
+# Add project root and src/ to PYTHONPATH
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from src.data_processing.pipeline_manager import DataProcessingPipeline
-from src.data_processing.excel_reader import ExcelReaderFactory
+from data_processing.utils.excel_reader import ExcelReaderFactory
+
 
 class TestExcelProcessing(unittest.TestCase):
     
