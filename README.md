@@ -19,7 +19,7 @@ PythonTecnica_SOME/
 │   │   └──  __init__.py
 │   ├── data_processing/
 │   │   │── utils/
-│   │   │   │── excel_reader.py     # Can't acces idk why (moved from data processing/ to data_processing/utils/)
+│   │   │   │── excel_reader.py     # Test succes!
 │   │   │   │── file_writer.py      # Not in use rn helpers to data_transformer.py
 │   │   │   │── format_checker.py   # Not in use rn helpers to data_transformer.py
 │   │   │   └── fragmenter.py       # Not in use rn helpers to data_transformer.py
@@ -49,7 +49,7 @@ PythonTecnica_SOME/
 │   │   │── pending/
 │   │   └── processed/
 │   ├── processed/
-│   │   │── csv/
+│   │   │── datasheets/
 │   │   │── export/
 │   │   └── reports/
 │   │       │── dimensional/

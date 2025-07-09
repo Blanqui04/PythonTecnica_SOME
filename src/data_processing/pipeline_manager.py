@@ -1,5 +1,6 @@
 from src.data_processing.utils.excel_reader import ExcelReaderFactory
 from .data_processor import DataProcessor
+from .data_transformer import DataTransformer
 import json
 import os
 from datetime import datetime, date
@@ -48,3 +49,8 @@ class DataProcessingPipeline:
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False, default=convert_datetime)
+    
+    def run_transformation(self, client, project, datasheet_name):
+        transformer = DataTransformer(client, project)
+        return transformer.transform_datasheet(datasheet_name)
+
