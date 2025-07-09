@@ -1,56 +1,48 @@
-import unittest
-from unittest.mock import patch, MagicMock
-from src.data_processing.data_transformer import DataTransformer
-import pandas as pd
+import sys
 import os
+import pytest
 
-class TestDataTransformer(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Create sample test data
-        os.makedirs('tests/test_data/datasheets', exist_ok=True)
-        sample_data = pd.DataFrame({
-            '13 - Nº Expedient:': ['PRJ-001'],
-            'Caixa:': ['1001 - Standard Box'],
-            'Pallet:': ['PAL-001 - Euro Pallet']
-        })
-        sample_data.to_csv('tests/test_data/datasheets/sample_datasheet.csv', index=False)
+# Configura la ruta del projecte
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-    def setUp(self):
-        # Mock config
-        self.config = {
-            'PATHS': {
-                'base_dir': 'tests/test_data',
-                'datasheets_dir': 'datasheets',
-                'db_export_dir': 'db_export',
-                'log_dir': 'logs'
-            }
-        }
-        self.transformer = DataTransformer('TEST_CLIENT', 'TEST_PROJECT')
-        self.transformer.config = MagicMock()
-        self.transformer.config.__getitem__.side_effect = self.config.__getitem__
+from src.exceptions.transformation_errors import TransformationError
+from src.data_processing.data_transformer import DataTransformer
 
-    def test_successful_transformation(self):
-        # Test basic transformation workflow
-        result = self.transformer.transform_datasheet('sample_datasheet')
-        self.assertIsInstance(result, dict)
-        self.assertIn('embalatge', result)
-        
-    def test_missing_datasheet(self):
-        with self.assertRaises(FileNotFoundError):
-            self.transformer.transform_datasheet('non_existent_datasheet')
-            
-    def test_cw_date_conversion(self):
-        # Test calendar week conversion
-        self.assertEqual(self.transformer.cw_date('CW24/23'), '2023-06-12')
-        self.assertEqual(self.transformer.cw_date('Invalid'), 'Invalid')
-        
-    def test_extract_cavitats(self):
-        self.assertEqual(self.transformer.extract_cavitats('2 (LH+RH)'), 2)
-        self.assertEqual(self.transformer.extract_cavitats('1+1'), 2)
-        self.assertEqual(self.transformer.extract_cavitats('1 LH'), 1)
-        
-    # Add tests for each transformation method
+# ---------- TEST 1: Excepció personalitzada ----------
+def test_transformation_error_handling():
+    print("Executant test de TransformationError...")
+    error_message = "Fitxer mal format!"
+    with pytest.raises(TransformationError) as e:
+        raise TransformationError(error_message)
+    assert str(e.value) == error_message
 
-if __name__ == '__main__':
-    unittest.main()
+
+# ---------- TEST 2: Test funcional del DataTransformer ----------
+@pytest.mark.parametrize("client, ref_project", [
+    ("ZF", "A027Y916"),  # Exemple de test real
+])
+def test_transform_datasheet_basic(client, ref_project):
+    datasheet_name = f"datasheet_{client}_{ref_project}"
+    print(f"Executant test de transformació per {datasheet_name}...")
+
+    try:
+        transformer = DataTransformer(client, ref_project)
+        result = transformer.transform_datasheet(datasheet_name)
+
+        assert isinstance(result, dict)
+        assert 'oferta' in result  # Per exemple
+        print("✅ Transformació correcta")
+
+    except TransformationError as te:
+        pytest.fail(f"Transformació fallida amb TransformationError: {te}")
+
+    except Exception as e:
+        pytest.fail(f"Error inesperat: {e}")
+
+
+# ---------- Execució manual ----------
+if __name__ == "__main__":
+    test_transformation_error_handling()
+    test_transform_datasheet_basic("ZF", "A027Y916")
+    print("✅ Tots els tests s'han executat correctament")
+

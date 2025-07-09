@@ -25,12 +25,13 @@ PythonTecnica_SOME/
 │   │   │   └── fragmenter.py       # Not in use rn helpers to data_transformer.py
 │   │   │── __init__.py
 │   │   │── data_processor.py       # Test success!
-│   │   │── data_transformer.py
+│   │   │── data_transformer.py     # Working on it
 │   │   └── pipeline_manager.py     # Okay for now - data_transformer.py to integrate
 │   ├── database/
 │   │   │── database_connection.py
 │   │   └──  database_uploader.py   # Empty rn
 │   ├── exceptions/
+│   │   │── transformation_errors.py  # Working on it
 │   │   └──  __init__.py
 │   ├── gui/
 │   │   │── dialogs/
@@ -60,6 +61,8 @@ PythonTecnica_SOME/
 │
 ├── config/
 │   ├── column_mappings/
+│   │   │── columns_to_drop.json  # Working on it (sems ok)
+│   │   └── table_mappings.json   # Working on it (sems ok)
 │   └── config.ini
 │
 ├── tests/                        # Unit and integration tests
@@ -67,7 +70,7 @@ PythonTecnica_SOME/
 │   ├── tests_database/
 │   ├── tests_services/
 │   ├── tests_utils/
-│   ├── test_data_transformer.py
+│   ├── test_data_transformer.py  # Working on it rn
 │   └── test_excel_processing.py  # Test success!
 │
 ├── docs/                         # Documentation (usage, API, developer notes)
@@ -105,6 +108,7 @@ PythonTecnica_SOME/
 ├── logs/
 │
 ├── test_kop_processing.py    # Test succes!
+├── test_data_transformer.py  # Working on it rn
 │
 ├── main_app.py
 ├── Configuració Set-Up.txt
