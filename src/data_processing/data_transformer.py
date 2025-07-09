@@ -1,6 +1,6 @@
-# src/data_processing/data_transformer.py
 import os
 import re
+import json
 import pandas as pd
 from datetime import datetime, timedelta
 import configparser
@@ -36,9 +36,32 @@ class DataTransformer:
         self.col_elim = self._load_column_mappings()
 
     def _load_column_mappings(self):
-        """Load column elimination mappings from config files"""
-        # Implementation would read from JSON/CSV in config/column_mappings/
-        return ['Unnamed: 0', 'Unnamed: 1']  # Example columns to eliminate
+        """Carrega les columnes a eliminar del CSV des de un fitxer JSON"""
+        try:
+            # Ruta absoluta al fitxer
+            path = self.base_dir / 'config' / 'column_mappings' / 'columns_to_drop.json'
+            with open(path, 'r', encoding='utf-8') as f:
+                mappings = json.load(f)
+                if not isinstance(mappings, list):
+                    raise ValueError("El fitxer 'columns_to_drop.json' ha de contenir una llista.")
+                return mappings
+        except Exception as e:
+            logging.error(f"No s'ha pogut carregar 'columns_to_drop.json': {e}")
+            return []
+    
+    def _load_table_mappings(self):
+        """Carrega el mapatge de taules i columnes de la BBDD des de un fitxer JSON"""
+        try:
+            path = self.base_dir / 'config' / 'column_mappings' / 'table_mappings.json'
+            with open(path, 'r', encoding='utf-8') as f:
+                mappings = json.load(f)
+                if not isinstance(mappings, dict):
+                    raise ValueError("El fitxer 'table_mappings.json' ha de contenir un diccionari.")
+                return mappings
+        except Exception as e:
+            logging.error(f"No s'ha pogut carregar 'table_mappings.json': {e}")
+            return {}
+    
 
     def cw_date(self, cw):
         """Convert calendar week format to YYYY-MM-DD"""
@@ -521,7 +544,7 @@ class DataTransformer:
         return tractaments_df
 
 
-    def info_produccio(dg):
+    def info_produccio(self, dg):
         # Define the possible columns for matriu and material
         matriu_cols = ['1 - Nº Matriu:']
         material_cols = ['1 - Descripció material:']
@@ -534,21 +557,21 @@ class DataTransformer:
 
         # Build the DataFrame
         produccio_df = pd.DataFrame({
-            'id_referencia_client': ref_project,
+            'id_referencia_client': self.ref_project,
             'id_matriu': dg[matriu_cols[0]],
             'id_material': dg[material_cols[0]]
         })
 
         #print(f"Producció: \n {produccio_df} \n")
         
-        out_csv = f"{ref_project}_produccio.csv"
+        out_csv = f"{self.ref_project}_produccio.csv"
         produccio_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
         return produccio_df
 
     
-    def info_part(dg):
+    def info_part(self, dg):
         # Define the output column names
         col_bbdd_pt = [
             'nom_client', 'planta', 'nom_projecte', 'facturacio',
@@ -620,7 +643,7 @@ class DataTransformer:
             
         part_df['id_embalatge'] = None
         part_df['id_tractament'] = None  # Leave id_tractament as None/blank/null
-        part_df['id_referencia_client'] = ref_project  # Add the reference project column
+        part_df['id_referencia_client'] = self.ref_project  # Add the reference project column
 
         # Rename columns to output names (truncate if needed)
         try:
@@ -631,14 +654,14 @@ class DataTransformer:
 
         #print(f"Part: \n{part_df}\n")
 
-        out_csv = f"{ref_project}_part.csv"
+        out_csv = f"{self.ref_project}_part.csv"
         part_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
         return part_df
         
 
-    def info_planol(dg):
+    def info_planol(self, dg):
         pl_col = '15 - Plànol actualitzat'
         # If the column does not exist, create it with empty values
         if pl_col not in dg.columns:
@@ -646,25 +669,25 @@ class DataTransformer:
 
         # If all values are empty or NaN, fill with ref_project
         if dg[pl_col].isnull().all() or (dg[pl_col] == "").all():
-            dg[pl_col] = ref_project
+            dg[pl_col] = self.ref_project
 
         # If some values are empty, fill those with ref_project
-        dg[pl_col] = dg[pl_col].replace("", ref_project)
-        dg[pl_col] = dg[pl_col].fillna(ref_project)
+        dg[pl_col] = dg[pl_col].replace("", self.ref_project)
+        dg[pl_col] = dg[pl_col].fillna(self.ref_project)
 
         planol_df = pd.DataFrame({
             'num_planol': dg[pl_col],
-            'id_referencia_client': ref_project
+            'id_referencia_client': self.ref_project
         })
 
-        out_csv = f"{ref_project}_planol.csv"
+        out_csv = f"{self.ref_project}_planol.csv"
         planol_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
         return planol_df
 
 
-    def info_tipus(dg):
+    def info_tipus(self, dg):
         # Ensure the required columns exist
         if '12 - Jerarquía:' not in dg.columns:
             dg['12 - Jerarquía:'] = ""
@@ -680,10 +703,10 @@ class DataTransformer:
         tipus_df = pd.DataFrame({
             'id_tipus': dg['12 - Jerarquía:'],
             'descripcio': dg[descripcio_col],
-            'id_referencia_client': ref_project
+            'id_referencia_client': self.ref_project
         })
 
-        out_csv = f"{ref_project}_tipus.csv"
+        out_csv = f"{self.ref_project}_tipus.csv"
         tipus_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 

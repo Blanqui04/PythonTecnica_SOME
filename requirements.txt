@@ -10,6 +10,7 @@ scipy           # Scientific computing (if used in calculations)
 openpyxl        # Excel file reading/writing (if working with .xlsx files)
 PyQt5           # or PySide2 would be required if the UI is used (not included by default)
 Flask           # Web framework for building the application
+pytest          # For testing the application
 # Add any other dependencies as needed
 Psycopg2        # PostgreSQL adapter for Python
 SQLAlchemy      # ORM for database interactions
