@@ -8,7 +8,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from src.data_processing.pipeline_manager import DataProcessingPipeline
-from data_processing.utils.excel_reader import ExcelReaderFactory
+from src.data_processing.utils.excel_reader import ExcelReaderFactory
 
 
 class TestExcelProcessing(unittest.TestCase):
