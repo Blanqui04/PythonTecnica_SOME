@@ -1,4 +1,3 @@
-import os
 import re
 import json
 import pandas as pd
@@ -94,14 +93,20 @@ class DataTransformer:
             return int(nums[0])
         return ""
 
-    def transform_datasheet(self, datasheet_name):
+    def transform_datasheet(self, datasheet_name=None):
         """Main transformation workflow"""
         try:
+            # If no datasheet_name provided, construct it from client and ref_project
+            if datasheet_name is None:
+                datasheet_name = f"datasheet_{self.client}_{self.ref_project}"
+            
             csv_path = self.datasheets_dir / f"{datasheet_name}.csv"
             if not csv_path.exists():
                 raise FileNotFoundError(f"Datasheet not found: {csv_path}")
                 
             df = self._preprocess_datasheet(csv_path)
+            
+            print(f"DataFrame after preprocessing - shape: {df.shape}")
             
             return {
                 'embalatge': self.info_embalatge(df),
@@ -122,65 +127,114 @@ class DataTransformer:
 
     def _preprocess_datasheet(self, csv_path):
         """Load and clean datasheet"""
+        print(f"Loading datasheet from: {csv_path}")
+        
+        # Read CSV file
         df = pd.read_csv(csv_path)
+        print(f"Initial DataFrame shape: {df.shape}")
+        
+        # Remove unnamed columns
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+        print(f"After removing unnamed columns: {df.shape}")
+        
+        # Replace NaN with None for better handling
         df = df.where(pd.notnull(df), None)
-        df.drop(columns=self.col_elim, errors='ignore', inplace=True)
-        df.dropna(inplace=True)
+        
+        # Drop columns specified in config (if they exist)
+        if self.col_elim:
+            df.drop(columns=self.col_elim, errors='ignore', inplace=True)
+            print(f"After dropping configured columns: {df.shape}")
+        
+        # DON'T drop all NaN rows - this is the problem!
+        # Instead, only drop rows where ALL values are NaN
+        df = df.dropna(how='all')
+        print(f"After dropping completely empty rows: {df.shape}")
+        
+        # Alternative: If you want to keep rows with at least some important data
+        # You could specify subset of columns that should not be NaN
+        # df = df.dropna(subset=['important_column1', 'important_column2'], how='all')
+        
         return df
 
-
     def info_embalatge(self, df):
+        """Process packaging information"""
+        # Check if DataFrame is empty
+        if df.empty:
+            print("Warning: DataFrame is empty in info_embalatge")
+            return pd.DataFrame()
+        
+        print(f"Processing embalatge - DataFrame shape: {df.shape}")
+        
         col_bbdd_emb = ['regio', 'peces_caixa', 'caixa_codi', 'caixa_descripcio',
                         'pallet_codi', 'pallet_descripcio', 'tapa_altres', 'caixes_pallet']
 
         embalatge_cols = ['regio_exp', 'pcs_cx', 'codi_caixa', 'descripcio_caixa',
-                        'codi_pallet', 'descripcio_pallet', 'Tapa / Altres:', 'Caixes / Pallet:']
+                          'codi_pallet', 'descripcio_pallet', 'Tapa / Altres:', 'Caixes / Pallet:']
         
         pc_1 = 'Peces / Caixa:'
         pc_2 = 'Peces / Caixa:.1'
+        
+        # Ensure columns exist
         if pc_1 not in df.columns:
             df[pc_1] = 0
         if pc_2 not in df.columns:
             df[pc_2] = 0
 
-        def calcula_regio_pcs(row):
+        # Initialize the new columns
+        df['regio_exp'] = ''
+        df['pcs_cx'] = 0
+        
+        # Process each row individually
+        for idx, row in df.iterrows():
             try:
-                v1 = float(row[pc_1]) if row[pc_1] not in [None, '', 'nan'] else 0
-            except Exception:
+                v1 = float(row[pc_1]) if pd.notna(row[pc_1]) and str(row[pc_1]).strip() not in ['', 'nan', '0'] else 0
+            except (ValueError, TypeError):
                 v1 = 0
             try:
-                v2 = float(row[pc_2]) if row[pc_2] not in [None, '', 'nan'] else 0
-            except Exception:
+                v2 = float(row[pc_2]) if pd.notna(row[pc_2]) and str(row[pc_2]).strip() not in ['', 'nan', '0'] else 0
+            except (ValueError, TypeError):
                 v2 = 0
-
+            
             if v1 > 0 and v2 == 0:
-                return pd.Series(['Europa', v1])
+                df.loc[idx, 'regio_exp'] = 'Europa'
+                df.loc[idx, 'pcs_cx'] = v1
             elif v2 > 0 and v1 == 0:
-                return pd.Series(['overseas', v2])
+                df.loc[idx, 'regio_exp'] = 'overseas'
+                df.loc[idx, 'pcs_cx'] = v2
             elif v1 == 0 and v2 == 0:
-                return pd.Series(['Europa', 0])
+                df.loc[idx, 'regio_exp'] = 'Europa'
+                df.loc[idx, 'pcs_cx'] = 0
             else:
-                return pd.Series(['Na', 0])
+                df.loc[idx, 'regio_exp'] = 'Na'
+                df.loc[idx, 'pcs_cx'] = 0
 
-        df[['regio_exp', 'pcs_cx']] = df.apply(calcula_regio_pcs, axis=1)
-
+        # Check if required columns exist
         if 'Caixa:' in df.columns and 'Pallet:' in df.columns:
             df['codi_caixa'] = df['Caixa:'].astype(str).str.extract(r'(\d+)')
             df['descripcio_caixa'] = df['Caixa:'].astype(str).str.extract(r'\d+ - (.+)')
             df['codi_pallet'] = df['Pallet:'].astype(str).str.extract(r'(\d+)')
             df['descripcio_pallet'] = df['Pallet:'].astype(str).str.extract(r'\d+ - (.+)')
 
-            embalatge_df = df[embalatge_cols].copy()
-            embalatge_df.columns = col_bbdd_emb
+            # Select only the columns that exist in the DataFrame
+            existing_cols = [col for col in embalatge_cols if col in df.columns]
+            if len(existing_cols) < len(embalatge_cols):
+                print(f"Warning: Some columns missing. Expected: {embalatge_cols}, Found: {existing_cols}")
+            
+            embalatge_df = df[existing_cols].copy()
+            # Adjust column names accordingly
+            embalatge_df.columns = col_bbdd_emb[:len(existing_cols)]
             embalatge_df['id_referencia_client'] = self.ref_project
+            
+            print(f"Embalatge: \n {embalatge_df} \n")
 
             out_csv = self.db_export_dir / f"{self.ref_project}_embalatge.csv"
             embalatge_df.to_csv(out_csv, index=False)
 
             return embalatge_df
         else:
+            print(f"Warning: Required columns not found. Available columns: {df.columns.tolist()}")
             raise ValueError("The DataFrame does not contain the 'Caixa:' and/or 'Pallet:' columns.")
+
 
     def info_oferta(self, dg, tract_df = None):
         ct_cols = [f'* Centre Treball{"" if i == 0 else f".{i}"}' for i in range(5)]
@@ -284,9 +338,9 @@ class DataTransformer:
         #print(f"Oferta: \n {oferta_df} \n")
         #print(f"Oferta_ct: \n {ofertact_df} \n")
 
-        oferta_out_csv = f"{self.ref_project}_oferta.csv"
-        ctoferta_out_csv = f"{self.ref_project}_ctoferta.csv"
-        
+        oferta_out_csv = self.db_export_dir / f"{self.ref_project}_oferta.csv"
+        ctoferta_out_csv = self.db_export_dir / f"{self.ref_project}_ctoferta.csv"
+
         oferta_df.to_csv(oferta_out_csv, index=False)
         ctoferta_df.to_csv(ctoferta_out_csv, index=False)
         
@@ -337,44 +391,10 @@ class DataTransformer:
         matriu_df = pd.concat(extracted_columns, axis=1)
         matriu_df.columns = col_bbdd_mt
 
-        out_csv = f"{self.ref_project}_matriu.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_matriu.csv"
         matriu_df.to_csv(out_csv, index=False)
 
         return matriu_df
-
-
-    def info_client(self, dg):
-        col_bbdd_cl = ['id_client', 'nom_contacte']  # 'email_contacte'
-        cols = ['1 - Client:', 'RESPONSABLE COMPRES CLIENT']
-        cols_v2 = ['22 - Client:', 'RESPONSABLE COMPRES CLIENT']
-        
-        # Check which version of columns exist
-        versio_2 = False
-        for i, col in enumerate(cols):
-            if col not in dg.columns:
-                v2_col = cols_v2[i] # Check if the corresponding v2 column exists
-                if v2_col in dg.columns:
-                    dg[col] = dg[v2_col]
-                    versio_2 = True
-                else:
-                    dg[col] = ""
-                    
-        if versio_2:
-            client_df = dg[cols_v2].copy()
-        else:
-            client_df = dg[cols].copy()
-        
-        client_df.columns = col_bbdd_cl
-
-        # Set id_client to the variable client
-        client_df['id_client'] = self.client
-        #print(f"Client: \n {client_df} \n")
-        
-        out_csv = f"{self.ref_project}_client.csv"
-        client_df.to_csv(out_csv, index = False)
-        #print(f"DataFrame processed and saved to: {out_csv} \n")
-        
-        return client_df
 
 
     def info_material(self, dg):
@@ -422,7 +442,7 @@ class DataTransformer:
         material_df = pd.concat(extracted_columns, axis=1)
         material_df.columns = col_bbdd_mtl
 
-        out_csv = f"{self.ref_project}_material.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_material.csv"
         material_df.to_csv(out_csv, index=False)
 
         return material_df
@@ -440,8 +460,8 @@ class DataTransformer:
         escandalloferta_df = dg[eo_cols].copy()
         escandalloferta_df.columns = col_bbdd_eo
         #print(f"Escandall oferta: \n {escandalloferta_df} \n")
-        
-        out_csv = f"{self.ref_project}_escandalloferta.csv"
+
+        out_csv = self.db_export_dir / f"{self.ref_project}_escandalloferta.csv"
         escandalloferta_df.to_csv(out_csv, index = False)
         #print(f"DataFrame processed and saved to: {out_csv} \n")
         
@@ -460,8 +480,10 @@ class DataTransformer:
         escandallofertatecnics_df = dg[eo_cols].copy()
         escandallofertatecnics_df.columns = col_bbdd_eo
         #print(f"Escandall oferta: \n {escandalloferta_df} \n")
-        
-        out_csv = f"{self.ref_project}_escandallofertatecnics.csv"
+        #out_csv = self.db_export_dir / f"{self.ref_project}_embalatge.csv"
+        #embalatge_df.to_csv(out_csv, index=False)
+
+        out_csv = self.db_export_dir / f"{self.ref_project}_escandallofertatecnics.csv"
         escandallofertatecnics_df.to_csv(out_csv, index = False)
         #print(f"DataFrame processed and saved to: {out_csv} \n")
         
@@ -486,7 +508,7 @@ class DataTransformer:
         lifetime_df = dg[cols_lft].copy()
         lifetime_df.columns = col_bbdd_lft
 
-        out_csv = f"{self.ref_project}_lifetime.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_lifetime.csv"
         lifetime_df.to_csv(out_csv, index=False)
 
         return lifetime_df
@@ -497,50 +519,50 @@ class DataTransformer:
         tractament_cols = [
             '* Descripció complerta del tractament 1:',
             '* Descripció complerta del tractament 2:',
-            '* Descripció complerta del tractament 3:'
-        ]
+            '* Descripció complerta del tractament 3:']
         proveidor_cols = [
             '* proveïdor SQB:',
             '* proveïdor SQB:.1',
-            '* proveïdor SQB:.2'
-        ]
+            '* proveïdor SQB:.2']
         preu_cols = [
             '* preu SQB:',
             '* preu SQB:.1',
-            '* preu SQB:.2'
-        ]
+            '* preu SQB:.2']
 
+        # Comprova si falten columnes i les crea amb None
         for col in tractament_cols + proveidor_cols + preu_cols:
             if col not in dg.columns:
                 dg[col] = None
 
         def is_empty(val):
-            return pd.isnull(val) or str(val).strip() == "" or str(val).strip() == "0" or str(val).strip() == "0.0"
+            return pd.isnull(val) or str(val).strip() in ("", "0", "0.0")
 
         rows = []
         for idx, row in dg.iterrows():
             ordre = row.get('13 - Nº Expedient:', None)
+            print(f"Fila {idx}: ordre (Nº Expedient) = {ordre}")  # DEBUG
+
             for i in range(3):
                 desc = row[tractament_cols[i]]
                 prov = row[proveidor_cols[i]]
                 preu = row[preu_cols[i]]
-                # Only add if at least one field is not empty and not "0"
+
+                # Només afegir si almenys un dels camps no està buit o zero
                 if not (is_empty(desc) and is_empty(prov) and is_empty(preu)):
                     rows.append({
-                        #'num_oferta': ordre,
-                        'ordre': i + 1,
+                        'ordre_oferta': ordre,     # <-- aquí guardem el número d'expedient
+                        'ordre': i + 1,            # número tractament dins la fila (1, 2, 3)
                         'descripcio': desc,
                         'proveidor': prov,
                         'preu': preu,
                         'id_referencia_client': self.ref_project
                     })
-        tractaments_df = pd.DataFrame(rows)   
-        #print(f"Tractaments: \n {tractaments_df} \n")
-        
-        out_csv = f"{self.ref_project}_tractaments.csv"
-        tractaments_df.to_csv(out_csv, index = False)
-        #print(f" DataFrame processed and saved to: {out_csv} \n")
-        
+
+        tractaments_df = pd.DataFrame(rows)
+        out_csv = self.db_export_dir / f"{self.ref_project}_tractaments.csv"
+        tractaments_df.to_csv(out_csv, index=False)
+
+        print(f"Tractaments guardats a {out_csv}:\n{tractaments_df}\n")
         return tractaments_df
 
 
@@ -563,8 +585,8 @@ class DataTransformer:
         })
 
         #print(f"Producció: \n {produccio_df} \n")
-        
-        out_csv = f"{self.ref_project}_produccio.csv"
+    
+        out_csv = self.db_export_dir / f"{self.ref_project}_produccio.csv"
         produccio_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
@@ -653,8 +675,10 @@ class DataTransformer:
             part_df.columns = col_bbdd_pt
 
         #print(f"Part: \n{part_df}\n")
+        #out_csv = self.db_export_dir / f"{self.ref_project}_embalatge.csv"
+        #embalatge_df.to_csv(out_csv, index=False)
 
-        out_csv = f"{self.ref_project}_part.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_part.csv"
         part_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
@@ -680,7 +704,7 @@ class DataTransformer:
             'id_referencia_client': self.ref_project
         })
 
-        out_csv = f"{self.ref_project}_planol.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_planol.csv"
         planol_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
@@ -706,7 +730,7 @@ class DataTransformer:
             'id_referencia_client': self.ref_project
         })
 
-        out_csv = f"{self.ref_project}_tipus.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_tipus.csv"
         tipus_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
