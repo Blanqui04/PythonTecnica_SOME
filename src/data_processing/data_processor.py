@@ -7,8 +7,8 @@ class DataProcessor:
     """Process raw Excel data into structured format"""
     
     def __init__(self):
-        self.csv_folder = r'C:\Github\PythonTecnica_SOME\data\temp'
-        self.processed_folder = r'C:\Github\PythonTecnica_SOME\data\processed'
+        self.csv_folder = r'C:\Github\PythonTecnica_SOME\data\temp\excel_processing'
+        self.processed_folder = r'C:\Github\PythonTecnica_SOME\data\processed\datasheets'
     
     def process_kop_data(self, raw_data, client, ref_project):
         """Process KOP specific data"""

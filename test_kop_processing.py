@@ -9,8 +9,8 @@ def test_kop_processing():
     pipeline = DataProcessingPipeline()
     
     # Test parameters
-    test_client = 'ADIENT'
-    test_ref_project = '5850717'
+    test_client = 'ZF'
+    test_ref_project = 'A027Y916'
     
     print(f"Testing KOP processing for {test_client} - {test_ref_project}")
     print("-" * 50)

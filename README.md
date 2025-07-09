@@ -13,79 +13,104 @@ PythonTecnica_SOME/
 │
 ├── src/                # Main source code (all modules)
 │   ├── blueprints/
-│   │   │── blueprint_client.py
-│   │   └──  blueprint_manager.py
+│   │   │── blueprint_client.py     # Empty rn
+│   │   └── blueprint_manager.py    # Empty rn
 │   ├── core/
+│   │   └──  __init__.py
 │   ├── data_processing/
 │   │   │── utils/
+│   │   │   │── excel_reader.py     # Can't acces idk why (moved from data processing/ to data_processing/utils/)
 │   │   │   │── file_writer.py      # Not in use rn helpers to data_transformer.py
 │   │   │   │── format_checker.py   # Not in use rn helpers to data_transformer.py
 │   │   │   └── fragmenter.py       # Not in use rn helpers to data_transformer.py
 │   │   │── __init__.py
-│   │   │── data_processor.py
+│   │   │── data_processor.py       # Test success!
 │   │   │── data_transformer.py
-│   │   │── excel_reader.py
-│   │   └──  pipeline_manager.py
+│   │   └── pipeline_manager.py     # Okay for now - data_transformer.py to integrate
 │   ├── database/
 │   │   │── database_connection.py
-│   │   └──  database_uploader.py
+│   │   └──  database_uploader.py   # Empty rn
 │   ├── exceptions/
+│   │   └──  __init__.py
 │   ├── gui/
 │   │   │── dialogs/
-│   │   └──  main_window.py #empty right now
+│   │   │   └──  main_window.py     # Empty rn
+│   │   └──  __init__.py
 │   ├── models/
+│   │   └──  __init__.py
 │   ├── services/
 │   ├── statistics/
-│   │   │── capability
-│   │   └──  dimensional
-│   └──  utils/
+│   │   │── capability/
+│   │   └── dimensional/
+│   └── utils/
+│       └──  __init__.py
 │
-│
-├── data/               # All input/output data CSV, Excel, │   ├── │   ├── imports/
+├── data/
 │   │   │── pending/
 │   │   └── processed/
 │   ├── processed/
 │   │   │── csv/
 │   │   │── export/
 │   │   └── reports/
-│   │       │──dimensional/
-│   │       └── dimensional/
+│   │       │── dimensional/
+│   │       └── statistics/
 │   └── temp/
 │       │── excel_processing/
 │       └── report_generation/
 │
-│
 ├── config/
-│   └── column_mappings/
+│   ├── column_mappings/
+│   └── config.ini
 │
-├── tests/              # Unit and integration tests
-│   ├── __init__.py
-│   └── test_csv_func.py
+├── tests/                        # Unit and integration tests
+│   ├── tests_core/
+│   ├── tests_database/
+│   ├── tests_services/
+│   ├── tests_utils/
+│   ├── test_data_transformer.py
+│   └── test_excel_processing.py  # Test success!
 │
-├── docs/               # Documentation (usage, API, developer notes)
-│   └── README.md
+├── docs/                         # Documentation (usage, API, developer notes)
+│   ├── capability/
+│   │   │── Estudi de capacitat.docx
+│   │   └── Estudi de capacitat.pdf
+│   ├── ddbb/
+│   │   │── Construcció_BBDD.docx
+│   │   │── Construcció_BBDD.pdf
+│   │   │── DDBB Class diagram.pdf
+│   │   │── DDBB Class diagram.svg
+│   │   └── Diagrama de classes.drawio
+│   └── dimensional/
+│       │── Dimensional.docx
+│       └── Dimensional.pdf
 │
-├── assets/             # Static assets (icons, images)
+├── assets/                       # Static assets (icons, images)
 │   ├── README.md
 │   ├── icons/
-│   │   └── README.md
-│   ├── i18n/
 │   │   └── README.md
 │   ├── sql/
 │   │   └── README.md
 │   ├── templates/
-│   │   └── ZF_QA_Example.xslx
+│   │   └── Example QA - Report ZF.xslx
 │   └── images/
+│       │── gui/
+│       │    └── dimensional/
 │       └── README.md
+│
+├── i18n/
+│   ├── ca.json
+│   ├── en.json
+│   └── pl.json
 │
 ├── logs/
 │
+├── test_kop_processing.py    # Test succes!
+│
 ├── main_app.py
-├── test_kop_processing.py
 ├── Configuració Set-Up.txt
-├── requirements.txt    # Python dependencies with comments
-├── README.md           # Project overview and instructions
-└── ...                 # Other (now non existant files)
+├── requirements.txt          # Python dependencies with comments
+├── README.md                 # Project overview and instructions
+└── ...                       # Other (now non existant files)
 ```
 
 ---

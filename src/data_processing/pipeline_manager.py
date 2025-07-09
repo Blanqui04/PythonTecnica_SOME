@@ -1,4 +1,4 @@
-from .excel_reader import ExcelReaderFactory
+from src.data_processing.utils.excel_reader import ExcelReaderFactory
 from .data_processor import DataProcessor
 import json
 import os
@@ -20,14 +20,10 @@ class DataProcessingPipeline:
     def process_project(self, client, ref_project, client_type='kop'):
         """Process a project's Excel file"""
         try:
-            # Step 1: Create appropriate reader
-            reader = self.excel_reader_factory.create_reader(client_type)
             
-            # Step 2: Find Excel file
-            excel_path = reader.find_excel_file(client, ref_project)
-            
-            # Step 3: Read Excel data
-            raw_data = reader.read_excel(excel_path)
+            reader = self.excel_reader_factory.create_reader(client_type)   # Step 1: Create appropriate reader
+            excel_path = reader.find_excel_file(client, ref_project)        # Step 2: Find Excel file
+            raw_data = reader.read_excel(excel_path)                        # Step 3: Read Excel data
             
             # Step 4: Process data
             if client_type.lower() == 'kop' or client_type.lower() == 'autoliv':
@@ -36,8 +32,7 @@ class DataProcessingPipeline:
                 # Add other processing methods as needed
                 processed_data = self.data_processor.process_kop_data(raw_data, client, ref_project)
             
-            # Step 5: Save processed data as JSON
-            self._save_processed_data(processed_data, client, ref_project)
+            self._save_processed_data(processed_data, client, ref_project)  # Step 5: Save processed data as JSON
             
             return processed_data, f"Successfully processed {client} - {ref_project}"
             
