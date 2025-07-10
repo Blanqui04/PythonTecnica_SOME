@@ -50,11 +50,18 @@ class PostgresConn:
         conn = self.connect()
         cur = conn.cursor()
         buffer = io.StringIO()
-        df.to_csv(buffer, index=False, header=False)
+
+        # Exporta amb header, perquè COPY conegui les columnes
+        df.to_csv(buffer, index=False, header=True)
         buffer.seek(0)
 
+        columns = list(df.columns)
+        cols_sql = ", ".join(columns)
+
+        copy_sql = f"COPY {table_name} ({cols_sql}) FROM STDIN WITH CSV HEADER"
+
         try:
-            cur.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV", buffer)
+            cur.copy_expert(copy_sql, buffer)
             conn.commit()
             print(f"✔️ Dades pujades a la taula '{table_name}' ({len(df)} files).")
         except Exception as e:

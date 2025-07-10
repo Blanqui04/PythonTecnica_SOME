@@ -52,60 +52,77 @@ class DatabaseUploader:
                 logger.warning(f"❌ Error llegint [{file_name}]: {e}")
 
         return dfs
-    
+
     def _clean_dataframe_for_db(self, df: pd.DataFrame) -> pd.DataFrame:
         """Converteix valors NaN o None a Python None, per a que SQL els interpreti com a NULL."""
         return df.where(pd.notnull(df), None)
-
 
     def upload_all(self):
         mappings = self._load_mappings()
         dataframes = self._get_dataframes()
 
-        load_order = [
-            'tipus', 'client', 'material', 'eines', 
-            'peca', 'embalatge', 'tractament', 'planol', 
-            'infoproduccio', 'escandalloferta', 'oferta', 
-            'ctoferta', 'lifetime'
-        ]
+        load_order = list(mappings.keys())
 
         errors = {}
 
         for table in load_order:
             if table not in dataframes:
-                logger.warning(f"⚠️ Fitxer no trobat o buit per a la taula '{table}'")
+                logger.warning(f"⚠️ Fitxer no trobat o no carregat per a la taula '{table}'")
                 continue
 
             df = dataframes[table]
 
+            if df.empty:
+                logger.warning(f"⚠️ La taula '{table}' està buida. S'omet.")
+                continue
+
             if table in mappings:
-                cols = mappings[table]
-                df = df.loc[:, df.columns.intersection(cols)]
+                expected_cols = set(mappings[table])
+                found_cols = set(df.columns)
+
+                missing_cols = expected_cols - found_cols
+                if missing_cols:
+                    logger.warning(
+                        f"[AVÍS] A '{table}' falten columnes esperades i s'ignoraran: {missing_cols}"
+                    )
+
+                ordered_cols = [col for col in mappings[table] if col in df.columns]
+                df = df[ordered_cols]
             else:
                 logger.warning(f"[AVÍS] No hi ha mapping per a la taula '{table}'. S'omet.")
                 continue
 
-            # Neteja valors nuls abans de pujar
+            # --- Aquí afegeixes la conversió de tipus només per a ctoferta ---
+            if table == 'ctoferta':
+                try:
+                    df['cicles'] = df['cicles'].astype(int)
+                except Exception as e:
+                    logger.error(f"Error convertint 'cicles' a int a la taula '{table}': {e}")
+                    errors[table] = f"Error tipus 'cicles': {e}"
+                    continue
+
             df = self._clean_dataframe_for_db(df)
 
             try:
                 self.conn.upload_dataframe(df, table)
                 logger.info(f"✔️ Dades pujades a la taula '{table}' ({len(df)} files).")
+                print(f"✔️ Taula '{table}': pujada correcta amb {len(df)} files")
             except Exception as e:
                 errors[table] = str(e)
                 logger.error(f"❌ Error pujant a la taula '{table}': {e}")
 
         if errors:
-            logger.error("Errors trobats durant la pujada:")
+            print("\n🚨 Errors durant la pujada:")
             for table, err in errors.items():
-                logger.error(f" - {table}: {err}")
+                print(f" - {table}: {err}")
+
 
 
     def cleanup_csv(self):
         for filename in os.listdir(self.export_path):
             if self.ref_project in filename and self.client in filename and filename.endswith(".csv"):
                 os.remove(os.path.join(self.export_path, filename))
-                print(f"Eliminat: {filename}")
+                print(f"🧹 Eliminat: {filename}")
 
     def run(self):
         self.upload_all()

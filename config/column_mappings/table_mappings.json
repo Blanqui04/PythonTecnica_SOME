@@ -1,10 +1,9 @@
 {
-    "tipus": ["id_tipus", "descripcio"],
     "material": ["id_material", "dimensiox", "dimensioy", "dimensioz", "proveidor", "pes", "preu"],
     "eines": ["nom_matriu", "num_picades", "volum_anual", "volum_projecte", "cavitats", "responsable", "matricer"],
-    "peca": ["id_referencia_client", "nom_client", "planta", "nom_projecte", "facturacio", "quantitats", "descripcio", "costos", "pes", "id_tipus", "id_embalatge", "id_tractament"],
-    "embalatge": ["caixa_codi", "regio", "caixa_descripcio", "tapa_altres", "pallet_codi", "pallet_descripcio", "peces_caixa", "caixes_pallet", "id_referencia_client"],
-    "tractament": ["ordre", "descripcio", "proveidor", "preu", "id_referencia_client"],
+    "peca": ["nom_client", "planta", "nom_projecte", "facturacio", "quantitats", "descripcio", "costos", "pes", "id_tipus", "id_embalatge", "id_tractament", "id_referencia_client"],
+    "embalatge": ["regio", "peces_caixa", "caixa_codi", "caixa_descripcio", "pallet_codi", "pallet_descripcio", "tapa_altres", "caixes_pallet", "id_referencia_client"],
+    "tractament": ["ordre_oferta", "ordre", "descripcio", "proveidor", "preu", "id_referencia_client"],
     "planol": ["num_planol", "id_referencia_client"],
     "infoproduccio": ["id_referencia_some", "id_referencia_client", "id_matriu", "id_material"],
     "escandalloferta": ["num_escandall", "preuvenda"],
