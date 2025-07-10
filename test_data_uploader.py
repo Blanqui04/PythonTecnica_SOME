@@ -8,8 +8,8 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src'
 from src.database.database_uploader import DatabaseUploader
 
 def main():
-    client = "ZF"             # <-- canvia-ho si cal
-    ref_project = "A027Y916"       # <-- canvia-ho segons el projecte a provar
+    client = "ADIENT"             # <-- canvia-ho si cal
+    ref_project = "5704341"       # <-- canvia-ho segons el projecte a provar
 
     print(f"\n🚀 Iniciant pujada a base de dades per a {client=} i {ref_project=}\n")
 
