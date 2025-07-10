@@ -43,7 +43,7 @@ class DataProcessingPipeline:
     def _save_processed_data(self, data, client, ref_project):
         """Save processed data as JSON"""
         filename = f"processed_{client}_{ref_project}.json"
-        filepath = os.path.join('data/processed', filename)
+        filepath = os.path.join('data/processed/datasheets', filename)
         
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         

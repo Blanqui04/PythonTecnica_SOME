@@ -1,8 +1,8 @@
 # requirements.txt
-# 1. Python 3
-# 2. pip (Python package installer)
-# 3. Virtual environment (VSCode or Pycharm)
-# 4. PostgreSQL
+# 1 - Python 3
+# 2 - pip (Python package installer)
+# 3 - Virtual environment (VSCode or Pycharm)
+# 4 - PostgreSQL
 # Core dependencies for the project
 pandas          # Data manipulation and analysis
 numpy           # Numerical operations (used by pandas and possibly elsewhere)

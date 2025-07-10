@@ -15,8 +15,6 @@ PythonTecnica_SOME/
 │   ├── blueprints/
 │   │   │── blueprint_client.py     # Empty rn
 │   │   └── blueprint_manager.py    # Empty rn
-│   ├── core/
-│   │   └──  __init__.py
 │   ├── data_processing/
 │   │   │── utils/
 │   │   │   │── __init__.py
@@ -26,21 +24,26 @@ PythonTecnica_SOME/
 │   │   │── data_transformer.py     # Test success!
 │   │   └── pipeline_manager.py     # Okay for now - yet to test alltogether
 │   ├── database/
-│   │   │── database_connection.py
-│   │   └──  database_uploader.py   # Empty rn
+│   │   │── database_connection.py  # Test success!
+│   │   └── database_uploader.py    # Test to reviw data uploaded, None, NaN, etc.
 │   ├── exceptions/
 │   │   │── transformation_errors.py  # Test success!
 │   │   └──  __init__.py
 │   ├── gui/
-│   │   │── dialogs/
-│   │   │   └──  main_window.py     # Empty rn
 │   │   └──  __init__.py
 │   ├── models/
+│   │   │──statistics/
+│   │   │   │── __init__.py
+│   │   │   └── capability.py         # Empty rn
+│   │   │── dimensional/
+│   │   │   │── __init__.py
+│   │   │   └── dimenisonal.py        # Empty rn
 │   │   └──  __init__.py
 │   ├── services/
-│   ├── statistics/
-│   │   │── capability/
-│   │   └── dimensional/
+│   │   │── backup_manager.py         # Empty rn
+│   │   │── file_monitor.py           # Empty rn
+│   │   │── session_manager.py        # Empty rn
+│   │   └── notification_manager.py   # Empty rn
 │   └── utils/
 │       └──  __init__.py
 │
@@ -58,20 +61,21 @@ PythonTecnica_SOME/
 │       └── report_generation/
 │
 ├── config/
+│   ├── database/
+│   │   └── db_config.json        # Tests OK
 │   ├── column_mappings/
 │   │   │── columns_to_drop.json  # Tests OK
 │   │   └── table_mappings.json   # Tests OK
 │   └── config.ini
 │
 ├── tests/                        # Unit and integration tests
-│   ├── tests_core/
-│   ├── tests_database/
 │   ├── tests_services/
 │   ├── tests_utils/
+│   ├── test_data_uploader.py     # Test success!
 │   ├── test_data_transformer.py  # Test success!
 │   └── test_excel_processing.py  # Test success!
 │
-├── docs/                         # Documentation (usage, API, developer notes)
+├── docs/              # Documentation (usage, API, developer notes)
 │   ├── capability/
 │   │   │── Estudi de capacitat.docx
 │   │   └── Estudi de capacitat.pdf
@@ -104,7 +108,7 @@ PythonTecnica_SOME/
 │   └── pl.json
 │
 ├── logs/
-│
+├── test_data_uploader.py     # Test NOT OK, review data uploaded: None, NaN, etc.
 ├── test_kop_processing.py    # Test succes!
 ├── test_data_transformer.py  # Test success!
 │

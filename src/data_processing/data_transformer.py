@@ -115,11 +115,11 @@ class DataTransformer:
                 'material': self.info_material(df),
                 'escandalloferta': self.info_escandalloferta(df),
                 'lifetime': self.info_lifetime(df),
-                'tractaments': self.info_tractaments(df),
+                'tractament': self.info_tractaments(df),
                 'produccio': self.info_produccio(df),
-                'part': self.info_part(df),
+                'peca': self.info_part(df),
                 'planol': self.info_planol(df),
-                'tipus': self.info_tipus(df)
+                #'tipus': self.info_tipus(df)
             }
         except Exception as e:
             logging.exception("Transformation failed")
@@ -225,8 +225,6 @@ class DataTransformer:
             embalatge_df.columns = col_bbdd_emb[:len(existing_cols)]
             embalatge_df['id_referencia_client'] = self.ref_project
             
-            print(f"Embalatge: \n {embalatge_df} \n")
-
             out_csv = self.db_export_dir / f"{self.ref_project}_embalatge.csv"
             embalatge_df.to_csv(out_csv, index=False)
 
@@ -391,7 +389,7 @@ class DataTransformer:
         matriu_df = pd.concat(extracted_columns, axis=1)
         matriu_df.columns = col_bbdd_mt
 
-        out_csv = self.db_export_dir / f"{self.ref_project}_matriu.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_eines.csv"
         matriu_df.to_csv(out_csv, index=False)
 
         return matriu_df
@@ -540,7 +538,6 @@ class DataTransformer:
         rows = []
         for idx, row in dg.iterrows():
             ordre = row.get('13 - Nº Expedient:', None)
-            print(f"Fila {idx}: ordre (Nº Expedient) = {ordre}")  # DEBUG
 
             for i in range(3):
                 desc = row[tractament_cols[i]]
@@ -559,10 +556,9 @@ class DataTransformer:
                     })
 
         tractaments_df = pd.DataFrame(rows)
-        out_csv = self.db_export_dir / f"{self.ref_project}_tractaments.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_tractament.csv"
         tractaments_df.to_csv(out_csv, index=False)
 
-        print(f"Tractaments guardats a {out_csv}:\n{tractaments_df}\n")
         return tractaments_df
 
 
@@ -586,7 +582,7 @@ class DataTransformer:
 
         #print(f"Producció: \n {produccio_df} \n")
     
-        out_csv = self.db_export_dir / f"{self.ref_project}_produccio.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_infoproduccio.csv"
         produccio_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
@@ -678,7 +674,7 @@ class DataTransformer:
         #out_csv = self.db_export_dir / f"{self.ref_project}_embalatge.csv"
         #embalatge_df.to_csv(out_csv, index=False)
 
-        out_csv = self.db_export_dir / f"{self.ref_project}_part.csv"
+        out_csv = self.db_export_dir / f"{self.ref_project}_peca.csv"
         part_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
@@ -711,29 +707,29 @@ class DataTransformer:
         return planol_df
 
 
-    def info_tipus(self, dg):
+    #def info_tipus(self, dg):
         # Ensure the required columns exist
-        if '12 - Jerarquía:' not in dg.columns:
-            dg['12 - Jerarquía:'] = ""
+        #if '12 - Jerarquía:' not in dg.columns:
+        #    dg['12 - Jerarquía:'] = ""
         # Prefer '6 - Descripció actualitzada:', fallback to '26 - Descripció actualitzada:'
-        if '6 - Descripció actualitzada:' in dg.columns:
-            descripcio_col = '6 - Descripció actualitzada:'
-        elif '26 - Descripció actualitzada:' in dg.columns:
-            descripcio_col = '26 - Descripció actualitzada:'
-        else:
-            dg['6 - Descripció actualitzada:'] = ""
-            descripcio_col = '6 - Descripció actualitzada:'
+        #if '6 - Descripció actualitzada:' in dg.columns:
+        #    descripcio_col = '6 - Descripció actualitzada:'
+        #elif '26 - Descripció actualitzada:' in dg.columns:
+        #    descripcio_col = '26 - Descripció actualitzada:'
+        #else:
+        #    dg['6 - Descripció actualitzada:'] = ""
+        #    descripcio_col = '6 - Descripció actualitzada:'
 
-        tipus_df = pd.DataFrame({
-            'id_tipus': dg['12 - Jerarquía:'],
-            'descripcio': dg[descripcio_col],
-            'id_referencia_client': self.ref_project
-        })
+        #tipus_df = pd.DataFrame({
+        #    'id_tipus': dg['12 - Jerarquía:'],
+        #    'descripcio': dg[descripcio_col],
+        #    'id_referencia_client': self.ref_project
+        #})
 
-        out_csv = self.db_export_dir / f"{self.ref_project}_tipus.csv"
-        tipus_df.to_csv(out_csv, index=False)
+        #out_csv = self.db_export_dir / f"{self.ref_project}_tipus.csv"
+        #tipus_df.to_csv(out_csv, index=False)
         #print(f"DataFrame processed and saved to: {out_csv}\n")
 
-        return tipus_df
+        #return tipus_df
         
 # Other methods (info_oferta, info_matriu, etc.) would follow similar pattern

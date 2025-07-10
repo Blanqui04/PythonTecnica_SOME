@@ -21,7 +21,7 @@ build/
 .eggs/
 *.bak
 *.tmp
-# VSCode settings
+# Virtual Studio Code settings
 .vscode/
 # Jupyter Notebook checkpoints
 .ipynb_checkpoints/

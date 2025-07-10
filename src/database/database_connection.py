@@ -1,3 +1,4 @@
+import io
 import psycopg2
 
 class PostgresConn:
@@ -44,4 +45,21 @@ class PostgresConn:
         with conn.cursor() as cursor:
             cursor.execute(query, params)
             return cursor.fetchone()
+    
+    def upload_dataframe(self, df, table_name):
+        conn = self.connect()
+        cur = conn.cursor()
+        buffer = io.StringIO()
+        df.to_csv(buffer, index=False, header=False)
+        buffer.seek(0)
+
+        try:
+            cur.copy_expert(f"COPY {table_name} FROM STDIN WITH CSV", buffer)
+            conn.commit()
+            print(f"✔️ Dades pujades a la taula '{table_name}' ({len(df)} files).")
+        except Exception as e:
+            conn.rollback()
+            raise RuntimeError(f"Error pujant a la taula '{table_name}': {e}")
+        finally:
+            cur.close()
         
