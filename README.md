@@ -11,33 +11,38 @@ PythonTecnica_SOME is a modular Python application for processing technical and 
 ```
 PythonTecnica_SOME/
 │
-├── src/                # Main source code (all modules)
+├── src/                              # Main source code (all modules)
 │   ├── blueprints/
-│   │   │── blueprint_client.py     # Empty rn
-│   │   └── blueprint_manager.py    # Empty rn
+│   │   │── blueprint_client.py       # Empty rn <- to handle different QA from clients
+│   │   └── blueprint_manager.py      # Empty rn <- to manage the data from the drawing, qa, etc. to the ddbb.
 │   ├── data_processing/
 │   │   │── utils/
 │   │   │   │── __init__.py
-│   │   │   └── excel_reader.py     # Test succes!
+│   │   │   └── excel_reader.py       # Test succes!
 │   │   │── __init__.py
-│   │   │── data_processor.py       # Test success!
-│   │   │── data_transformer.py     # Test success!
-│   │   └── pipeline_manager.py     # Okay for now - yet to test alltogether
+│   │   │── data_processor.py         # Test success!
+│   │   │── data_transformer.py       # Test success!
+│   │   └── pipeline_manager.py       # Test success!
 │   ├── database/
-│   │   │── database_connection.py  # Test success!
-│   │   └── database_uploader.py    # Test to reviw data uploaded, None, NaN, etc.
+│   │   │── database_connection.py    # Test success!
+│   │   └── database_uploader.py      # Test success! - to reviw data uploaded, None, NaN, etc.
 │   ├── exceptions/
+│   │   │── sample_errors.py          # Test success!
 │   │   │── transformation_errors.py  # Test success!
 │   │   └──  __init__.py
 │   ├── gui/
 │   │   └──  __init__.py
 │   ├── models/
-│   │   │──statistics/
+│   │   │── capability/
 │   │   │   │── __init__.py
-│   │   │   └── capability.py         # Empty rn
+│   │   │   │── capability_plotter.py        # Working on it
+│   │   │   │── sample_data_manager.py       # Test success!
+│   │   │   │── capability_analyzer.py       # Test success!
+│   │   │   │── capability_plotter.py        # Test success!
+│   │   │   └── extrapolation_manager.py     # Test success!
 │   │   │── dimensional/
 │   │   │   │── __init__.py
-│   │   │   └── dimenisonal.py        # Empty rn
+│   │   │   └── dimenisonal_analyzer.py        # Empty rn
 │   │   └──  __init__.py
 │   ├── services/
 │   │   │── backup_manager.py         # Empty rn
@@ -62,10 +67,10 @@ PythonTecnica_SOME/
 │
 ├── config/
 │   ├── database/
-│   │   └── db_config.json        # Tests OK
+│   │   └── db_config.json
 │   ├── column_mappings/
-│   │   │── columns_to_drop.json  # Tests OK
-│   │   └── table_mappings.json   # Tests OK
+│   │   │── columns_to_drop.json
+│   │   └── table_mappings.json
 │   └── config.ini
 │
 ├── tests/                        # Unit and integration tests
@@ -75,7 +80,7 @@ PythonTecnica_SOME/
 │   ├── test_data_transformer.py  # Test success!
 │   └── test_excel_processing.py  # Test success!
 │
-├── docs/              # Documentation (usage, API, developer notes)
+├── docs/                         # Documentation (usage, API, developer notes)
 │   ├── capability/
 │   │   │── Estudi de capacitat.docx
 │   │   └── Estudi de capacitat.pdf
@@ -89,14 +94,13 @@ PythonTecnica_SOME/
 │       │── Dimensional.docx
 │       └── Dimensional.pdf
 │
-├── assets/                       # Static assets (icons, images)
+├── assets/                         # Static assets (icons, images)
 │   ├── README.md
 │   ├── icons/
 │   │   └── README.md
-│   ├── sql/
-│   │   └── README.md
 │   ├── templates/
-│   │   └── Example QA - Report ZF.xslx
+│   │   └── qa
+│   │       └── Example QA - Report ZF.xslx
 │   └── images/
 │       │── gui/
 │       │    └── dimensional/
@@ -108,9 +112,10 @@ PythonTecnica_SOME/
 │   └── pl.json
 │
 ├── logs/
-├── test_data_uploader.py     # Test NOT OK, review data uploaded: None, NaN, etc.
-├── test_kop_processing.py    # Test succes!
-├── test_data_transformer.py  # Test success!
+├── test_capability_manager.py      # Test success!
+├── test_data_uploader.py           # Test success! Review data uploaded (integesr, floats, misisng...)
+├── test_kop_processing.py          # Test success!
+├── test_data_transformer.py        # Test success!
 │
 ├── main_app.py
 ├── Configuració Set-Up.txt
