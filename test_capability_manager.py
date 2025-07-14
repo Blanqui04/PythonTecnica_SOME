@@ -51,8 +51,8 @@ def test_capability_study_manager():
         print("\n3. Running full study...")
         config = StudyConfig(
                 min_sample_size=5,
-                output_directory="test_output",
-                include_extrapolation=False,
+                #output_directory="test_output",
+                include_extrapolation=True,
                 export_detailed_results=True,
                 export_summary=True
             )
