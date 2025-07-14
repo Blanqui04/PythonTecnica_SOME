@@ -112,8 +112,9 @@ PythonTecnica_SOME/
 │   └── pl.json
 │
 ├── logs/
+│
 ├── test_capability_manager.py      # Test success!
-├── test_data_uploader.py           # Test success! Review data uploaded (integesr, floats, misisng...)
+├── test_data_uploader.py           # Test success! Review data uploaded (integers, floats, misisng...)
 ├── test_kop_processing.py          # Test success!
 ├── test_data_transformer.py        # Test success!
 │
@@ -158,10 +159,16 @@ PythonTecnica_SOME/
 ## Usage
 
 - **Processing CSV Data:**
-  Use the `process_csv_data` function in `src/csv_func.py` to process CSV files. All outputs will be saved in the `data/` folder.
+  Use the `data_processor.py` handled by the `pipeline_manager.py` script and `data_transformer.py` in `src/data_processing/` to process read the quotation offer, excel files, and filter the necessary data. All outputs will be saved in the `data/processed/datasheets`, `data/processed/exports` and `data/temp/excel_processing` folders.
+
+- **Uploading data to the database:**
+   The filtered data read from the quotation offer in `data/processed/exports` will be read by the `database_uploader.py`, which using the connection from `database_connection.py` and the parameters of the database `config/database/` in file `db_config.json` will be able to connect and upload the filtered data to the database.
 
 - **UI Integration:**
   If using a UI, launch the UI module in `src/dbb_ui.py` (requires PyQt5 or PySide2, not included by default).
+
+- **SPC:**
+  Using the buttons and features from the GUI, the user will be able to perform statistical capability analysis, dimenisonal reports, or search quickly for info of the part.
 
 - **Testing:**
   Run all tests with:

@@ -35,7 +35,7 @@ class StudyConfig:
     """Configuration for capability study"""
 
     min_sample_size: int = 5
-    output_directory: str = "output"
+    output_directory: str = "data/spc"
     include_extrapolation: bool = True
     extrapolation_config: Optional[ExtrapolationConfig] = field(
         default_factory=ExtrapolationConfig
@@ -78,13 +78,15 @@ class CapabilityStudyManager:
         """
         self.config = config or StudyConfig()
         self.analyzer = CapabilityAnalyzer(min_sample_size=self.config.min_sample_size)
-        self.extrapolation_manager = ExtrapolationManager(self.config.extrapolation_config)
+        self.extrapolation_manager = ExtrapolationManager(
+            self.config.extrapolation_config
+        )
         self.data_manager = SampleDataManager()
 
         # Ensure output directory exists
         os.makedirs(self.config.output_directory, exist_ok=True)
 
-         # Setup logger for the class
+        # Setup logger for the class
         self.logger = logging.getLogger(self.__class__.__name__)
         self.logger.setLevel(logging.DEBUG)  # You can adjust the level here
 
@@ -94,7 +96,7 @@ class CapabilityStudyManager:
 
         # Create formatter and add it to the handlers
         formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         ch.setFormatter(formatter)
 
@@ -130,7 +132,9 @@ class CapabilityStudyManager:
         elif isinstance(source, list):
             # List can be dicts or ElementData objects
             if source and isinstance(source[0], ElementData):
-                self.logger.info("Data source is a list of ElementData objects, returning as is")
+                self.logger.info(
+                    "Data source is a list of ElementData objects, returning as is"
+                )
                 return source
             else:
                 self.logger.info("Loading data from list of dictionaries")
@@ -159,7 +163,9 @@ class CapabilityStudyManager:
 
         # Load data into manager for validation
         self.data_manager.sample_data = elements_data
-        validation_errors = self.data_manager.validate_sample_data(self.config.min_sample_size)
+        validation_errors = self.data_manager.validate_sample_data(
+            self.config.min_sample_size
+        )
         errors.extend(validation_errors)
 
         # Check if we have any data
@@ -215,10 +221,14 @@ class CapabilityStudyManager:
             analysis_results = self.analyzer.analyze_multiple_elements(elements_data)
 
             # Count successful and failed analyses
-            successful_analyses = sum(1 for r in analysis_results if "analysis_failed" not in r)
+            successful_analyses = sum(
+                1 for r in analysis_results if "analysis_failed" not in r
+            )
             failed_analyses = len(analysis_results) - successful_analyses
 
-            self.logger.info(f"Analysis complete: {successful_analyses} successful, {failed_analyses} failed")
+            self.logger.info(
+                f"Analysis complete: {successful_analyses} successful, {failed_analyses} failed"
+            )
 
             # Perform extrapolation if enabled
             extrapolation_results = []
@@ -240,11 +250,18 @@ class CapabilityStudyManager:
 
                 if interactive_extrapolation:
                     extrap_results = (
-                        self.extrapolation_manager.extrapolate_multiple_samples(extrapolation_data, interactive=True))
+                        self.extrapolation_manager.extrapolate_multiple_samples(
+                            extrapolation_data, interactive=True
+                        )
+                    )
                 else:
                     # Use default target size for batch processing
-                    self.logger.info("Running batch extrapolation with default target size 50")
-                    extrap_results = self.extrapolation_manager.batch_extrapolate(extrapolation_data, target_size=50)
+                    self.logger.info(
+                        "Running batch extrapolation with default target size 50"
+                    )
+                    extrap_results = self.extrapolation_manager.batch_extrapolate(
+                        extrapolation_data, target_size=50
+                    )
 
                 # Convert to dictionaries for storage
                 for i, extrap_result in enumerate(extrap_results):
@@ -257,7 +274,9 @@ class CapabilityStudyManager:
                             "was_extrapolated": extrap_result.was_extrapolated,
                         }
                     )
-                self.logger.info(f"Extrapolation completed for {len(extrapolation_results)} elements")
+                self.logger.info(
+                    f"Extrapolation completed for {len(extrapolation_results)} elements"
+                )
 
             # Generate summary statistics
             self.logger.info("Generating summary statistics...")
@@ -276,7 +295,9 @@ class CapabilityStudyManager:
             )
 
             # Create study results
-            self.logger.info(f"Study completed successfully. Results saved to: {output_files}")
+            self.logger.info(
+                f"Study completed successfully. Results saved to: {output_files}"
+            )
             study_results = StudyResults(
                 study_id=study_id,
                 timestamp=timestamp,
@@ -329,7 +350,9 @@ class CapabilityStudyManager:
             element_types[element_type] = element_types.get(element_type, 0) + 1
 
         # Normality statistics
-        normal_count = sum(1 for r in successful_results if r["statistics"]["is_normal"])
+        normal_count = sum(
+            1 for r in successful_results if r["statistics"]["is_normal"]
+        )
 
         summary = {
             "total_elements": len(elements_data),
@@ -396,7 +419,9 @@ class CapabilityStudyManager:
 
         # Export detailed results to CSV
         if self.config.export_detailed_results:
-            csv_path = os.path.join(self.config.output_directory, f"{study_id}_detailed_results.csv")
+            csv_path = os.path.join(
+                self.config.output_directory, f"{study_id}_detailed_results.csv"
+            )
             self.logger.debug(f"Exporting detailed results to CSV at {csv_path}")
             self.analyzer.export_results_to_csv(analysis_results, csv_path)
             output_files.append(csv_path)
@@ -405,7 +430,8 @@ class CapabilityStudyManager:
         # Export summary to JSON
         if self.config.export_summary:
             summary_path = os.path.join(
-                self.config.output_directory, f"{study_id}_summary.json")
+                self.config.output_directory, f"{study_id}_summary.json"
+            )
             self.logger.debug(f"Exporting summary statistics to JSON at {summary_path}")
             with open(summary_path, "w") as f:
                 json.dump(summary_stats, f, indent=2, default=str)
@@ -414,15 +440,21 @@ class CapabilityStudyManager:
 
         # Export extrapolation results if available
         if extrapolation_results:
-            extrap_path = os.path.join(self.config.output_directory, f"{study_id}_extrapolation.json")
-            self.logger.debug(f"Exporting extrapolation results to JSON at {extrap_path}")
+            extrap_path = os.path.join(
+                self.config.output_directory, f"{study_id}_extrapolation.json"
+            )
+            self.logger.debug(
+                f"Exporting extrapolation results to JSON at {extrap_path}"
+            )
             with open(extrap_path, "w") as f:
                 json.dump(extrapolation_results, f, indent=2, default=str)
             output_files.append(extrap_path)
             self.logger.info(f"Extrapolation results exported: {extrap_path}")
 
         # Export complete study report
-        report_path = os.path.join(self.config.output_directory, f"{study_id}_complete_report.json")
+        report_path = os.path.join(
+            self.config.output_directory, f"{study_id}_complete_report.json"
+        )
         complete_report = {
             "study_id": study_id,
             "timestamp": datetime.now().isoformat(),
@@ -480,14 +512,18 @@ class CapabilityStudyManager:
             validation_errors = self.validate_study_data(elements_data)
 
             if validation_errors:
-                self.logger.warning(f"Data validation failed with errors: {validation_errors}")
+                self.logger.warning(
+                    f"Data validation failed with errors: {validation_errors}"
+                )
                 return {"error": "Data validation failed", "errors": validation_errors}
 
             self.logger.debug("Running analysis on elements")
             analysis_results = self.analyzer.analyze_multiple_elements(elements_data)
 
             self.logger.debug("Generating summary statistics for quick study")
-            summary_stats = self._generate_summary_statistics(analysis_results, elements_data)
+            summary_stats = self._generate_summary_statistics(
+                analysis_results, elements_data
+            )
 
             self.logger.info("Quick capability study completed successfully")
             return {
@@ -498,13 +534,14 @@ class CapabilityStudyManager:
             }
 
         except Exception as e:
-            self.logger.error(f"Exception occurred during quick study: {e}", exc_info=True)
+            self.logger.error(
+                f"Exception occurred during quick study: {e}", exc_info=True
+            )
             return {"error": str(e)}
         finally:
             # Restore original config
             self.config = original_config
             self.logger.debug("Restored original configuration after quick study")
-
 
     def get_study_recommendations(self, study_results: StudyResults) -> List[str]:
         """
