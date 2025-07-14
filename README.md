@@ -33,9 +33,16 @@ PythonTecnica_SOME/
 │   ├── gui/
 │   │   └──  __init__.py
 │   ├── models/
+│   │   │── plotting/
+│   │   │   │── __init__.py
+│   │   │   │── base_chart.py                # Working on it
+│   │   │   │── spc_data_loader.py           # Working on it
+│   │   │   │── capability_chart_manager.py  # Working on it
+│   │   │   │── normality_plot.py            # Working on it
+│   │   │   │── i_chart.py                   # Working on it
+│   │   │   └── mr_chart.py                  # Working on it
 │   │   │── capability/
 │   │   │   │── __init__.py
-│   │   │   │── capability_plotter.py        # Working on it
 │   │   │   │── sample_data_manager.py       # Test success!
 │   │   │   │── capability_analyzer.py       # Test success!
 │   │   │   │── capability_plotter.py        # Test success!
@@ -45,10 +52,7 @@ PythonTecnica_SOME/
 │   │   │   └── dimenisonal_analyzer.py        # Empty rn
 │   │   └──  __init__.py
 │   ├── services/
-│   │   │── backup_manager.py         # Empty rn
-│   │   │── file_monitor.py           # Empty rn
-│   │   │── session_manager.py        # Empty rn
-│   │   └── notification_manager.py   # Empty rn
+│   │
 │   └── utils/
 │       └──  __init__.py
 │
@@ -76,6 +80,7 @@ PythonTecnica_SOME/
 ├── tests/                        # Unit and integration tests
 │   ├── tests_services/
 │   ├── tests_utils/
+│   ├── test_spc_integration.py   # Working on it
 │   ├── test_data_uploader.py     # Test success!
 │   ├── test_data_transformer.py  # Test success!
 │   └── test_excel_processing.py  # Test success!
