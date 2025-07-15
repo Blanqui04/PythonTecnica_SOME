@@ -1,6 +1,7 @@
 import json
 import logging
 
+
 class SPCDataLoader:
     def __init__(self, study_id, base_path="./data/spc"):
         self.study_id = study_id
@@ -26,7 +27,9 @@ class SPCDataLoader:
 
         # Build a lookup dict for extrapolation results by element_name
         extrapolation_lookup = {
-            item["element_name"]: item for item in extrapolation_results if "element_name" in item
+            item["element_name"]: item
+            for item in extrapolation_results
+            if "element_name" in item
         }
 
         for element_info in detailed_results:
@@ -69,7 +72,7 @@ if __name__ == "__main__":
 
     logging.basicConfig(level=logging.INFO)
 
-    study_id = 'prova'  # Per defecte, el teu estudi
+    study_id = "test_study"  # Per defecte, el teu estudi
     loader = SPCDataLoader(study_id)
     loader.load_complete_report()
 
