@@ -35,10 +35,12 @@ PythonTecnica_SOME/
 │   ├── models/
 │   │   │── plotting/
 │   │   │   │── __init__.py
+│   │   │   │── spc_charts_manager.py        # Working on it
 │   │   │   │── base_chart.py                # Working on it
 │   │   │   │── spc_data_loader.py           # Working on it
-│   │   │   │── capability_chart_manager.py  # Working on it
+│   │   │   │── capability_chart.py          # Working on it
 │   │   │   │── normality_plot.py            # Working on it
+│   │   │   │── extrapolation_chart.py       # Working on it
 │   │   │   │── i_chart.py                   # Working on it
 │   │   │   └── mr_chart.py                  # Working on it
 │   │   │── capability/
@@ -80,7 +82,6 @@ PythonTecnica_SOME/
 ├── tests/                        # Unit and integration tests
 │   ├── tests_services/
 │   ├── tests_utils/
-│   ├── test_spc_integration.py   # Working on it
 │   ├── test_data_uploader.py     # Test success!
 │   ├── test_data_transformer.py  # Test success!
 │   └── test_excel_processing.py  # Test success!
@@ -118,8 +119,9 @@ PythonTecnica_SOME/
 │
 ├── logs/
 │
-├── test_capability_manager.py      # Test success!
-├── test_data_uploader.py           # Test success! Review data uploaded (integers, floats, misisng...)
+├── test_spc_charts.py              # Test success! for now... (not all)
+├── test_cap_manager.py             # Test success!
+├── test_data_uploader.py           # Test success! Review data uploaded...
 ├── test_kop_processing.py          # Test success!
 ├── test_data_transformer.py        # Test success!
 │
