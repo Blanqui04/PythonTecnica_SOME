@@ -14,7 +14,8 @@ PythonTecnica_SOME/
 ├── src/                              # Main source code (all modules)
 │   ├── blueprints/
 │   │   │── blueprint_client.py       # Empty rn <- to handle different QA from clients
-│   │   └── blueprint_manager.py      # Empty rn <- to manage the data from the drawing, qa, etc. to the ddbb.
+│   │   └── blueprint_manager.py      # Empty rn <- manage the data from the drawing.
+│   │
 │   ├── data_processing/
 │   │   │── utils/
 │   │   │   │── __init__.py
@@ -23,36 +24,60 @@ PythonTecnica_SOME/
 │   │   │── data_processor.py         # Test success!
 │   │   │── data_transformer.py       # Test success!
 │   │   └── pipeline_manager.py       # Test success!
+│   │
 │   ├── database/
 │   │   │── database_connection.py    # Test success!
-│   │   └── database_uploader.py      # Test success! - to reviw data uploaded, None, NaN, etc.
+│   │   └── database_uploader.py      # Test success! - to reviw data uploaded, NaN, etc.
+│   │
 │   ├── exceptions/
 │   │   │── sample_errors.py          # Test success!
 │   │   │── transformation_errors.py  # Test success!
 │   │   └──  __init__.py
-│   ├── gui/
-│   │   └──  __init__.py
+│   │
+│   │── gui/
+│   │    ├── __init__.py
+│   │    ├── main_window.py          # Main application window
+│   │    ├── widgets/                # Custom UI widgets
+│   │    │   ├── __init__.py
+│   │    │   ├── buttons.py
+│   │    │   ├── inputs.py
+│   │    │   └── panels.py
+│   │    ├── panels/                 # Main UI sections
+│   │    │   ├── __init__.py
+│   │    │   ├── header.py
+│   │    │   ├── left_panel.py
+│   │    │   ├── center_panel.py
+│   │    │   ├── right_panel.py
+│   │    │   └── status_bar.py
+│   │    └── utils/
+│   │        ├── __init__.py
+│   │        ├── styles.py           # Styling utilities
+│   │        └── handlers.py         # Event handlers
+│   │
 │   ├── models/
 │   │   │── plotting/
 │   │   │   │── __init__.py
-│   │   │   │── spc_charts_manager.py        # Working on it
-│   │   │   │── base_chart.py                # Working on it
-│   │   │   │── spc_data_loader.py           # Working on it
-│   │   │   │── capability_chart.py          # Working on it
-│   │   │   │── normality_plot.py            # Working on it
-│   │   │   │── extrapolation_chart.py       # Working on it
-│   │   │   │── i_chart.py                   # Working on it
-│   │   │   └── mr_chart.py                  # Working on it
+│   │   │   │── spc_charts_manager.py        # Test success!
+│   │   │   │── base_chart.py                # Test success!
+│   │   │   │── spc_data_loader.py           # Test success!
+│   │   │   │── capability_chart.py          # Test success!
+│   │   │   │── normality_plot.py            # Test success!
+│   │   │   │── extrapolation_chart.py       # Test success!
+│   │   │   │── i_chart.py                   # Test success!
+│   │   │   └── mr_chart.py                  # Test success!
+│   │   │  
 │   │   │── capability/
 │   │   │   │── __init__.py
 │   │   │   │── sample_data_manager.py       # Test success!
 │   │   │   │── capability_analyzer.py       # Test success!
 │   │   │   │── capability_plotter.py        # Test success!
 │   │   │   └── extrapolation_manager.py     # Test success!
+│   │   │ 
 │   │   │── dimensional/
 │   │   │   │── __init__.py
-│   │   │   └── dimenisonal_analyzer.py        # Empty rn
+│   │   │   └── dimenisonal_analyzer.py      # To work on it (pending)
 │   │   └──  __init__.py
+│   │
 │   ├── services/
 │   │
 │   └── utils/
@@ -61,12 +86,14 @@ PythonTecnica_SOME/
 ├── data/
 │   │   │── pending/
 │   │   └── processed/
+│   │ 
 │   ├── processed/
 │   │   │── datasheets/
 │   │   │── export/
 │   │   └── reports/
 │   │       │── dimensional/
 │   │       └── statistics/
+│   │
 │   └── temp/
 │       │── excel_processing/
 │       └── report_generation/
@@ -74,9 +101,11 @@ PythonTecnica_SOME/
 ├── config/
 │   ├── database/
 │   │   └── db_config.json
+│   │
 │   ├── column_mappings/
 │   │   │── columns_to_drop.json
 │   │   └── table_mappings.json
+│   │
 │   └── config.ini
 │
 ├── tests/                        # Unit and integration tests
@@ -90,40 +119,45 @@ PythonTecnica_SOME/
 │   ├── capability/
 │   │   │── Estudi de capacitat.docx
 │   │   └── Estudi de capacitat.pdf
+│   │
 │   ├── ddbb/
 │   │   │── Construcció_BBDD.docx
 │   │   │── Construcció_BBDD.pdf
 │   │   │── DDBB Class diagram.pdf
 │   │   │── DDBB Class diagram.svg
 │   │   └── Diagrama de classes.drawio
+│   │
 │   └── dimensional/
 │       │── Dimensional.docx
 │       └── Dimensional.pdf
 │
 ├── assets/                         # Static assets (icons, images)
 │   ├── README.md
+│   │
 │   ├── icons/
 │   │   └── README.md
+│   │
 │   ├── templates/
 │   │   └── qa
 │   │       └── Example QA - Report ZF.xslx
+│   │
 │   └── images/
 │       │── gui/
 │       │    └── dimensional/
 │       └── README.md
 │
 ├── i18n/
-│   ├── ca.json
-│   ├── en.json
-│   └── pl.json
+│   ├── ca.json                     # do not exist yet (empty)
+│   ├── en.json                     # do not exist yet (empty)
+│   └── pl.json                     # do not exist yet (empty)
 │
 ├── logs/
 │
-├── test_spc_charts.py              # Test success! for now... (not all)
-├── test_cap_manager.py             # Test success!
+├── test_spc_charts.py              # Test success! for now...
+├── test_cap_manager.py             # Test success! seems okay
 ├── test_data_uploader.py           # Test success! Review data uploaded...
-├── test_kop_processing.py          # Test success!
-├── test_data_transformer.py        # Test success!
+├── test_kop_processing.py          # Test success! looks fine
+├── test_data_transformer.py        # Test success! looks fine
 │
 ├── main_app.py
 ├── Configuració Set-Up.txt
