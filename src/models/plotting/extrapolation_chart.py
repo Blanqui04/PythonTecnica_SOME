@@ -65,7 +65,7 @@ class ExtrapolatedSPCChart(SPCChartBase):
         """Validate that the element data contains required fields for extrapolated chart."""
         self.logger.debug("Validating element data for extrapolated chart")
         
-        required_fields = ['mostra', 'nominal', 'tol', 'mu', 'std']
+        required_fields = ['extrapolated_values', 'nominal', 'tolerance', 'mean', 'std_long']
         missing_fields = [field for field in required_fields if field not in self.element_data]
         
         if missing_fields:
@@ -74,23 +74,23 @@ class ExtrapolatedSPCChart(SPCChartBase):
             raise ValueError(error_msg)
             
         # Validate data types and values
-        if not isinstance(self.element_data['mostra'], list) or len(self.element_data['mostra']) == 0:
-            error_msg = "Field 'mostra' must be a non-empty list of measurements"
+        if not isinstance(self.element_data['extrapolated_values'], list) or len(self.element_data['extrapolated_values']) == 0:
+            error_msg = "Field 'extrapolated_values' must be a non-empty list of measurements"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
             
-        if not isinstance(self.element_data['tol'], list) or len(self.element_data['tol']) != 2:
-            error_msg = "Field 'tol' must be a list with exactly 2 tolerance values [lower, upper]"
+        if not isinstance(self.element_data['tolerance'], list) or len(self.element_data['tolerance']) != 2:
+            error_msg = "Field 'tolerance' must be a list with exactly 2 tolerance values [lower, upper]"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
             
-        for field in ['nominal', 'mu', 'std']:
+        for field in ['nominal', 'mean', 'std_long']:
             if not isinstance(self.element_data[field], (int, float)):
                 error_msg = f"Field '{field}' must be a numeric value"
                 self.logger.error(error_msg)
                 raise ValueError(error_msg)
                 
-        if self.element_data['std'] <= 0:
+        if self.element_data['std_long'] <= 0:
             error_msg = "Standard deviation must be positive"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
@@ -102,16 +102,16 @@ class ExtrapolatedSPCChart(SPCChartBase):
         self.logger.debug("Extracting data for extrapolated chart")
         
         data = {
-            'mostra': np.array(self.element_data['mostra']),
+            'extrapolated_values': np.array(self.element_data['extrapolated_values']),
             'nominal': float(self.element_data['nominal']),
-            'tol': self.element_data['tol'],
-            'mu': float(self.element_data['mu']),
-            'std': float(self.element_data['std']),
+            'tolerance': self.element_data['tolerance'],
+            'mean': float(self.element_data['mean']),
+            'std_long': float(self.element_data['std_long']),
         }
         
         # Calculate control limits
-        data['lsl'] = data['nominal'] + data['tol'][0]  # Lower Specification Limit
-        data['usl'] = data['nominal'] + data['tol'][1]  # Upper Specification Limit
+        data['lsl'] = data['nominal'] + data['tolerance'][0]  # Lower Specification Limit
+        data['usl'] = data['nominal'] + data['tolerance'][1]  # Upper Specification Limit
         
         # Optional statistical indicators
         data['pp'] = self.element_data.get('pp')
@@ -119,9 +119,9 @@ class ExtrapolatedSPCChart(SPCChartBase):
         data['pval'] = self.element_data.get('pval')
         data['is_normal'] = self.element_data.get('is_normal')
         
-        self.logger.info(f"Data extracted: {len(data['mostra'])} measurements, "
-                        f"nominal={data['nominal']:.4f}, mu={data['mu']:.4f}, "
-                        f"std={data['std']:.4f}, LSL={data['lsl']:.4f}, USL={data['usl']:.4f}")
+        self.logger.info(f"Data extracted: {len(data['extrapolated_values'])} measurements, "
+                        f"nominal={data['nominal']:.4f}, mean={data['mean']:.4f}, "
+                        f"std={data['std_long']:.4f}, LSL={data['lsl']:.4f}, USL={data['usl']:.4f}")
         
         return data
         
@@ -130,16 +130,16 @@ class ExtrapolatedSPCChart(SPCChartBase):
         self.logger.debug("Creating normal distribution curve")
         
         # Generate x values for normal curve (±3 sigma range)
-        x_min = data['mu'] - 3 * data['std']
-        x_max = data['mu'] + 3 * data['std']
+        x_min = data['mean'] - 3 * data['std_long']
+        x_max = data['mean'] + 3 * data['std_long']
         x = np.linspace(x_min, x_max, 200)
         
         # Calculate probability density
-        p = stats.norm.pdf(x, data['mu'], data['std'])
+        p = stats.norm.pdf(x, data['mean'], data['std_long'])
         
         # Scale to match histogram frequency
-        bin_width = (max(data['mostra']) - min(data['mostra'])) / self.bins
-        normal_scaled = p * len(data['mostra']) * bin_width
+        bin_width = (max(data['extrapolated_values']) - min(data['extrapolated_values'])) / self.bins
+        normal_scaled = p * len(data['extrapolated_values']) * bin_width
         
         self.logger.debug(f"Normal curve created: x range [{x_min:.4f}, {x_max:.4f}], "
                          f"max density: {max(normal_scaled):.4f}")
@@ -153,7 +153,7 @@ class ExtrapolatedSPCChart(SPCChartBase):
         histogram_label = self.labels.get('histogram_kde', 'Histogram and KDE')
         
         sns.histplot(
-            data['mostra'], 
+            data['extrapolated_values'], 
             bins=self.bins, 
             kde=True, 
             stat="count", 
@@ -170,7 +170,7 @@ class ExtrapolatedSPCChart(SPCChartBase):
         """Plot the normal distribution curve."""
         self.logger.debug("Plotting normal distribution curve")
         
-        curve_label = f"$\\bar{{x}}$ = {data['mu']:.4f}, $\\sigma$ = {data['std']:.4f}"
+        curve_label = f"$\\bar{{x}}$ = {data['mean']:.4f}, $\\sigma$ = {data['std_long']:.4f}"
         
         ax.plot(x, normal_scaled, color=self.COLOR_NEGRE, linewidth=1, label=curve_label)
         
@@ -204,8 +204,8 @@ class ExtrapolatedSPCChart(SPCChartBase):
         self.logger.debug(f"Nominal value plotted at {data['nominal']:.4f}")
         
         # Mean value (mu)
-        ax.axvline(data['mu'], color=self.COLOR_NEGRE, linestyle='--', linewidth=0.75)
-        self.logger.debug(f"Mean value plotted at {data['mu']:.4f}")
+        ax.axvline(data['mean'], color=self.COLOR_NEGRE, linestyle='--', linewidth=0.75)
+        self.logger.debug(f"Mean value plotted at {data['mean']:.4f}")
         
         # USL (Upper Specification Limit)
         if data['usl'] != data['nominal']:
@@ -235,8 +235,8 @@ class ExtrapolatedSPCChart(SPCChartBase):
         """Set appropriate axis limits."""
         self.logger.debug("Setting axis limits")
         
-        x_min_val = min(min(data['mostra']), min(x), data['lsl'], data['nominal'])
-        x_max_val = max(max(data['mostra']), max(x), data['usl'], data['nominal'])
+        x_min_val = min(min(data['extrapolated_values']), min(x), data['lsl'], data['nominal'])
+        x_max_val = max(max(data['extrapolated_values']), max(x), data['usl'], data['nominal'])
         x_margin = 0.02 * (x_max_val - x_min_val)
         
         ax.set_xlim(x_min_val - x_margin, x_max_val + x_margin)
@@ -363,11 +363,11 @@ if __name__ == "__main__":
     # Example JSON data structure
     example_data = {
         "element_example": {
-            "mostra": [10.1, 10.2, 9.9, 10.0, 10.3, 9.8, 10.1, 10.0, 9.9, 10.2],
+            "extrapolated_values": [10.1, 10.2, 9.9, 10.0, 10.3, 9.8, 10.1, 10.0, 9.9, 10.2],
             "nominal": 10.0,
-            "tol": [-0.5, 0.5],
-            "mu": 10.05,
-            "std": 0.15,
+            "tolerance": [-0.5, 0.5],
+            "mean": 10.05,
+            "std_long": 0.15,
             "pp": 1.11,
             "ppk": 0.89,
             "pval": 0.1234,
