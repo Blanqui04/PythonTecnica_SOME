@@ -75,7 +75,8 @@ class HeaderPanel(QWidget):
         self.setLayout(layout)
         
     def load_logo(self):
-        logo_path = os.path.join("assets", "images", "logo_some.png")
+        logo_path = os.path.join("assets", "images", "gui", "logo_some.png")
+        print(logo_path)
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path)
             self.logo_label.setPixmap(pixmap.scaledToHeight(50, Qt.SmoothTransformation))
