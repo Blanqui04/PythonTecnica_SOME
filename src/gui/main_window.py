@@ -137,6 +137,9 @@ class MainWindow(QMainWindow):
             elif action_name == "update_db":
                 self._update_database()
 
+            elif action_name == "view_drawing":
+                self._view_drawing()
+
             else:
                 logger.warning(f"Unknown action: {action_name}")
                 self.center_panel.update_content(f"Unknown action: {action_name}")
@@ -209,6 +212,17 @@ class MainWindow(QMainWindow):
         else:
             self.center_panel.update_content("Database update failed. Check logs for details.")
             self.status_bar.update_status("Processing error")
+
+    def _view_drawing(self):
+        """Toggle view between text and PDF drawing mode"""
+        try:
+            self.center_panel.toggle_view_mode()
+            self.status_bar.update_status("Toggled drawing view")
+            logger.info("View drawing action triggered - toggled view mode")
+        except Exception as e:
+            logger.error(f"Error in view drawing: {e}")
+            self.center_panel.update_content(f"Error toggling view: {str(e)}")
+            self.status_bar.update_status("Error toggling view")
 
     def show_error_message(self, title, message):
         """Show error message dialog"""
