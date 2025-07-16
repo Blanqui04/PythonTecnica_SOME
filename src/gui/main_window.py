@@ -6,9 +6,11 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QMessageBox,
+    QTextEdit,
 )
+from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QThread
 from .panels.header import HeaderPanel
 from .panels.left_panel import LeftPanel
 from .panels.center_panel import CenterPanel
@@ -18,9 +20,12 @@ from .utils.styles import global_style
 
 # Configure logging
 from src.gui.logging_config import logger
+
 from src.services.data_processing_orchestrator import DataProcessingOrchestrator
 from src.services.database_update import update_database
-
+from src.gui.workers.capability_study_worker import CapabilityStudyWorker
+from src.services.capacity_study_service import perform_capability_study
+from src.gui.widgets.element_input_widget import ElementInputWidget
 
 
 class MainWindow(QMainWindow):
@@ -161,13 +166,42 @@ class MainWindow(QMainWindow):
         self.center_panel.update_content(f"Dimensional Analysis Results:\n\n{result}")
         self.status_bar.update_status("Dimensional analysis completed")
 
-    def _run_capacity_analysis(self):
-        """Run capacity analysis"""
-        from src.models.capability.capability_analyzer import run_analysis
 
-        result = run_analysis()
-        self.center_panel.update_content(f"Capacity Study Results:\n\n{result}")
-        self.status_bar.update_status("Capacity analysis completed")
+    def _run_capacity_analysis(self):
+        self.element_input_widget = ElementInputWidget(self)
+        self.center_panel.show_custom_widget(self.element_input_widget)
+        self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
+
+    def run_capacity_study_with_elements(self, elements):
+        # Aquí cridaràs la teva funció de càlcul d'estudi, passant elements
+        # Ex: convertir elements a format que necessiti la teva funció 'perform_capability_study'
+        try:
+            client = self.header.ref_client_edit.text().strip()
+            ref_project = self.header.ref_project_edit.text().strip()
+
+            if not client or not ref_project:
+                self.element_input_widget._show_error("Client i Project Reference són obligatoris.")
+                return
+
+            # Tracta elements i crida a la funció de servei d'estudi
+            # Aquí simplificat, hauries d'adaptar segons la teva funció 'perform_capability_study'
+            result = perform_capability_study(client, ref_project, elements)
+
+            self.center_panel.reset_to_text_view()
+            self.center_panel.update_content(f"✅ Estudi finalitzat!\n\n{result}")
+            self.status_bar.update_status("Estudi de capacitat completat")
+
+        except Exception as e:
+            self.status_bar.update_status(f"Error a l'estudi: {e}")
+            self.center_panel.update_content(f"❌ Error a l'estudi de capacitat: {e}")
+            logger.error(f"Error a l'estudi de capacitat: {e}")
+
+
+    def on_study_finished(self, result):
+        self.center_panel.reset_to_text_view()
+        self.center_panel.update_content(f"✅ Study finished!\n\n{result}")
+        self.status_bar.update_status("Capacity study completed")
+
 
     def _process_data(self):
         """Process data files"""
