@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+# in root.
 """
 Short test script for CapabilityStudyManager
 """

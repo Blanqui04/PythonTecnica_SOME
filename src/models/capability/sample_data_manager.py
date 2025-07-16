@@ -1,3 +1,4 @@
+# src/models/capability/sample_data_manager.py
 """
 Sample Data Manager - Handles sample data loading, validation, and management
 """

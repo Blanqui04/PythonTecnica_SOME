@@ -35,7 +35,7 @@ class SPCChartManager:
         self,
         study_id: str,
         base_path: str = "./data/spc",
-        output_dir: str = "./output/charts",
+        output_dir: str = "./data/reports/charts",
         lang: str = "ca",
         logger: Optional[logging.Logger] = None,
     ):
