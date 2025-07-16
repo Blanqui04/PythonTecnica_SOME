@@ -1,8 +1,11 @@
 from PyQt5.QtWidgets import QHBoxLayout, QLabel, QWidget
 
+from src.gui.logging_config import logger
+
 class StatusBar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        logger.debug("Initializing [StatusBar]")
         self.setup_ui()
         
     def setup_ui(self):
@@ -34,6 +37,8 @@ class StatusBar(QWidget):
         layout.addWidget(self.connection_status)
         
         self.setLayout(layout)
+        logger.debug("[StatusBar] UI setup completed")
         
     def update_status(self, message):
+        logger.info(f"Updating status message: {message}")
         self.status_label.setText(message)

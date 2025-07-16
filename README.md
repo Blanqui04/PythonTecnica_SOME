@@ -30,29 +30,28 @@ PythonTecnica_SOME/
 │   │   └── database_uploader.py      # Test success! - to reviw data uploaded, NaN, etc.
 │   │
 │   ├── exceptions/
-│   │   │── sample_errors.py          # Test success!
+│   │   │── __init__.py          
 │   │   │── transformation_errors.py  # Test success!
-│   │   └──  __init__.py
+│   │   └── sample_errors.py          # Test success!
 │   │
 │   │── gui/
 │   │    ├── __init__.py
-│   │    ├── main_window.py          # Main application window
-│   │    ├── widgets/                # Custom UI widgets
+│   │    ├── main_window.py           # Main application window
+│   │    ├── logging_config.py        # Logging configuration for GUI
+│   │    ├── widgets/                 # Custom UI widgets
 │   │    │   ├── __init__.py
-│   │    │   ├── buttons.py
-│   │    │   ├── inputs.py
-│   │    │   └── panels.py
-│   │    ├── panels/                 # Main UI sections
+│   │    │   ├── buttons.py           # Test success!
+│   │    │   ├── inputs.py            # Test success!
+│   │    ├── panels/                  # Main UI sections
 │   │    │   ├── __init__.py
-│   │    │   ├── header.py
-│   │    │   ├── left_panel.py
-│   │    │   ├── center_panel.py
-│   │    │   ├── right_panel.py
-│   │    │   └── status_bar.py
+│   │    │   ├── header.py            # Test success!
+│   │    │   ├── left_panel.py        # Test success!
+│   │    │   ├── center_panel.py      # Test success!
+│   │    │   ├── right_panel.py       # Test success!
+│   │    │   └── status_bar.py        # Test success!
 │   │    └── utils/
 │   │        ├── __init__.py
-│   │        ├── styles.py           # Styling utilities
-│   │        └── handlers.py         # Event handlers
+│   │        └── styles.py            # Styling utilities
 │   │
 │   ├── models/
 │   │   │── plotting/
@@ -79,6 +78,9 @@ PythonTecnica_SOME/
 │   │   └──  __init__.py
 │   │
 │   ├── services/
+│   │    │── __init__.py
+│   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
+│   │    └── database_update.py                 # Test success! <- to clean...
 │   │
 │   └── utils/
 │       └──  __init__.py
@@ -108,14 +110,14 @@ PythonTecnica_SOME/
 │   │
 │   └── config.ini
 │
-├── tests/                        # Unit and integration tests
+├── tests/                          # Unit and integration tests
 │   ├── tests_services/
 │   ├── tests_utils/
-│   ├── test_data_uploader.py     # Test success!
-│   ├── test_data_transformer.py  # Test success!
-│   └── test_excel_processing.py  # Test success!
+│   ├── test_data_uploader.py       # Test success!
+│   ├── test_data_transformer.py    # Test success!
+│   └── test_excel_processing.py    # Test success!
 │
-├── docs/                         # Documentation (usage, API, developer notes)
+├── docs/                           # Documentation (usage, API, developer notes)
 │   ├── capability/
 │   │   │── Estudi de capacitat.docx
 │   │   └── Estudi de capacitat.pdf
@@ -153,6 +155,7 @@ PythonTecnica_SOME/
 │
 ├── logs/
 │
+├── test_orchestrator.py            # Test success! for now...
 ├── test_spc_charts.py              # Test success! for now...
 ├── test_cap_manager.py             # Test success! seems okay
 ├── test_data_uploader.py           # Test success! Review data uploaded...
