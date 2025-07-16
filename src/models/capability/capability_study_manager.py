@@ -1,3 +1,4 @@
+# src/models/capability/capability_study_manager.py
 """
 Capability Study Manager - Main orchestrator for capability studies
 """
@@ -9,10 +10,9 @@ import logging
 from typing import List, Dict, Optional, Union
 from dataclasses import dataclass, field
 from datetime import datetime
-
-from capability_analyzer import CapabilityAnalyzer, ElementData, ElementType  # noqa: F401
-from extrapolation_manager import ExtrapolationManager, ExtrapolationConfig
-from sample_data_manager import SampleDataManager
+from .extrapolation_manager import ExtrapolationManager, ExtrapolationConfig
+from .sample_data_manager import SampleDataManager
+from .capability_analyzer import CapabilityAnalyzer, ElementData, ElementType  # noqa: F401
 from ...exceptions.sample_errors import SampleErrors
 
 # Configuració del logger

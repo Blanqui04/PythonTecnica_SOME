@@ -1,3 +1,4 @@
+# src/models/capability/capability_analyzer.py
 """
 Capability Analyzer - Main class for statistical analysis and capability studies
 """
@@ -23,9 +24,9 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.FileHandler(log_file),    # Save logs to file
-        logging.StreamHandler()            # Also print logs to console
-    ]
+        logging.FileHandler(log_file),  # Save logs to file
+        logging.StreamHandler(),  # Also print logs to console
+    ],
 )
 
 logger = logging.getLogger(__name__)
@@ -100,7 +101,9 @@ class CapabilityAnalyzer:
         """
         self.min_sample_size = min_sample_size
         self.d2_constant = 1.128  # For moving range calculation
-        logger.info(f"CapabilityAnalyzer initialized with min_sample_size={min_sample_size}")
+        logger.info(
+            f"CapabilityAnalyzer initialized with min_sample_size={min_sample_size}"
+        )
 
     def detect_element_type(self, element_name: str) -> ElementType:
         """
@@ -142,7 +145,7 @@ class CapabilityAnalyzer:
             element_type = ElementType.TRACTION
         else:
             element_type = ElementType.DIMENSIONAL
-        
+
         logger.debug(f"Detected element type: {element_type.value}")
         return element_type
 
@@ -158,7 +161,9 @@ class CapabilityAnalyzer:
         """
         logger.debug(f"Validating sample with {len(values)} values")
         if len(values) < self.min_sample_size:
-            logger.error(f"Sample size {len(values)} below minimum {self.min_sample_size}")
+            logger.error(
+                f"Sample size {len(values)} below minimum {self.min_sample_size}"
+            )
             raise SampleErrors(
                 f"Sample size {len(values)} is below minimum required {self.min_sample_size}"
             )
@@ -167,7 +172,6 @@ class CapabilityAnalyzer:
             logger.error("Non-numeric values found in sample")
             raise SampleErrors("All sample values must be numeric")
         logger.debug("Sample validation passed")
-
 
     def analyze_sample(self, values: List[float]) -> StatisticalResults:
         """
@@ -208,7 +212,9 @@ class CapabilityAnalyzer:
         is_normal = ad_statistic < ad_critical
         p_value = self._calculate_p_value_approximation(ad_statistic)
 
-        logger.info(f"Statistical analysis completed: mean={mean:.4f}, std_long={std_long:.4f}, std_short={std_short:.4f}, is_normal={is_normal}")
+        logger.info(
+            f"Statistical analysis completed: mean={mean:.4f}, std_long={std_long:.4f}, std_short={std_short:.4f}, is_normal={is_normal}"
+        )
 
         return StatisticalResults(
             mean=mean,
@@ -264,7 +270,9 @@ class CapabilityAnalyzer:
         n = len(sample)
 
         if n < self.min_sample_size:
-            logger.error(f"Sample too small for AD calculation: {n} < {self.min_sample_size}")
+            logger.error(
+                f"Sample too small for AD calculation: {n} < {self.min_sample_size}"
+            )
             raise SampleErrors(f"Sample too small: {n} < {self.min_sample_size}")
 
         sorted_sample = np.sort(sample)
@@ -336,8 +344,12 @@ class CapabilityAnalyzer:
         ppm_short = self._calculate_ppm(nominal, tolerance, mean, std_short)
         ppm_long = self._calculate_ppm(nominal, tolerance, mean, std_long)
 
-        logger.info(f"Capability indices calculated: Cp={cp:.4f}, Cpk={cpk:.4f}, Pp={pp:.4f}, Ppk={ppk:.4f}, ppm_short={ppm_short:.0f}, ppm_long={ppm_long:.0f}")
-        return CapabilityResults(cp=cp, cpk=cpk, pp=pp, ppk=ppk, ppm_short=ppm_short, ppm_long=ppm_long)
+        logger.info(
+            f"Capability indices calculated: Cp={cp:.4f}, Cpk={cpk:.4f}, Pp={pp:.4f}, Ppk={ppk:.4f}, ppm_short={ppm_short:.0f}, ppm_long={ppm_long:.0f}"
+        )
+        return CapabilityResults(
+            cp=cp, cpk=cpk, pp=pp, ppk=ppk, ppm_short=ppm_short, ppm_long=ppm_long
+        )
 
     def _calculate_process_indices(
         self,
@@ -413,15 +425,23 @@ class CapabilityAnalyzer:
         """
         logger.info(f"Starting analysis for element: {element_data.name}")
         if not isinstance(element_data, ElementData):
-            logger.error(f"Invalid type for element_data: expected ElementData, got {type(element_data)}")
+            logger.error(
+                f"Invalid type for element_data: expected ElementData, got {type(element_data)}"
+            )
             raise TypeError(f"Expected ElementData, got {type(element_data)}")
         # Perform statistical analysis
         stats_results = self.analyze_sample(element_data.values)
-        logger.debug(f"Statistical results for {element_data.name}: mean={stats_results.mean}, std_short={stats_results.std_short}, std_long={stats_results.std_long}")
+        logger.debug(
+            f"Statistical results for {element_data.name}: mean={stats_results.mean}, std_short={stats_results.std_short}, std_long={stats_results.std_long}"
+        )
 
         # Calculate capability indices
-        capability_results = self.calculate_capability_indices(element_data, stats_results)
-        logger.debug(f"Capability indices for {element_data.name}: Cp={capability_results.cp}, Cpk={capability_results.cpk}, Pp={capability_results.pp}, Ppk={capability_results.ppk}")
+        capability_results = self.calculate_capability_indices(
+            element_data, stats_results
+        )
+        logger.debug(
+            f"Capability indices for {element_data.name}: Cp={capability_results.cp}, Cpk={capability_results.cpk}, Pp={capability_results.pp}, Ppk={capability_results.ppk}"
+        )
 
         # Prepare results dictionary
         results = {
@@ -470,7 +490,9 @@ class CapabilityAnalyzer:
                 result = self.analyze_element(element_data)
                 results.append(result)
             except Exception as e:
-                logger.error(f"Error analyzing element {element_data.name}: {e}", exc_info=True)
+                logger.error(
+                    f"Error analyzing element {element_data.name}: {e}", exc_info=True
+                )
                 error_result = {
                     "element_name": element_data.name,
                     "error": str(e),
@@ -494,7 +516,9 @@ class CapabilityAnalyzer:
 
         for result in results:
             if "analysis_failed" in result:
-                logger.warning(f"Skipping element '{result['element_name']}' due to analysis failure: {result['error']}")
+                logger.warning(
+                    f"Skipping element '{result['element_name']}' due to analysis failure: {result['error']}"
+                )
                 flattened_data.append(
                     {"Element": result["element_name"], "Error": result["error"]}
                 )
@@ -529,5 +553,8 @@ class CapabilityAnalyzer:
             df.to_csv(output_path, index=False)
             logger.info(f"Successfully exported results to CSV at '{output_path}'")
         except Exception as e:
-            logger.error(f"Failed to export results to CSV at '{output_path}': {e}", exc_info=True)
+            logger.error(
+                f"Failed to export results to CSV at '{output_path}': {e}",
+                exc_info=True,
+            )
             raise
