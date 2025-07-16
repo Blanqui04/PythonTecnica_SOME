@@ -10,36 +10,209 @@ PythonTecnica_SOME is a modular Python application for processing technical and 
 
 ```
 PythonTecnica_SOME/
-│               # Main source code (all modules)
-│   ├── __init__.py
-│   ├── csv_func.py
-│   ├── connexio_bbdd.py
-│   ├── dbb_ui.py
-│   ├── dim.py
-│   ├── e_cap.py
-│   ├── e_cap_plots.py
-│   ├── e_cap_report.py
-│   ├── e_cap_ZF.py
-│   ├── from_sql.py
-│   ├── kop_csv.py
-│   ├── lectura_qa_zf.py
-│   ├── maps_columnes.py
-│   ├── mmc calc.py
-│   ├── to_sql.py
-│   └── translation_dict.py
 │
-├── requirements.txt    # Python dependencies with comments
-├── README.md           # Project overview and instructions
-└── ...                 # Other legacy or config files
+├── src/                              # Main source code (all modules)
+│   ├── blueprints/
+│   │   │── blueprint_client.py       # Empty rn <- to handle different QA from clients
+│   │   └── blueprint_manager.py      # Empty rn <- manage the data from the drawing.
+│   │
+│   ├── data_processing/
+│   │   │── utils/
+│   │   │   │── __init__.py
+│   │   │   └── excel_reader.py       # Test succes!
+│   │   │── __init__.py
+│   │   │── data_processor.py         # Test success!
+│   │   │── data_transformer.py       # Test success!
+│   │   └── pipeline_manager.py       # Test success!
+│   │
+│   ├── database/
+│   │   │── database_connection.py    # Test success!
+│   │   └── database_uploader.py      # Test success! - to reviw data uploaded, NaN, etc.
+│   │
+│   ├── exceptions/
+│   │   │── __init__.py          
+│   │   │── transformation_errors.py  # Test success!
+│   │   └── sample_errors.py          # Test success!
+│   │
+│   │── gui/
+│   │    ├── __init__.py
+│   │    ├── main_window.py           # Main application window
+│   │    ├── logging_config.py        # Logging configuration for GUI
+│   │    ├── widgets/                 # Custom UI widgets
+│   │    │   ├── __init__.py
+│   │    │   ├── buttons.py           # Test success!
+│   │    │   ├── inputs.py            # Test success!
+│   │    ├── panels/                  # Main UI sections
+│   │    │   ├── __init__.py
+│   │    │   ├── header.py            # Test success!
+│   │    │   ├── left_panel.py        # Test success!
+│   │    │   ├── center_panel.py      # Test success!
+│   │    │   ├── right_panel.py       # Test success!
+│   │    │   └── status_bar.py        # Test success!
+│   │    └── utils/
+│   │        ├── __init__.py
+│   │        └── styles.py            # Styling utilities
+│   │
+│   ├── models/
+│   │   │── plotting/
+│   │   │   │── __init__.py
+│   │   │   │── spc_charts_manager.py        # Test success!
+│   │   │   │── base_chart.py                # Test success!
+│   │   │   │── spc_data_loader.py           # Test success!
+│   │   │   │── capability_chart.py          # Test success!
+│   │   │   │── normality_plot.py            # Test success!
+│   │   │   │── extrapolation_chart.py       # Test success!
+│   │   │   │── i_chart.py                   # Test success!
+│   │   │   └── mr_chart.py                  # Test success!
+│   │   │  
+│   │   │── capability/
+│   │   │   │── __init__.py
+│   │   │   │── sample_data_manager.py       # Test success!
+│   │   │   │── capability_analyzer.py       # Test success!
+│   │   │   │── capability_plotter.py        # Test success!
+│   │   │   └── extrapolation_manager.py     # Test success!
+│   │   │ 
+│   │   │── dimensional/
+│   │   │   │── __init__.py
+│   │   │   └── dimenisonal_analyzer.py      # To work on it (pending)
+│   │   └──  __init__.py
+│   │
+│   ├── services/
+│   │    │── __init__.py
+│   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
+│   │    └── database_update.py                 # Test success! <- to clean...
+│   │
+│   └── utils/
+│       └──  __init__.py
+│
+├── data/
+│   │   │── pending/
+│   │   └── processed/
+│   │ 
+│   ├── processed/
+│   │   │── datasheets/
+│   │   │── export/
+│   │   └── reports/
+│   │       │── dimensional/
+│   │       └── statistics/
+│   │
+│   └── temp/
+│       │── excel_processing/
+│       └── report_generation/
+│
+├── config/
+│   ├── database/
+│   │   └── db_config.json
+│   │
+│   ├── column_mappings/
+│   │   │── columns_to_drop.json
+│   │   └── table_mappings.json
+│   │
+│   └── config.ini
+│
+├── tests/                          # Unit and integration tests
+│   ├── tests_services/
+│   ├── tests_utils/
+│   ├── test_data_uploader.py       # Test success!
+│   ├── test_data_transformer.py    # Test success!
+│   └── test_excel_processing.py    # Test success!
+│
+├── docs/                           # Documentation (usage, API, developer notes)
+│   ├── capability/
+│   │   │── Estudi de capacitat.docx
+│   │   └── Estudi de capacitat.pdf
+│   │
+│   ├── ddbb/
+│   │   │── Construcció_BBDD.docx
+│   │   │── Construcció_BBDD.pdf
+│   │   │── DDBB Class diagram.pdf
+│   │   │── DDBB Class diagram.svg
+│   │   └── Diagrama de classes.drawio
+│   │
+│   └── dimensional/
+│       │── Dimensional.docx
+│       └── Dimensional.pdf
+│
+├── assets/                         # Static assets (icons, images)
+│   ├── README.md
+│   │
+│   ├── icons/
+│   │   └── README.md
+│   │
+│   ├── templates/
+│   │   └── qa
+│   │       └── Example QA - Report ZF.xslx
+│   │
+│   └── images/
+│       │── gui/
+│       │    └── dimensional/
+│       └── README.md
+│
+├── i18n/
+│   ├── ca.json                     # do not exist yet (empty)
+│   ├── en.json                     # do not exist yet (empty)
+│   └── pl.json                     # do not exist yet (empty)
+│
+├── logs/
+│
+├── test_orchestrator.py            # Test success! for now...
+├── test_spc_charts.py              # Test success! for now...
+├── test_cap_manager.py             # Test success! seems okay
+├── test_data_uploader.py           # Test success! Review data uploaded...
+├── test_kop_processing.py          # Test success! looks fine
+├── test_data_transformer.py        # Test success! looks fine
+│
+├── main_app.py
+├── Configuració Set-Up.txt
+├── requirements.txt          # Python dependencies with comments
+├── README.md                 # Project overview and instructions
+└── ...                       # Other (now non existant files)
 ```
+
+---
+
+## How It Works
+
+- **src/** contains all logic, processing, and UI code. Each module is responsible for a specific part of the workflow (CSV processing, database connection, UI, etc).
+- **data/** is the only place where input and output files are stored. This keeps the project root clean and makes backups and deployments easier.
+- **tests/** contains all test code. Use `pytest` or `unittest` to run tests.
+- **docs/** contains all documentation, including API docs, usage guides, and developer notes.
+- **assets/** contains all static files (icons, images) for UI and documentation.
+
+---
+
+## Installation
+
+1. Clone the repository:
+   ```sh
+   git clone <repo-url>
+   cd PythonTecnica_SOME
+   ```
+2. Create a virtual environment (recommended):
+   ```sh
+   python -m venv env
+   .\env\Scripts\activate
+   ```
+3. Install dependencies:
+   ```sh
+   pip install -r requirements.txt
+   ```
+
+---
 
 ## Usage
 
 - **Processing CSV Data:**
-  Use the `process_csv_data` function in `src/csv_func.py` to process CSV files. All outputs will be saved in the `data/` folder.
+  Use the `data_processor.py` handled by the `pipeline_manager.py` script and `data_transformer.py` in `src/data_processing/` to process read the quotation offer, excel files, and filter the necessary data. All outputs will be saved in the `data/processed/datasheets`, `data/processed/exports` and `data/temp/excel_processing` folders.
+
+- **Uploading data to the database:**
+   The filtered data read from the quotation offer in `data/processed/exports` will be read by the `database_uploader.py`, which using the connection from `database_connection.py` and the parameters of the database `config/database/` in file `db_config.json` will be able to connect and upload the filtered data to the database.
 
 - **UI Integration:**
   If using a UI, launch the UI module in `src/dbb_ui.py` (requires PyQt5 or PySide2, not included by default).
+
+- **SPC:**
+  Using the buttons and features from the GUI, the user will be able to perform statistical capability analysis, dimenisonal reports, or search quickly for info of the part.
 
 - **Testing:**
   Run all tests with:
@@ -51,7 +224,21 @@ PythonTecnica_SOME/
 
 ## Adding New Modules
 
+- Place new processing modules in `src/`.
+- Add new tests in `tests/`.
+- Document new features in `docs/`.
+- Add new assets in `assets/icons/` or `assets/images/` as appropriate.
+
+---
+
 ## Folder/Module Relations
+
+- All data flows from `src/` modules to the `data/` folder.
+- Tests import from `src/`.
+- Documentation in `docs/` references both `src/` and `data/`.
+- Assets are referenced by both UI code and documentation.
+
+---
 
 ## Requirements
 
@@ -68,10 +255,19 @@ See `requirements.txt` for all dependencies. Each is commented for clarity.
 ---
 
 ## License
+
+[Specify your license here]
+
 ---
 
 ## Contact
+
+[Add contact or maintainer info here]
+
 ---
 
 ## Notes
 
+- All generated files are saved in `data/`.
+- The project is designed for easy extension and professional maintainability.
+- For any questions, see `docs/` or contact the maintainer.
