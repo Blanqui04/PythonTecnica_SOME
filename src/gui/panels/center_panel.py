@@ -383,3 +383,52 @@ class CenterPanel(QGroupBox):
         """Reset PDF zoom"""
         if FITZ_AVAILABLE:
             self.pdf_viewer.reset_zoom()
+
+    def toggle_view_mode(self):
+        """Toggle between text and PDF view modes"""
+        current_index = self.tab_widget.currentIndex()
+        
+        if current_index == 0:  # Currently on text tab
+            # Switch to PDF tab and load PDF
+            self.switch_to_pdf_and_load()
+        else:  # Currently on PDF tab
+            # Switch to text tab
+            self.tab_widget.setCurrentIndex(0)
+            logger.info("Switched to text view mode")
+
+    def switch_to_pdf_and_load(self):
+        """Switch to PDF tab and automatically load PDF if client/project are available"""
+        try:
+            # Switch to PDF tab first
+            self.tab_widget.setCurrentIndex(1)
+            logger.info("Switched to PDF view mode")
+            
+            # Get parent window to access header panel
+            parent_window = self.parent()
+            while parent_window and not hasattr(parent_window, 'header'):
+                parent_window = parent_window.parent()
+            
+            if not parent_window:
+                self.update_pdf_info("Error: Could not find parent window with header panel")
+                return
+                
+            # Get client and project info
+            client = parent_window.header.ref_client_edit.text().strip()
+            ref_project = parent_window.header.ref_project_edit.text().strip()
+            
+            if not client or not ref_project:
+                self.update_pdf_info("Please enter both Client and Project Reference to view PDF plans.")
+                self.pdf_viewer.setText("PDF Viewer\n\nPlease enter Client and Project Reference\nin the header fields above to view PDF plans.")
+                return
+                
+            # Automatically load PDF
+            self.view_pdf_plan()
+            
+        except Exception as e:
+            logger.error(f"Error in switch_to_pdf_and_load: {e}")
+            self.update_pdf_info(f"Error: {str(e)}")
+
+    def switch_to_text(self):
+        """Switch to text tab"""
+        self.tab_widget.setCurrentIndex(0)
+        logger.info("Switched to text view mode")
