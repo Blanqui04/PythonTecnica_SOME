@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+import base64
+import tempfile
 import pandas as pd
 from .database_connection import PostgresConn
 
@@ -127,3 +129,100 @@ class DatabaseUploader:
     def run(self):
         self.upload_all()
         self.cleanup_csv()
+
+    def get_planol_pdf(self, ref_client):
+        """
+        Retrieve the latest PDF plan for a given client reference.
+        
+        Args:
+            ref_client: Client reference ID
+            
+        Returns:
+            dict: Contains success status, PDF data, filename, and planol number
+        """
+        query = """
+        SELECT num_planol, imatge 
+        FROM planol 
+        WHERE id_referencia_client = %s
+        ORDER BY num_planol DESC
+        LIMIT 1
+        """
+        params = (ref_client,)
+        
+        try:
+            conn = self.conn.connect()
+            cursor = conn.cursor()
+            cursor.execute(query, params)
+            result = cursor.fetchone()
+            
+            if result:
+                num_planol, imatge_json = result
+                
+                # Parse the JSON data
+                if isinstance(imatge_json, str):
+                    imatge_data = json.loads(imatge_json)
+                else:
+                    imatge_data = imatge_json
+                
+                # Extract PDF data
+                pdf_base64 = imatge_data.get('data', '')
+                filename = imatge_data.get('nom', f'planol_{num_planol}.pdf')
+                
+                # Decode base64 to binary
+                pdf_binary = base64.b64decode(pdf_base64)
+                
+                # Log successful retrieval
+                logger.info(f"Successfully retrieved planol PDF for client {ref_client}: {filename}")
+                
+                return {
+                    'num_planol': num_planol,
+                    'filename': filename,
+                    'pdf_data': pdf_binary,
+                    'success': True
+                }
+            else:
+                # Log no results found
+                logger.warning(f"No planol found for referencia_client: {ref_client}")
+                return {
+                    'success': False,
+                    'error': f'No planol found for referencia_client: {ref_client}'
+                }
+                
+        except Exception as e:
+            logger.error(f"Error retrieving planol PDF for client {ref_client}: {str(e)}")
+            return {
+                'success': False,
+                'error': f'Database error: {str(e)}'
+            }
+        finally:
+            cursor.close()
+
+    def save_temp_pdf(self, pdf_data, filename):
+        """
+        Save PDF data to a temporary file and return the path.
+        
+        Args:
+            pdf_data: Binary PDF data
+            filename: Name for the temporary file
+            
+        Returns:
+            str: Path to the temporary file, or None if error occurred
+        """
+        try:
+            # Create a temporary file
+            temp_dir = tempfile.gettempdir()
+            temp_path = os.path.join(temp_dir, filename)
+            
+            # Write PDF data to temporary file
+            with open(temp_path, 'wb') as f:
+                f.write(pdf_data)
+            
+            logger.info(f"Temporary PDF saved: {temp_path}")
+            return temp_path
+        except Exception as e:
+            logger.error(f"Error saving temporary PDF: {str(e)}")
+            return None
+
+        
+
+            
