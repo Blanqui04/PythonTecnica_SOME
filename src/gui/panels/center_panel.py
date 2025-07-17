@@ -271,20 +271,24 @@ class CenterPanel(QGroupBox):
                 self.update_content("Error: Could not find parent window with header panel")
                 return
                 
-            # Get client and project info
-            client = parent_window.header.ref_client_edit.text().strip()
+            # Get project reference (primary requirement)
             ref_project = parent_window.header.ref_project_edit.text().strip()
+            client = parent_window.header.ref_client_edit.text().strip()
             
-            if not client or not ref_project:
-                self.update_content("Please enter both Client and Project Reference to view PDF plans.")
+            # Only project reference is required now
+            if not ref_project:
+                self.update_content("Please enter Project Reference to view PDF plans.")
                 return
+                
+            # Use project reference as the search key (or client if available)
+            search_key = client if client else ref_project
                 
             # Switch to PDF tab
             self.tab_widget.setCurrentIndex(1)
             self.update_pdf_info("Loading PDF...")
             
-            # Start PDF loading in thread
-            self.pdf_thread = PDFLoadThread(client, ref_project, client)
+            # Start PDF loading in thread using search_key as the client reference
+            self.pdf_thread = PDFLoadThread(search_key, ref_project, search_key)
             self.pdf_thread.pdf_loaded.connect(self.on_pdf_loaded)
             self.pdf_thread.error_occurred.connect(self.on_pdf_error)
             self.pdf_thread.start()
@@ -397,7 +401,7 @@ class CenterPanel(QGroupBox):
             logger.info("Switched to text view mode")
 
     def switch_to_pdf_and_load(self):
-        """Switch to PDF tab and automatically load PDF if client/project are available"""
+        """Switch to PDF tab and automatically load PDF if project reference is available"""
         try:
             # Switch to PDF tab first
             self.tab_widget.setCurrentIndex(1)
@@ -412,13 +416,14 @@ class CenterPanel(QGroupBox):
                 self.update_pdf_info("Error: Could not find parent window with header panel")
                 return
                 
-            # Get client and project info
-            client = parent_window.header.ref_client_edit.text().strip()
+            # Get project reference (primary requirement)
             ref_project = parent_window.header.ref_project_edit.text().strip()
+            client = parent_window.header.ref_client_edit.text().strip()
             
-            if not client or not ref_project:
-                self.update_pdf_info("Please enter both Client and Project Reference to view PDF plans.")
-                self.pdf_viewer.setText("PDF Viewer\n\nPlease enter Client and Project Reference\nin the header fields above to view PDF plans.")
+            # Only project reference is required now
+            if not ref_project:
+                self.update_pdf_info("Please enter Project Reference to view PDF plans.")
+                self.pdf_viewer.setText("PDF Viewer\n\nPlease enter Project Reference\nin the header field above to view PDF plans.")
                 return
                 
             # Automatically load PDF
