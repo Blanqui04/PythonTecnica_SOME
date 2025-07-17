@@ -1,3 +1,4 @@
+# src/gui/utils/styles.py
 """
 Global styles for the Database Management System
 Professional, serene, and beautiful theme

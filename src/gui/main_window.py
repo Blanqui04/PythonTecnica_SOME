@@ -83,9 +83,9 @@ class MainWindow(QMainWindow):
         self.right_panel = RightPanel()
         self.right_panel.action_requested.connect(self.handle_action)
 
-        content_layout.addWidget(self.left_panel, 1)
-        content_layout.addWidget(self.center_panel, 2)
-        content_layout.addWidget(self.right_panel, 1)
+        content_layout.addWidget(self.left_panel, 2)
+        content_layout.addWidget(self.center_panel, 5)
+        content_layout.addWidget(self.right_panel, 2)
 
         # Status bar
         self.status_bar = StatusBar()
