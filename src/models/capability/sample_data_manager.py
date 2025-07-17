@@ -55,12 +55,14 @@ class SampleDataManager:
 
         for item in data:
             try:
+                print(f"[DEBUG] Processing item: {item}")  # ADD THIS LINE
+                print(f"[DEBUG] Item keys: {list(item.keys())}")  # ADD THIS LINE
                 element_data = ElementData(
-                    name=str(item["Element"]),
-                    nominal=float(item["Nominal"]),
-                    tol_minus=float(item["Tol-"]),
-                    tol_plus=float(item["Tol+"]),
-                    values=[float(v) for v in item["Values"]],
+                    name=str(item["element_id"]),
+                    nominal=float(item["nominal"]),
+                    tol_minus=float(item["tolerance_minus"]),
+                    tol_plus=float(item["tolerance_plus"]),
+                    values=[float(v) for v in item["measurements"]],
                 )
 
                 # Detect element type
@@ -78,10 +80,10 @@ class SampleDataManager:
 
             except (KeyError, ValueError, TypeError) as e:
                 logger.error(
-                    f"Error processant element {item.get('Element', 'unknown')}: {e}"
+                    f"Error processant element {item.get('element_id', 'unknown')}: {e}"
                 )
                 raise SampleErrors(
-                    f"Error processing element {item.get('Element', 'unknown')}: {e}"
+                    f"Error processing element {item.get('element_id', 'unknown')}: {e}"
                 )
 
         self.sample_data = elements

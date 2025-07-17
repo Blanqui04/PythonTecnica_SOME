@@ -1,3 +1,4 @@
+# src/gui/main_window.py
 import sys
 from PyQt5.QtWidgets import (
     QApplication,
@@ -6,9 +7,8 @@ from PyQt5.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QMessageBox,
-    QTextEdit,
 )
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
+#from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QTimer, QThread
 from .panels.header import HeaderPanel
@@ -24,7 +24,7 @@ from src.gui.logging_config import logger
 from src.services.data_processing_orchestrator import DataProcessingOrchestrator
 from src.services.database_update import update_database
 from src.gui.workers.capability_study_worker import CapabilityStudyWorker
-from src.services.capacity_study_service import perform_capability_study
+#from src.services.capacity_study_service import perform_capability_study
 from src.gui.widgets.element_input_widget import ElementInputWidget
 
 
@@ -166,42 +166,59 @@ class MainWindow(QMainWindow):
         self.center_panel.update_content(f"Dimensional Analysis Results:\n\n{result}")
         self.status_bar.update_status("Dimensional analysis completed")
 
-
     def _run_capacity_analysis(self):
-        self.element_input_widget = ElementInputWidget(self)
+        """Create and show the element input widget with proper signal connection"""
+        self.element_input_widget = ElementInputWidget()
+        # Connect the widget's study_requested signal to our handler
+        self.element_input_widget.study_requested.connect(self.run_capacity_study_with_elements)
+        
         self.center_panel.show_custom_widget(self.element_input_widget)
         self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
 
     def run_capacity_study_with_elements(self, elements):
-        # Aquí cridaràs la teva funció de càlcul d'estudi, passant elements
-        # Ex: convertir elements a format que necessiti la teva funció 'perform_capability_study'
+        """Run capacity study with the provided elements using a worker thread"""
         try:
             client = self.header.ref_client_edit.text().strip()
             ref_project = self.header.ref_project_edit.text().strip()
 
             if not client or not ref_project:
-                self.element_input_widget._show_error("Client i Project Reference són obligatoris.")
+                QMessageBox.critical(
+                    self,
+                    "Missing Info",
+                    "Client i Project Reference són obligatoris.",
+                    QMessageBox.Ok,
+                )
                 return
 
-            # Tracta elements i crida a la funció de servei d'estudi
-            # Aquí simplificat, hauries d'adaptar segons la teva funció 'perform_capability_study'
-            result = perform_capability_study(client, ref_project, elements)
+            # Show status
+            self.status_bar.update_status("Executant estudi de capacitat...")
+            self.center_panel.update_content("⏳ Executant estudi de capacitat...\n\nAixò pot trigar uns moments.")
 
-            self.center_panel.reset_to_text_view()
-            self.center_panel.update_content(f"✅ Estudi finalitzat!\n\n{result}")
-            self.status_bar.update_status("Estudi de capacitat completat")
+            # Create worker thread
+            self.worker_thread = QThread()
+            self.worker = CapabilityStudyWorker(client, ref_project, elements)
+            self.worker.moveToThread(self.worker_thread)
+
+            # Connect signals
+            self.worker_thread.started.connect(self.worker.run)
+            self.worker.finished.connect(self.on_study_finished)
+            self.worker.finished.connect(self.worker_thread.quit)
+            self.worker.finished.connect(self.worker.deleteLater)
+            self.worker_thread.finished.connect(self.worker_thread.deleteLater)
+
+            # Start the worker
+            self.worker_thread.start()
 
         except Exception as e:
             self.status_bar.update_status(f"Error a l'estudi: {e}")
             self.center_panel.update_content(f"❌ Error a l'estudi de capacitat: {e}")
             logger.error(f"Error a l'estudi de capacitat: {e}")
 
-
     def on_study_finished(self, result):
+        """Handle completion of capacity study"""
         self.center_panel.reset_to_text_view()
-        self.center_panel.update_content(f"✅ Study finished!\n\n{result}")
-        self.status_bar.update_status("Capacity study completed")
-
+        self.center_panel.update_content(f"✅ Estudi de capacitat finalitzat!\n\n{result}")
+        self.status_bar.update_status("Estudi de capacitat completat")
 
     def _process_data(self):
         """Process data files"""
@@ -232,7 +249,7 @@ class MainWindow(QMainWindow):
         ref_project = self.header.ref_project_edit.text().strip()
 
         if not client or not ref_project:
-            self.status_label.setText("Client and Project Reference are required to update database.")
+            self.status_bar.update_status("Client and Project Reference are required to update database.")
             return
 
         success = update_database(client, ref_project)
