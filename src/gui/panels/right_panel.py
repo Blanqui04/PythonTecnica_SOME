@@ -82,16 +82,12 @@ class RightPanel(QGroupBox):
         transfer_layout.setSpacing(10)
         
         export_icon = self.load_icon("export.svg")
-        import_icon = self.load_icon("import.svg")
         
         self.export_btn = ActionButton("Export Data", export_icon)
-        self.import_btn = ActionButton("Import Data", import_icon)
         
         self.export_btn.clicked.connect(lambda: self.emit_action("export_data"))
-        self.import_btn.clicked.connect(lambda: self.emit_action("import_data"))
         
         transfer_layout.addWidget(self.export_btn)
-        transfer_layout.addWidget(self.import_btn)
         transfer_group.setLayout(transfer_layout)
         
         # Add all sections to main layout
