@@ -1,3 +1,4 @@
+# src/gui/widgets/buttons.py
 from PyQt5.QtWidgets import QPushButton
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QFont
