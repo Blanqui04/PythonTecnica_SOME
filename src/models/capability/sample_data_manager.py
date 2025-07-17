@@ -60,9 +60,9 @@ class SampleDataManager:
                 element_data = ElementData(
                     name=str(item["element_id"]),
                     nominal=float(item["nominal"]),
-                    tol_minus=float(item["tolerance_minus"]),
-                    tol_plus=float(item["tolerance_plus"]),
-                    values=[float(v) for v in item["measurements"]],
+                    tol_minus=float(item["tol_minus"]),
+                    tol_plus=float(item["tol_plus"]),
+                    values=[float(v) for v in item["values"]],
                 )
 
                 # Detect element type

@@ -255,12 +255,24 @@ class CapabilityStudyManager:
                         )
                     )
                 else:
-                    # Use default target size for batch processing
+                    # Get correct target size from config
+                    target_size = None
+                    if (
+                        self.config.extrapolation_config
+                        and self.config.extrapolation_config.available_sizes
+                    ):
+                        target_size = self.config.extrapolation_config.available_sizes[
+                            0
+                        ]
+
+                    if not target_size:
+                        target_size = 50  # fallback default
+
                     self.logger.info(
-                        "Running batch extrapolation with default target size 50"
+                        f"Running batch extrapolation with target size {target_size}"
                     )
                     extrap_results = self.extrapolation_manager.batch_extrapolate(
-                        extrapolation_data, target_size=50
+                        extrapolation_data, target_size=target_size
                     )
 
                 # Convert to dictionaries for storage

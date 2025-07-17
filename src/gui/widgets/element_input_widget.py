@@ -1,14 +1,28 @@
 # src/gui/widgets/element_input_widget.py
 from PyQt5.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox,
-    QPushButton, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView
+    QWidget,
+    QVBoxLayout,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QComboBox,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QMessageBox,
+    QHeaderView,
+    QCheckBox,
+    QSpinBox,
+    QDoubleSpinBox,
+    QGroupBox,
 )
 from PyQt5.QtCore import pyqtSignal
 
+
 class ElementInputWidget(QWidget):
     # Signal that will be emitted when the study should be started
-    study_requested = pyqtSignal(list)  # Emits the list of elements
-    
+    study_requested = pyqtSignal(list, dict)  # Emits (elements, extrapolation_config)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.elements = []  # Llista per guardar els elements
@@ -71,7 +85,7 @@ class ElementInputWidget(QWidget):
         values_layout = QHBoxLayout()
         for i in range(10):
             inp = QLineEdit()
-            inp.setPlaceholderText(f"Val {i+1}")
+            inp.setPlaceholderText(f"Val {i + 1}")
             inp.setFixedWidth(50)
             self.values_inputs.append(inp)
             values_layout.addWidget(inp)
@@ -85,12 +99,61 @@ class ElementInputWidget(QWidget):
 
         # --- Taula per mostrar elements afegits ---
         self.table = QTableWidget(0, 9)
-        self.table.setHorizontalHeaderLabels([
-            "Element ID", "Classe", "Cavitat", "Batch",
-            "Nominal", "Tol. -", "Tol. +", "Valors mesurats", "Accions"
-        ])
+        self.table.setHorizontalHeaderLabels(
+            [
+                "Element ID",
+                "Classe",
+                "Cavitat",
+                "Batch",
+                "Nominal",
+                "Tol. -",
+                "Tol. +",
+                "Valors mesurats",
+                "Accions",
+            ]
+        )
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         main_layout.addWidget(self.table)
+
+        # --- Extrapolation Configuration ---
+        extrap_group = QGroupBox("Configuració d'Extrapolació")
+        extrap_layout = QVBoxLayout()
+
+        # Enable extrapolation checkbox
+        self.enable_extrapolation = QCheckBox("Activar extrapolació")
+        self.enable_extrapolation.setChecked(True)
+        self.enable_extrapolation.toggled.connect(self.toggle_extrapolation_controls)
+        extrap_layout.addWidget(self.enable_extrapolation)
+
+        # Extrapolation parameters
+        extrap_params_layout = QHBoxLayout()
+
+        # Target sample size
+        extrap_params_layout.addWidget(QLabel("Mida objectiu:"))
+        self.target_size_combo = QComboBox()
+        self.target_size_combo.addItems(["50", "60", "70", "80", "90", "100", "125"])
+        self.target_size_combo.setCurrentText("100")
+        extrap_params_layout.addWidget(self.target_size_combo)
+
+        # Target p-value
+        extrap_params_layout.addWidget(QLabel("P-value objectiu:"))
+        self.target_p_value = QDoubleSpinBox()
+        self.target_p_value.setRange(0.01, 0.99)
+        self.target_p_value.setSingleStep(0.01)
+        self.target_p_value.setValue(0.05)
+        self.target_p_value.setDecimals(2)
+        extrap_params_layout.addWidget(self.target_p_value)
+
+        # Max attempts
+        extrap_params_layout.addWidget(QLabel("Màxim intents:"))
+        self.max_attempts = QSpinBox()
+        self.max_attempts.setRange(10, 1000)
+        self.max_attempts.setValue(100)
+        extrap_params_layout.addWidget(self.max_attempts)
+
+        extrap_layout.addLayout(extrap_params_layout)
+        extrap_group.setLayout(extrap_layout)
+        main_layout.addWidget(extrap_group)
 
         # --- Botó per iniciar estudi ---
         self.run_button = QPushButton("Iniciar Estudi de Capacitat")
@@ -98,6 +161,12 @@ class ElementInputWidget(QWidget):
         main_layout.addWidget(self.run_button)
 
         self.setLayout(main_layout)
+
+    def toggle_extrapolation_controls(self, enabled):
+        """Enable/disable extrapolation controls based on checkbox"""
+        self.target_size_combo.setEnabled(enabled)
+        self.target_p_value.setEnabled(enabled)
+        self.max_attempts.setEnabled(enabled)
 
     def add_element(self):
         # Validació i agregació
@@ -152,7 +221,9 @@ class ElementInputWidget(QWidget):
         self.table.setItem(row, 4, QTableWidgetItem(str(nominal_f)))
         self.table.setItem(row, 5, QTableWidgetItem(str(tol_minus_f)))
         self.table.setItem(row, 6, QTableWidgetItem(str(tol_plus_f)))
-        self.table.setItem(row, 7, QTableWidgetItem(", ".join(f"{v:.3f}" for v in values_f)))
+        self.table.setItem(
+            row, 7, QTableWidgetItem(", ".join(f"{v:.3f}" for v in values_f))
+        )
 
         # Botó eliminar fila
         btn_delete = QPushButton("Eliminar")
@@ -187,11 +258,28 @@ class ElementInputWidget(QWidget):
     def _show_error(self, msg):
         QMessageBox.critical(self, "Error d'entrada", msg)
 
+    def get_extrapolation_config(self):
+        """Get the extrapolation configuration from GUI"""
+        if not self.enable_extrapolation.isChecked():
+            return {"include_extrapolation": False, "extrapolation_config": None}
+
+        return {
+            "include_extrapolation": True,
+            "extrapolation_config": {
+                "target_size": int(self.target_size_combo.currentText()),
+                "target_p_value": self.target_p_value.value(),
+                "max_attempts": self.max_attempts.value(),
+            },
+        }
+
     def run_study(self):
         """Emit signal to request study execution"""
         if not self.elements:
             self._show_error("No hi ha elements afegits per a l'estudi.")
             return
 
-        # Emit the signal with the elements list
-        self.study_requested.emit(self.elements)
+        # Get extrapolation configuration
+        extrap_config = self.get_extrapolation_config()
+
+        # Emit the signal with the elements list and extrapolation config
+        self.study_requested.emit(self.elements, extrap_config)
