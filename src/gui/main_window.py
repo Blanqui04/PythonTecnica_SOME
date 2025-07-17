@@ -167,16 +167,12 @@ class MainWindow(QMainWindow):
         self.status_bar.update_status("Dimensional analysis completed")
 
     def _run_capacity_analysis(self):
-        """Create and show the element input widget with proper signal connection"""
         self.element_input_widget = ElementInputWidget()
-        # Connect the widget's study_requested signal to our handler
         self.element_input_widget.study_requested.connect(self.run_capacity_study_with_elements)
-        
         self.center_panel.show_custom_widget(self.element_input_widget)
         self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
 
-    def run_capacity_study_with_elements(self, elements):
-        """Run capacity study with the provided elements using a worker thread"""
+    def run_capacity_study_with_elements(self, elements, extrap_config):
         try:
             client = self.header.ref_client_edit.text().strip()
             ref_project = self.header.ref_project_edit.text().strip()
@@ -190,23 +186,19 @@ class MainWindow(QMainWindow):
                 )
                 return
 
-            # Show status
             self.status_bar.update_status("Executant estudi de capacitat...")
             self.center_panel.update_content("⏳ Executant estudi de capacitat...\n\nAixò pot trigar uns moments.")
 
-            # Create worker thread
             self.worker_thread = QThread()
-            self.worker = CapabilityStudyWorker(client, ref_project, elements)
+            self.worker = CapabilityStudyWorker(client, ref_project, elements, extrap_config)
             self.worker.moveToThread(self.worker_thread)
 
-            # Connect signals
             self.worker_thread.started.connect(self.worker.run)
             self.worker.finished.connect(self.on_study_finished)
             self.worker.finished.connect(self.worker_thread.quit)
             self.worker.finished.connect(self.worker.deleteLater)
             self.worker_thread.finished.connect(self.worker_thread.deleteLater)
 
-            # Start the worker
             self.worker_thread.start()
 
         except Exception as e:
@@ -215,10 +207,10 @@ class MainWindow(QMainWindow):
             logger.error(f"Error a l'estudi de capacitat: {e}")
 
     def on_study_finished(self, result):
-        """Handle completion of capacity study"""
         self.center_panel.reset_to_text_view()
         self.center_panel.update_content(f"✅ Estudi de capacitat finalitzat!\n\n{result}")
         self.status_bar.update_status("Estudi de capacitat completat")
+
 
     def _process_data(self):
         """Process data files"""
