@@ -1,15 +1,17 @@
+# src/gui/widgets/element_input_widget.py
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox,
     QPushButton, QTableWidget, QTableWidgetItem, QMessageBox, QHeaderView
 )
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import pyqtSignal
 
 class ElementInputWidget(QWidget):
+    # Signal that will be emitted when the study should be started
+    study_requested = pyqtSignal(list)  # Emits the list of elements
+    
     def __init__(self, parent=None):
         super().__init__(parent)
-
         self.elements = []  # Llista per guardar els elements
-
         self.init_ui()
 
     def init_ui(self):
@@ -186,18 +188,10 @@ class ElementInputWidget(QWidget):
         QMessageBox.critical(self, "Error d'entrada", msg)
 
     def run_study(self):
+        """Emit signal to request study execution"""
         if not self.elements:
             self._show_error("No hi ha elements afegits per a l'estudi.")
             return
 
-        # Aquí cridarem la funcionalitat d'estudi de capacitat (pot ser un senyal o callback)
-        # Per ara simplement mostrarem la info al widget pare:
-        summary = f"S'inicia estudi de capacitat amb {len(self.elements)} elements.\n"
-        for e in self.elements:
-            summary += f"- {e['element_id']} ({e['class']}), Cavitat {e['cavity']}, Batch {e['batch']}, Nominal {e['nominal']}, Tol- {e['tol_minus']}, Tol+ {e['tol_plus']}, Valors: {e['values']}\n"
-
-        # Cridem un mètode del pare (MainWindow) per executar estudi
-        if hasattr(self.parent(), "run_capacity_study_with_elements"):
-            self.parent().run_capacity_study_with_elements(self.elements)
-        else:
-            QMessageBox.information(self, "Estudi", summary)
+        # Emit the signal with the elements list
+        self.study_requested.emit(self.elements)

@@ -1,3 +1,4 @@
+# src/gui/panels/center_panel.py
 from PyQt5.QtWidgets import (
     QGroupBox, QVBoxLayout, QTextEdit, QScrollArea, QWidget, QStackedLayout
 )
