@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from .capability_analyzer import ExtrapolationResults
 from ...exceptions.sample_errors import SampleErrors
 
+from .logging_config import logger
 
 @dataclass
 class ExtrapolationConfig:
@@ -38,6 +39,7 @@ class ExtrapolationManager:
             config: Configuration for extrapolation process
         """
         self.config = config or ExtrapolationConfig()
+        logger.debug(f"ExtrapolationManager initialized with config: {self.config}")
 
     def _calculate_p_value_approximation(self, ad_stat: float) -> float:
         """
@@ -117,6 +119,7 @@ class ExtrapolationManager:
                     print("Please enter a valid number.")
 
         except KeyboardInterrupt:
+            logger.warning("Extrapolation input interrupted by user.")
             return False, None
 
     def extrapolate_sample(
@@ -148,7 +151,10 @@ class ExtrapolationManager:
         # Check if we should avoid negative values
         avoid_negatives = nominal == 0 and tol_minus == 0
 
+        logger.debug(f"Starting extrapolation for sample with n={n_orig}, mu={mu:.4f}, std={std:.4f}")
+
         if std == 0:
+            logger.error("Standard deviation is zero, cannot extrapolate.")
             raise SampleErrors("Standard deviation is zero, cannot extrapolate")
 
         # Get extrapolation choice
@@ -158,6 +164,7 @@ class ExtrapolationManager:
             extrapolate = target_size is not None
 
         if not extrapolate or target_size is None:
+            logger.info("No extrapolation selected or target size not provided.")
             return ExtrapolationResults(
                 extrapolated_values=[],
                 ad_statistic=0.0,
@@ -166,9 +173,7 @@ class ExtrapolationManager:
             )
 
         if target_size <= n_orig:
-            print(
-                "Target size is not larger than original sample. No extrapolation performed."
-            )
+            logger.warning("Target size is not larger than original sample. No extrapolation performed.")
             return ExtrapolationResults(
                 extrapolated_values=original_sample.tolist(),
                 ad_statistic=0.0,
@@ -176,6 +181,7 @@ class ExtrapolationManager:
                 was_extrapolated=False,
             )
 
+        logger.info(f"Attempting extrapolation to {target_size} values...")
         # Perform extrapolation attempts
         attempt = 0
         best_sample = None
@@ -201,7 +207,7 @@ class ExtrapolationManager:
             ad_stat = self._calculate_anderson_darling_manual(extended_sample, mu, std)
             p_value = self._calculate_p_value_approximation(ad_stat)
 
-            print(f"Attempt {attempt + 1}: A² = {ad_stat:.4f}, p ≈ {p_value:.4f}")
+            logger.debug(f"Attempt {attempt + 1}: A² = {ad_stat:.4f}, p ≈ {p_value:.4f}")
 
             # Keep track of best result
             if p_value > best_p_value:
@@ -224,10 +230,8 @@ class ExtrapolationManager:
             attempt += 1
 
         # If we couldn't achieve target p-value, return best attempt
-        print(
-            f"Warning: Could not achieve p >= {self.config.target_p_value} after {self.config.max_attempts} attempts."
-        )
-        print(f"Best result: A² = {best_ad_stat:.4f}, p ≈ {best_p_value:.4f}")
+        logger.warning(f"Failed to reach target p >= {self.config.target_p_value} after {self.config.max_attempts} attempts.")
+        logger.info(f"Best result: A² = {best_ad_stat:.4f}, p ≈ {best_p_value:.4f}")
 
         return ExtrapolationResults(
             extrapolated_values=best_sample.tolist()
@@ -254,6 +258,8 @@ class ExtrapolationManager:
         results = []
 
         for sample_data in samples_data:
+            element = sample_data.get("element_name", "Unknown")
+            logger.info(f"Processing element: {element}")
             try:
                 print(f"\nProcessing element: {sample_data['element_name']}")
 
@@ -267,7 +273,7 @@ class ExtrapolationManager:
                 results.append(result)
 
             except Exception as e:
-                print(f"Error extrapolating {sample_data['element_name']}: {e}")
+                logger.error(f"Error extrapolating {element}: {e}")
                 results.append(
                     ExtrapolationResults(
                         extrapolated_values=[],
@@ -295,6 +301,8 @@ class ExtrapolationManager:
         results = []
 
         for sample_data in samples_data:
+            element = sample_data.get("element_name", "Unknown")
+            logger.info(f"Processing element: {element}")
             try:
                 print(f"Processing element: {sample_data['element_name']}")
 
@@ -309,7 +317,7 @@ class ExtrapolationManager:
                 results.append(result)
 
             except Exception as e:
-                print(f"Error extrapolating {sample_data['element_name']}: {e}")
+                logger.error(f"Error extrapolating {element}: {e}")
                 results.append(
                     ExtrapolationResults(
                         extrapolated_values=[],

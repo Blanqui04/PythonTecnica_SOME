@@ -8,34 +8,19 @@ import json
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-import logging
 from typing import Dict, List, Tuple, Optional, Union  # noqa: F401
 from dataclasses import dataclass
 from enum import Enum
 
 from ...exceptions.sample_errors import SampleErrors
 
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file = os.path.join(LOG_DIR, "app.log")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),  # Save logs to file
-        logging.StreamHandler(),  # Also print logs to console
-    ],
-)
-
-logger = logging.getLogger(__name__)
+from .logging_config import logger
 
 
 class ElementType(Enum):
     """Element type classification"""
 
-    DIMENSIONAL = "dimensional"
+    DIMENSION = "dimensional"
     GDT = "gdt"
     TRACTION = "traction"
 
@@ -49,7 +34,7 @@ class ElementData:
     tol_minus: float
     tol_plus: float
     values: List[float]
-    element_type: ElementType = ElementType.DIMENSIONAL
+    element_type: ElementType = ElementType.DIMENSION
 
 
 @dataclass
@@ -144,7 +129,7 @@ class CapabilityAnalyzer:
         elif any(kw in name for kw in traction_keywords):
             element_type = ElementType.TRACTION
         else:
-            element_type = ElementType.DIMENSIONAL
+            element_type = ElementType.DIMENSION
 
         logger.debug(f"Detected element type: {element_type.value}")
         return element_type

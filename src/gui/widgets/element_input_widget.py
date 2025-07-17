@@ -42,7 +42,7 @@ class ElementInputWidget(QWidget):
 
         # Classe (cc/sc)
         self.class_combo = QComboBox()
-        self.class_combo.addItems(["cc", "sc"])
+        self.class_combo.addItems(["CC", "SC", "IC"])
         form_layout.addWidget(QLabel("Classe:"))
         form_layout.addWidget(self.class_combo)
 

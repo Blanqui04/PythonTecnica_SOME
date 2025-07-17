@@ -3,7 +3,6 @@
 Sample Data Manager - Handles sample data loading, validation, and management
 """
 
-import logging
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Union  # noqa: F401
@@ -13,21 +12,7 @@ import os
 from src.models.capability.capability_analyzer import ElementData, ElementType
 from ...exceptions.sample_errors import SampleErrors
 
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file = os.path.join(LOG_DIR, "app.log")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),    # Save logs to file
-        logging.StreamHandler()            # Also print logs to console
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from .logging_config import logger
 
 
 class SampleDataManager:
@@ -55,8 +40,8 @@ class SampleDataManager:
 
         for item in data:
             try:
-                print(f"[DEBUG] Processing item: {item}")  # ADD THIS LINE
-                print(f"[DEBUG] Item keys: {list(item.keys())}")  # ADD THIS LINE
+                logger.debug(f"Processing item: {item}")  # ADD THIS LINE
+                logger.debug(f"Item keys: {list(item.keys())}")  # ADD THIS LINE
                 element_data = ElementData(
                     name=str(item["element_id"]),
                     nominal=float(item["nominal"]),
@@ -351,7 +336,7 @@ class SampleDataManager:
         summary = {
             "total_elements": len(self.sample_data),
             "elements_by_type": {
-                "dimensional": len(self.get_elements_by_type(ElementType.DIMENSIONAL)),
+                "dimensional": len(self.get_elements_by_type(ElementType.DIMENSION)),
                 "gdt": len(self.get_elements_by_type(ElementType.GDT)),
                 "traction": len(self.get_elements_by_type(ElementType.TRACTION)),
             },
@@ -437,7 +422,7 @@ class SampleDataManager:
                     12.48,
                     12.48,
                 ],
-                element_type=ElementType.DIMENSIONAL,
+                element_type=ElementType.DIMENSION,
             ),
             ElementData(
                 name="Dimensio_Anomaly",

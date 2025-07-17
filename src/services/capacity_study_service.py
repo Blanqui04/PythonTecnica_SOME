@@ -1,4 +1,5 @@
 # src/services/capacity_study_service.py
+
 from src.models.capability.capability_study_manager import (
     CapabilityStudyManager,
     StudyConfig,
@@ -51,6 +52,8 @@ def perform_capability_study(
                 extrap_params.get("target_size", 100)
             ],  # Use selected size
         )
+        print(f"YEEEEEEEE [DEBUG] Extrapolation target size from GUI: {extrap_params.get('target_size')}")
+
 
     config = StudyConfig(
         min_sample_size=min_sample_size,
