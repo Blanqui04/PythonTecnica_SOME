@@ -28,6 +28,7 @@ from src.gui.workers.capability_study_worker import CapabilityStudyWorker
 
 # from src.services.capacity_study_service import perform_capability_study
 from src.gui.widgets.element_input_widget import ElementInputWidget
+from .windows.spc_chart_window import SPCChartWindow
 
 
 class MainWindow(QMainWindow):
@@ -214,12 +215,39 @@ class MainWindow(QMainWindow):
             self.center_panel.update_content(f"❌ Error a l'estudi de capacitat: {e}")
             logger.error(f"Error a l'estudi de capacitat: {e}")
 
+    # Replace your existing on_study_finished method with this:
     def on_study_finished(self, result):
+        """Handle capability study completion"""
+        # Update center panel with completion message
         self.center_panel.reset_to_text_view()
         self.center_panel.update_content(
             f"✅ Estudi de capacitat finalitzat!\n\n{result}"
         )
         self.status_bar.update_status("Estudi de capacitat completat")
+        
+        try:
+            # Get client and project info from header
+            client = self.header.ref_client_edit.text().strip()
+            ref_project = self.header.ref_project_edit.text().strip()
+            
+            if not client or not ref_project:
+                logger.warning("Client or project information missing, cannot display charts")
+                return
+                
+            # Create and show chart window
+            logger.info(f"Opening SPC charts for {client}_{ref_project}")
+            self.chart_window = SPCChartWindow(client, ref_project, parent=self)
+            self.chart_window.show()
+            
+        except Exception as e:
+            logger.error(f"Error opening SPC charts: {e}")
+            # Show error message to user
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Error", 
+                f"No s'han pogut mostrar els gràfics SPC:\n\n{str(e)}"
+            )
 
     def _process_data(self):
         """Process data files"""

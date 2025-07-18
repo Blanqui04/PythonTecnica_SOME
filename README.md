@@ -50,14 +50,18 @@ PythonTecnica_SOME/
 │   │    │   └── status_bar.py            # Test success!
 │   │    ├── workers/                      
 │   │    │   └── capability_study_worker.py     # Test success!
+│   │    ├── window/                      
+│   │    │   ├── __init__.py
+│   │    │   └── spc_chart_window.py     # Test success!
 │   │    └── utils/
-│   │        ├── __init__.py
+│   │        ├── chart_utils.py
 │   │        ├── element_input_styles.py    # Styling utilities
 │   │        └── styles.py                  # Styling utilities
 │   │
 │   ├── models/
 │   │   │── plotting/
-│   │   │   │── __init__.py
+│   │   │   │── __init__.py  
+│   │   │   │── logging_config.py            # Test success!
 │   │   │   │── spc_charts_manager.py        # Test success!
 │   │   │   │── base_chart.py                # Test success!
 │   │   │   │── spc_data_loader.py           # Test success!
@@ -80,7 +84,8 @@ PythonTecnica_SOME/
 │   │   └──  __init__.py
 │   │
 │   ├── services/
-│   │    │── __init__.py
+│   │    │── __init__.py 
+│   │    │── spc_chart_service.py               # Test success! <-
 │   │    │── capacity_study_service.py          # Test success! <-
 │   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
 │   │    └── database_update.py                 # Test success! <- to clean...
@@ -157,7 +162,8 @@ PythonTecnica_SOME/
 │   └── pl.json                     # do not exist yet (empty)
 │
 ├── logs/
-│
+│ 
+├── test_service.py                 # Test success! for now...
 ├── test_orchestrator.py            # Test success! for now...
 ├── test_spc_charts.py              # Test success! for now...
 ├── test_cap_manager.py             # Test success! seems okay

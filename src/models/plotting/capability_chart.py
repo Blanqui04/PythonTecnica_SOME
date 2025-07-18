@@ -4,7 +4,7 @@ from matplotlib.table import Table
 import json
 import tempfile
 from pathlib import Path
-from base_chart import SPCChartBase
+from .base_chart import SPCChartBase
 
 class CapabilityChart(SPCChartBase):
     """
