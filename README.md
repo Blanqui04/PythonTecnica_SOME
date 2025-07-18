@@ -12,9 +12,7 @@ PythonTecnica_SOME is a modular Python application for processing technical and 
 PythonTecnica_SOME/
 │
 ├── src/                              # Main source code (all modules)
-│   ├── blueprints/
-│   │   │── blueprint_client.py       # Empty rn <- to handle different QA from clients
-│   │   └── blueprint_manager.py      # Empty rn <- manage the data from the drawing.
+│   ├── __init__.py
 │   │
 │   ├── data_processing/
 │   │   │── utils/
@@ -36,22 +34,26 @@ PythonTecnica_SOME/
 │   │
 │   │── gui/
 │   │    ├── __init__.py
-│   │    ├── main_window.py           # Main application window
-│   │    ├── logging_config.py        # Logging configuration for GUI
-│   │    ├── widgets/                 # Custom UI widgets
+│   │    ├── main_window.py               # Main application window
+│   │    ├── logging_config.py            # Logging configuration for GUI
+│   │    ├── widgets/                     # Custom UI widgets
 │   │    │   ├── __init__.py
-│   │    │   ├── buttons.py           # Test success!
-│   │    │   ├── inputs.py            # Test success!
-│   │    ├── panels/                  # Main UI sections
+│   │    │   ├── element_input_widget.py  # Test success!
+│   │    │   ├── buttons.py               # Test success!
+│   │    │   ├── inputs.py                # Test success!
+│   │    ├── panels/
 │   │    │   ├── __init__.py
-│   │    │   ├── header.py            # Test success!
-│   │    │   ├── left_panel.py        # Test success!
-│   │    │   ├── center_panel.py      # Test success!
-│   │    │   ├── right_panel.py       # Test success!
-│   │    │   └── status_bar.py        # Test success!
+│   │    │   ├── header.py                # Test success!
+│   │    │   ├── left_panel.py            # Test success!
+│   │    │   ├── center_panel.py          # Test success!
+│   │    │   ├── right_panel.py           # Test success!
+│   │    │   └── status_bar.py            # Test success!
+│   │    ├── workers/                      
+│   │    │   └── capability_study_worker.py     # Test success!
 │   │    └── utils/
 │   │        ├── __init__.py
-│   │        └── styles.py            # Styling utilities
+│   │        ├── element_input_styles.py    # Styling utilities
+│   │        └── styles.py                  # Styling utilities
 │   │
 │   ├── models/
 │   │   │── plotting/
@@ -79,6 +81,7 @@ PythonTecnica_SOME/
 │   │
 │   ├── services/
 │   │    │── __init__.py
+│   │    │── capacity_study_service.py          # Test success! <-
 │   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
 │   │    └── database_update.py                 # Test success! <- to clean...
 │   │
