@@ -6,7 +6,7 @@ from scipy import stats
 import seaborn as sns
 from pathlib import Path
 
-from base_chart import SPCChartBase
+from .base_chart import SPCChartBase
 
 
 class NormalityAnalysisChart(SPCChartBase):

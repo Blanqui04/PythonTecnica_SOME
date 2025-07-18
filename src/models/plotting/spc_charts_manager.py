@@ -6,14 +6,14 @@ from typing import Dict, List, Optional, Any
 import tempfile
 import os
 
-from base_chart import get_spc_logger
+from .base_chart import get_spc_logger
 
-from spc_data_loader import SPCDataLoader
-from i_chart import IChart
-from mr_chart import MRChart
-from capability_chart import CapabilityChart
-from extrapolation_chart import ExtrapolatedSPCChart
-from normality_plot import NormalityAnalysisChart
+from .spc_data_loader import SPCDataLoader
+from .i_chart import IChart
+from .mr_chart import MRChart
+from .capability_chart import CapabilityChart
+from .extrapolation_chart import ExtrapolatedSPCChart
+from .normality_plot import NormalityAnalysisChart
 
 
 class SPCChartManager:
@@ -25,10 +25,10 @@ class SPCChartManager:
     CHART_TYPES = {
         "normality": NormalityAnalysisChart,
         # Add more chart types here as they are implemented
-        'individuals': IChart,
-        'moving_range': MRChart,
-        'capability': CapabilityChart,
-        'extrapolation': ExtrapolatedSPCChart
+        "individuals": IChart,
+        "moving_range": MRChart,
+        "capability": CapabilityChart,
+        "extrapolation": ExtrapolatedSPCChart,
     }
 
     def __init__(
@@ -71,22 +71,32 @@ class SPCChartManager:
         Returns:
             bool: True if data loaded successfully, False otherwise
         """
-        self.logger.info(f"Loading data for study '{self.study_id}'")
+        self.logger.info(f"Loading data for study: '{self.study_id}'")
+        report_path = self.base_path / self.study_id / f"{self.study_id}_complete_report.json"
+        print(report_path)
+        if not report_path.exists():
+            legacy_path = self.base_path / f"{self.study_id}_complete_report.json"
+            if legacy_path.exists():
+                self.logger.warning(f"Using legacy report path: {legacy_path}")
+                report_path = legacy_path
+            else:
+                self.logger.error(f"SPC report not found in either path:\n  - {report_path}\n  - {legacy_path}")
+                return False  # no exception, just return False
 
+        # Try loading the data with the chosen report_path
         try:
-            self.elements_data = self.data_loader.load_complete_report()
+            self.elements_data = SPCDataLoader(self.study_id, self.base_path).load_complete_report(report_path)
+            # You can check if elements_data is empty or None here and return False if needed
             if not self.elements_data:
-                self.logger.error("No elements data loaded")
+                self.logger.error(f"No data loaded from report: {report_path}")
                 return False
-
-            self.logger.info(
-                f"Successfully loaded data for {len(self.elements_data)} elements: {list(self.elements_data.keys())}"
-            )
-            return True
-
         except Exception as e:
-            self.logger.error(f"Failed to load data: {e}", exc_info=True)
+            self.logger.error(f"Exception loading report: {e}", exc_info=True)
             return False
+
+        return True
+
+
 
     def _convert_element_data_for_chart(
         self, element_name: str, element_data: Dict[str, Any]

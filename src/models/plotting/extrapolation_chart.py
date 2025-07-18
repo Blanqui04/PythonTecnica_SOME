@@ -8,7 +8,7 @@ from pathlib import Path
 import logging
 from typing import Dict, Any
 
-from base_chart import SPCChartBase
+from .base_chart import SPCChartBase
 
 
 class ExtrapolatedSPCChart(SPCChartBase):
