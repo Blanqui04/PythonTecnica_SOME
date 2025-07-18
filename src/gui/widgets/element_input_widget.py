@@ -19,6 +19,10 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import pyqtSignal, Qt
 from PyQt5.QtGui import QFont
+from src.gui.utils.element_input_styles import (
+    get_element_input_styles,
+    get_message_box_style,
+)
 from .buttons import ModernButton, ActionButton, CompactButton
 from .inputs import ModernLineEdit, ModernComboBox
 
@@ -30,171 +34,8 @@ class ElementInputWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.elements = []  # Llista per guardar els elements
-        self.setStyleSheet(self._get_widget_styles())
+        self.setStyleSheet(get_element_input_styles())
         self.init_ui()
-
-    def _get_widget_styles(self):
-        """Enhanced styles for the widget"""
-        return """
-            QWidget {
-                background-color: #f5f6fa;
-                color: #2c3e50;
-                font-family: "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
-            }
-            
-            QGroupBox {
-                background-color: #ffffff;
-                border: 2px solid #ecf0f1;
-                border-radius: 12px;
-                padding: 30px 20px 20px 20px;
-                margin: 15px 0;
-                font-weight: 600;
-                font-size: 12px;
-                color: #34495e;
-            }
-            
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                subcontrol-position: top center;
-                padding: 8px 20px;
-                background-color: #f8f9fa;
-                color: #34495e;
-                font-weight: 600;
-                font-size: 12px;
-                border: 1px solid #dee2e6;
-                border-radius: 6px;
-                margin-top: 10px;
-            }
-            
-            QLabel {
-                color: #34495e;
-                font-weight: 500;
-                font-size: 11px;
-                margin-bottom: 4px;
-            }
-            
-            QFrame.separator {
-                border: none;
-                border-top: 1px solid #ecf0f1;
-                margin: 20px 0;
-            }
-            
-            QFrame.card {
-                background-color: #ffffff;
-                border: 1px solid #ecf0f1;
-                border-radius: 8px;
-                padding: 16px;
-                margin: 8px 0;
-            }
-            
-            QTableWidget {
-                background-color: #ffffff;
-                alternate-background-color: #f8f9fa;
-                gridline-color: #ecf0f1;
-                border: 2px solid #ecf0f1;
-                border-radius: 8px;
-                selection-background-color: #3498db;
-                selection-color: #ffffff;
-                color: #2c3e50;
-                font-size: 10px;
-            }
-            
-            QTableWidget::item {
-                padding: 12px 8px;
-                border-bottom: 1px solid #f8f9fa;
-            }
-            
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: #ffffff;
-            }
-            
-            QHeaderView::section {
-                background-color: #34495e;
-                color: #ffffff;
-                padding: 14px 8px;
-                border: none;
-                border-right: 1px solid #2c3e50;
-                font-weight: 600;
-                font-size: 10px;
-            }
-            
-            QHeaderView::section:hover {
-                background-color: #2c3e50;
-            }
-            
-            QSpinBox, QDoubleSpinBox {
-                background-color: #ffffff;
-                border: 2px solid #ecf0f1;
-                border-radius: 6px;
-                padding: 8px 12px;
-                color: #2c3e50;
-                min-height: 36px;
-                font-size: 10px;
-            }
-            
-            QSpinBox:focus, QDoubleSpinBox:focus {
-                border-color: #3498db;
-                background-color: #f8feff;
-                border-width: 2px;
-            }
-            
-            QSpinBox:hover, QDoubleSpinBox:hover {
-                border-color: #bdc3c7;
-            }
-            
-            QCheckBox {
-                color: #2c3e50;
-                font-weight: 500;
-                font-size: 11px;
-                spacing: 8px;
-            }
-            
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border: 2px solid #bdc3c7;
-                border-radius: 4px;
-                background-color: #ffffff;
-            }
-            
-            QCheckBox::indicator:hover {
-                border-color: #3498db;
-            }
-            
-            QCheckBox::indicator:checked {
-                background-color: #3498db;
-                border-color: #3498db;
-                image: none;
-            }
-            
-            QCheckBox::indicator:checked:hover {
-                background-color: #2980b9;
-                border-color: #2980b9;
-            }
-            
-            QPushButton.remove-btn {
-                background-color: #e74c3c;
-                color: #ffffff;
-                border: none;
-                border-radius: 5px;
-                padding: 5px 3px;
-                font-weight: 500;
-                font-size: 9px;
-                min-width: 50px;
-                max-width: 60px;
-                min-height: 15;
-                max-height: 30px;
-            }
-            
-            QPushButton.remove-btn:hover {
-                background-color: #c0392b;
-            }
-            
-            QPushButton.remove-btn:pressed {
-                background-color: #a93226;
-            }
-        """
 
     def init_ui(self):
         # Create main scroll area
@@ -266,7 +107,7 @@ class ElementInputWidget(QWidget):
         # Class
         basic_info_layout.addWidget(QLabel("Class:"), 0, 2)
         self.class_combo = ModernComboBox()
-        self.class_combo.addItems(["CC", "SC", "IC"])
+        self.class_combo.addItems(["CC", "SC", "IC", "None"])
         basic_info_layout.addWidget(self.class_combo, 0, 3)
 
         # Cavity
@@ -603,7 +444,7 @@ class ElementInputWidget(QWidget):
         if details:
             error_box.setInformativeText(details)
         error_box.setStandardButtons(QMessageBox.Ok)
-        error_box.setStyleSheet(self._get_message_box_style("error"))
+        error_box.setStyleSheet(get_message_box_style("error"))
         error_box.exec_()
 
     def _show_warning(self, title, message, details=""):
@@ -615,7 +456,7 @@ class ElementInputWidget(QWidget):
         if details:
             warning_box.setInformativeText(details)
         warning_box.setStandardButtons(QMessageBox.Ok)
-        warning_box.setStyleSheet(self._get_message_box_style("warning"))
+        warning_box.setStyleSheet(get_message_box_style("warning"))
         warning_box.exec_()
 
     def _show_question(self, title, message, details=""):
@@ -628,7 +469,7 @@ class ElementInputWidget(QWidget):
             question_box.setInformativeText(details)
         question_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         question_box.setDefaultButton(QMessageBox.No)
-        question_box.setStyleSheet(self._get_message_box_style("question"))
+        question_box.setStyleSheet(get_message_box_style("question"))
         return question_box.exec_()
 
     def _show_info(self, title, message, details=""):
@@ -640,102 +481,8 @@ class ElementInputWidget(QWidget):
         if details:
             info_box.setInformativeText(details)
         info_box.setStandardButtons(QMessageBox.Ok)
-        info_box.setStyleSheet(self._get_message_box_style("info"))
+        info_box.setStyleSheet(get_message_box_style("info"))
         info_box.exec_()
-
-    def _get_message_box_style(self, box_type="info"):
-        """Get enhanced message box styling"""
-        base_style = """
-            QMessageBox {
-                background-color: #ffffff;
-                color: #2c3e50;
-                font-family: "Segoe UI", "Helvetica Neue", "Arial", sans-serif;
-                border: 2px solid #ecf0f1;
-                border-radius: 8px;
-                padding: 20px;
-            }
-            
-            QMessageBox QLabel {
-                color: #2c3e50;
-                font-size: 12px;
-                font-weight: 500;
-                margin: 10px;
-            }
-            
-            QMessageBox QPushButton {
-                border: none;
-                border-radius: 6px;
-                padding: 10px 20px;
-                font-weight: 600;
-                font-size: 11px;
-                min-width: 80px;
-                min-height: 32px;
-                margin: 4px;
-            }
-            
-            QMessageBox QPushButton:hover {
-                transform: translateY(-1px);
-            }
-            
-            QMessageBox QPushButton:pressed {
-                transform: translateY(1px);
-            }
-        """
-
-        if box_type == "error":
-            button_style = """
-                QMessageBox QPushButton {
-                    background-color: #e74c3c;
-                    color: #ffffff;
-                }
-                QMessageBox QPushButton:hover {
-                    background-color: #c0392b;
-                }
-                QMessageBox QPushButton:pressed {
-                    background-color: #a93226;
-                }
-            """
-        elif box_type == "warning":
-            button_style = """
-                QMessageBox QPushButton {
-                    background-color: #f39c12;
-                    color: #ffffff;
-                }
-                QMessageBox QPushButton:hover {
-                    background-color: #e67e22;
-                }
-                QMessageBox QPushButton:pressed {
-                    background-color: #d35400;
-                }
-            """
-        elif box_type == "question":
-            button_style = """
-                QMessageBox QPushButton {
-                    background-color: #3498db;
-                    color: #ffffff;
-                }
-                QMessageBox QPushButton:hover {
-                    background-color: #2980b9;
-                }
-                QMessageBox QPushButton:pressed {
-                    background-color: #1f618d;
-                }
-            """
-        else:  # info
-            button_style = """
-                QMessageBox QPushButton {
-                    background-color: #27ae60;
-                    color: #ffffff;
-                }
-                QMessageBox QPushButton:hover {
-                    background-color: #229954;
-                }
-                QMessageBox QPushButton:pressed {
-                    background-color: #1e8449;
-                }
-            """
-
-        return base_style + button_style
 
     def get_extrapolation_config(self):
         """Get the extrapolation configuration from GUI"""

@@ -8,7 +8,8 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
-#from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
+
+# from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
 from PyQt5.QtGui import QFont
 from PyQt5.QtCore import Qt, QTimer, QThread
 from .panels.header import HeaderPanel
@@ -24,7 +25,8 @@ from src.gui.logging_config import logger
 from src.services.data_processing_orchestrator import DataProcessingOrchestrator
 from src.services.database_update import update_database
 from src.gui.workers.capability_study_worker import CapabilityStudyWorker
-#from src.services.capacity_study_service import perform_capability_study
+
+# from src.services.capacity_study_service import perform_capability_study
 from src.gui.widgets.element_input_widget import ElementInputWidget
 
 
@@ -168,7 +170,9 @@ class MainWindow(QMainWindow):
 
     def _run_capacity_analysis(self):
         self.element_input_widget = ElementInputWidget()
-        self.element_input_widget.study_requested.connect(self.run_capacity_study_with_elements)
+        self.element_input_widget.study_requested.connect(
+            self.run_capacity_study_with_elements
+        )
         self.center_panel.show_custom_widget(self.element_input_widget)
         self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
 
@@ -187,10 +191,14 @@ class MainWindow(QMainWindow):
                 return
 
             self.status_bar.update_status("Executant estudi de capacitat...")
-            self.center_panel.update_content("⏳ Executant estudi de capacitat...\n\nAixò pot trigar uns moments.")
+            self.center_panel.update_content(
+                "⏳ Executant estudi de capacitat...\n\nAixò pot trigar uns moments."
+            )
 
             self.worker_thread = QThread()
-            self.worker = CapabilityStudyWorker(client, ref_project, elements, extrap_config)
+            self.worker = CapabilityStudyWorker(
+                client, ref_project, elements, extrap_config
+            )
             self.worker.moveToThread(self.worker_thread)
 
             self.worker_thread.started.connect(self.worker.run)
@@ -208,9 +216,10 @@ class MainWindow(QMainWindow):
 
     def on_study_finished(self, result):
         self.center_panel.reset_to_text_view()
-        self.center_panel.update_content(f"✅ Estudi de capacitat finalitzat!\n\n{result}")
+        self.center_panel.update_content(
+            f"✅ Estudi de capacitat finalitzat!\n\n{result}"
+        )
         self.status_bar.update_status("Estudi de capacitat completat")
-
 
     def _process_data(self):
         """Process data files"""
@@ -241,7 +250,9 @@ class MainWindow(QMainWindow):
         ref_project = self.header.ref_project_edit.text().strip()
 
         if not client or not ref_project:
-            self.status_bar.update_status("Client and Project Reference are required to update database.")
+            self.status_bar.update_status(
+                "Client and Project Reference are required to update database."
+            )
             return
 
         success = update_database(client, ref_project)
@@ -250,7 +261,9 @@ class MainWindow(QMainWindow):
             self.center_panel.update_content("Database update completed successfully!")
             self.status_bar.update_status("Processing completed")
         else:
-            self.center_panel.update_content("Database update failed. Check logs for details.")
+            self.center_panel.update_content(
+                "Database update failed. Check logs for details."
+            )
             self.status_bar.update_status("Processing error")
 
     def show_error_message(self, title, message):
