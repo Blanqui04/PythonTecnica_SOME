@@ -257,7 +257,7 @@ class ElementInputWidget(QWidget):
         # Target sample size
         extrap_params_layout.addWidget(QLabel("Target Sample Size:"), 0, 0)
         self.target_size_combo = ModernComboBox()
-        self.target_size_combo.addItems(["50", "60", "70", "80", "90", "100", "125"])
+        self.target_size_combo.addItems(["10", "20", "30", "40", "50", "60", "70", "80", "90", "100", "125", "150"])
         self.target_size_combo.setCurrentText("100")
         extrap_params_layout.addWidget(self.target_size_combo, 0, 1)
 
