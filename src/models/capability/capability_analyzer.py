@@ -14,7 +14,7 @@ from enum import Enum
 
 from ...exceptions.sample_errors import SampleErrors
 
-from .logging_config import logger
+from .logging_config import logger # Configured logger for calculations
 
 
 class ElementType(Enum):
@@ -27,14 +27,14 @@ class ElementType(Enum):
 
 @dataclass
 class ElementData:
-    """Data structure for element information"""
-
     name: str
     nominal: float
     tol_minus: float
     tol_plus: float
     values: List[float]
     element_type: ElementType = ElementType.DIMENSION
+    batch_number: Optional[str] = None
+    cavity: Optional[str] = None
 
 
 @dataclass
@@ -431,6 +431,8 @@ class CapabilityAnalyzer:
         # Prepare results dictionary
         results = {
             "element_name": element_data.name,
+            "batch_number": element_data.batch_number,
+            "cavity": element_data.cavity,
             "nominal": element_data.nominal,
             "tolerance": [element_data.tol_minus, element_data.tol_plus],
             "original_values": element_data.values,
@@ -511,6 +513,8 @@ class CapabilityAnalyzer:
 
             flattened_result = {
                 "Element": result["element_name"],
+                "Batch": result.get("batch_number", ""),
+                "Cavity": result.get("cavity", ""),
                 "Nominal": result["nominal"],
                 "Tolerance": json.dumps(result["tolerance"]),
                 "Original_Values": json.dumps(result["original_values"]),

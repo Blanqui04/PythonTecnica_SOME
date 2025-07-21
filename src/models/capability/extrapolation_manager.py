@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from .capability_analyzer import ExtrapolationResults
 from ...exceptions.sample_errors import SampleErrors
 
-from .logging_config import logger
+from .logging_config import logger # Configured logger for calculations
 
 @dataclass
 class ExtrapolationConfig:
