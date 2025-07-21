@@ -1,0 +1,28 @@
+# requirements_minimal.txt - Dependències mínimes per evitar conflictes amb antivirus
+# Aquestes són només les dependències essencials per fer funcionar l'aplicació
+
+# Core dependencies (essencials)
+PyQt5>=5.15.0
+psycopg2-binary>=2.9.0
+pandas>=1.5.0
+numpy>=1.21.0
+
+# GUI i bases de dades (essencials)
+matplotlib>=3.5.0
+openpyxl>=3.0.0
+
+# Opcional per actualitzacions
+requests>=2.28.0
+flask>=2.0.0
+
+# Comentades per evitar problemes amb antivirus - instal·lar manualment si cal:
+# scipy>=1.9.0
+# plotly
+# statsmodels  
+# seaborn
+# scikit-learn
+# tensorflow
+# keras
+# PyMuPDF
+# PyPDF2
+# reportlab
