@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Database Management System")
+        self.last_analysis_action = None  # Track the last analysis action performed
         self.setup_window()
         self.init_ui()
         self.setStyleSheet(global_style())
@@ -134,9 +135,11 @@ class MainWindow(QMainWindow):
         """Execute the requested action"""
         try:
             if action_name == "dimensional":
+                self.last_analysis_action = "dimensional"
                 self._run_dimensional_analysis()
 
             elif action_name == "capacity":
+                self.last_analysis_action = "capacity"
                 self._run_capacity_analysis()
 
             elif action_name == "process_data":
@@ -144,6 +147,12 @@ class MainWindow(QMainWindow):
 
             elif action_name == "update_db":
                 self._update_database()
+
+            elif action_name == "view_drawing":
+                self._view_drawing()
+
+            elif action_name == "export_data":
+                self._export_data()
 
             else:
                 logger.warning(f"Unknown action: {action_name}")
@@ -293,6 +302,74 @@ class MainWindow(QMainWindow):
                 "Database update failed. Check logs for details."
             )
             self.status_bar.update_status("Processing error")
+
+    def _view_drawing(self):
+        """Toggle view between text and PDF drawing mode"""
+        try:
+            self.center_panel.toggle_view_mode()
+            self.status_bar.update_status("Toggled drawing view")
+            logger.info("View drawing action triggered - toggled view mode")
+        except Exception as e:
+            logger.error(f"Error in view drawing: {e}")
+            self.center_panel.update_content(f"Error toggling view: {str(e)}")
+            self.status_bar.update_status("Error toggling view")
+
+    def _export_data(self):
+        """Export data based on current project reference and last analysis action"""
+        try:
+            # Get project reference from header
+            ref_project = self.header.ref_project_edit.text().strip()
+            client = self.header.ref_client_edit.text().strip()
+            
+            if not ref_project:
+                self.center_panel.update_content("Please enter Project Reference to export data.")
+                self.status_bar.update_status("Export failed: No project reference")
+                return
+            
+            if not self.last_analysis_action:
+                self.center_panel.update_content("Please run an analysis (Dimensional Study or Capacity Study) before exporting data.")
+                self.status_bar.update_status("Export failed: No analysis performed")
+                return
+            
+            # Import here to avoid circular imports
+            from src.services.data_export_service import export_analysis_data
+            
+            # Export data based on the last analysis action
+            export_result = export_analysis_data(
+                analysis_type=self.last_analysis_action,
+                ref_project=ref_project,
+                client=client
+            )
+            
+            if export_result['success']:
+                self.center_panel.update_content(
+                    f"✅ Data Export Successful!\n\n"
+                    f"Analysis Type: {self.last_analysis_action.title()} Study\n"
+                    f"Project Reference: {ref_project}\n"
+                    f"Client: {client if client else 'N/A'}\n"
+                    f"Export File: {export_result['filename']}\n"
+                    f"File Path: {export_result['filepath']}\n"
+                    f"Records Exported: {export_result.get('records_count', 'N/A')}\n\n"
+                    f"The file has been saved and is ready for use."
+                )
+                self.status_bar.update_status(f"Export completed: {export_result['filename']}")
+                logger.info(f"Data export successful: {export_result['filename']}")
+            else:
+                self.center_panel.update_content(
+                    f"❌ Data Export Failed\n\n"
+                    f"Analysis Type: {self.last_analysis_action.title()} Study\n"
+                    f"Project Reference: {ref_project}\n"
+                    f"Error: {export_result['error']}\n\n"
+                    f"Please check the logs for more details."
+                )
+                self.status_bar.update_status("Export failed")
+                logger.error(f"Data export failed: {export_result['error']}")
+                
+        except Exception as e:
+            error_msg = f"Error during data export: {str(e)}"
+            logger.error(error_msg)
+            self.center_panel.update_content(f"❌ Export Error\n\n{error_msg}")
+            self.status_bar.update_status("Export error")
 
     def show_error_message(self, title, message):
         """Show error message dialog"""
