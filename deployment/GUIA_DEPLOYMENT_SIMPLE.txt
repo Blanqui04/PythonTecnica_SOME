@@ -1,0 +1,298 @@
+================================================================================
+                    GUIA DE DEPLOYMENT - PYTHONTECNICA_SOME
+                           RESUM COMPLET I PRÀCTIC
+================================================================================
+
+CONTINGUT:
+1. Opcions disponibles i quan usar-les
+2. Instruccions pas a pas per cada opció
+3. Troubleshooting i solucions ràpides
+4. Recomanacions segons el teu cas
+
+================================================================================
+                            1. OPCIONS DISPONIBLES
+================================================================================
+
+OPCIÓ A) PAQUET PORTABLE (RECOMANAT)
+────────────────────────────────────
+FITXERS: simple_fix.bat O deploy_portable.bat
+
+QUAN USAR:
+- Tens problemes amb antivirus
+- Vols algo ràpid i fàcil
+- No necessites permisos d'administrador
+- Compatibilitat màxima
+
+COM FER-HO:
+1. Executa: simple_fix.bat
+2. Espera que acabi (30 segons)
+3. Trobaràs una carpeta PAQUET_FINAL
+4. Distribueix aquesta carpeta als PCs
+
+RESULTAT:
+- Carpeta amb tot el necessari
+- EXECUTAR.bat per iniciar l'aplicació
+- INSTALAR_DEPENDENCIES.bat per la primera vegada
+- Zero problemes amb antivirus
+
+
+OPCIÓ B) EXECUTABLE INDEPENDENT
+───────────────────────────────
+FITXER: deploy.bat (opció 2)
+
+QUAN USAR:
+- Vols un fitxer .exe independent
+- No tens problemes d'antivirus
+- Necessites màxim rendiment
+- Vols protegir el codi font
+
+COM FER-HO:
+1. Executa: deploy.bat
+2. Escull opció 2: "Build manual amb PyInstaller"
+3. Espera la compilació
+4. Trobaràs l'executable a dist\PythonTecnica_SOME\
+
+RESULTAT:
+- Executable .exe que funciona sol
+- No necessita Python al PC destí
+- Més ràpid en executar-se
+
+
+OPCIÓ C) DEPLOYMENT EMPRESARIAL COMPLET
+───────────────────────────────────────
+FITXER: deploy.bat (opció 1 o 4)
+
+QUAN USAR:
+- Empresa gran (50+ PCs)
+- Necessites instal·lació professional
+- Vols actualitzacions automàtiques
+- Integració completa amb Windows
+
+COM FER-HO:
+1. Executa: deploy.bat
+2. Escull opció 1: "Build automàtic"
+3. Després opció 4: "Crear paquet de distribució"
+4. Distribueix distribution_package als PCs
+
+RESULTAT:
+- Instal·lació professional a Program Files
+- Accesos directes automàtics
+- Sistema d'actualitzacions
+- Integració completa Windows
+
+
+OPCIÓ D) SERVIDOR D'ACTUALITZACIONS
+──────────────────────────────────
+FITXER: deployment\server_setup.py
+
+QUAN USAR:
+- Molts PCs a gestionar
+- Vols actualitzacions automàtiques centralitzades
+- Control de versions centralitzat
+
+COM FER-HO:
+1. Escull un servidor de la xarxa (ex: 172.26.5.200)
+2. Al servidor executa: python deployment\server_setup.py
+3. Edita deployment\auto_updater.py als clients
+4. Canvia la URL pel teu servidor
+
+RESULTAT:
+- Actualitzacions automàtiques des d'un servidor central
+- Control de versions
+- Distribució automàtica d'updates
+
+
+OPCIÓ E) SOLUCIÓ ANTI-ANTIVIRUS
+──────────────────────────────
+FITXER: fix_antivirus.bat
+
+QUAN USAR:
+- PyInstaller falla per l'antivirus
+- Necessites alternatives múltiples
+- Vols configurar exclusions
+
+COM FER-HO:
+1. Executa: fix_antivirus.bat
+2. Escull entre 5 opcions:
+   - Paquet portable
+   - Configurar antivirus
+   - Instal·lació manual
+   - Versió pre-compilada
+   - Codi font directe
+
+RESULTAT:
+- Múltiples solucions segons el problema
+- Sempre hi ha una opció que funciona
+
+================================================================================
+                        2. INSTRUCCIONS PAS A PAS
+================================================================================
+
+ESCENARI 1: PROBLEMES AMB ANTIVIRUS (RECOMANAT)
+───────────────────────────────────────────────
+1. Obre cmd o PowerShell
+2. Navega al directori: cd C:\Github\PythonTecnica_SOME\PythonTecnica_SOME
+3. Executa: simple_fix.bat
+4. Espera 30 segons
+5. Comprimeix la carpeta PAQUET_FINAL en un ZIP
+6. Distribueix el ZIP a tots els PCs
+7. Al PC destí: descomprimeix, executa INSTALAR_DEPENDENCIES.bat (primera vegada)
+8. Sempre usa EXECUTAR.bat per iniciar l'aplicació
+
+
+ESCENARI 2: EMPRESA PETITA (5-20 PCs)
+─────────────────────────────────────
+1. Executa: deploy_portable.bat
+2. Escull opció 1: "Crear paquet portable"
+3. Puja portable_package a una carpeta compartida \\servidor\software\
+4. Envia instruccions als usuaris:
+   - Copia la carpeta del servidor
+   - Executa Instal.lar_Dependencies.bat
+   - Usa Executar_PythonTecnica_SOME.bat
+
+
+ESCENARI 3: EMPRESA GRAN (50+ PCs)
+──────────────────────────────────
+1. Executa: deploy.bat
+2. Escull opció 1: "Build automàtic"
+3. Després opció 4: "Crear paquet de distribució"
+4. Configura servidor d'actualitzacions:
+   - Al servidor: python deployment\server_setup.py
+   - Edita auto_updater.py amb la IP del servidor
+5. Distribueix via GPO o script de xarxa:
+   - Copia distribution_package a \\servidor\software\
+   - Crea script: robocopy \\servidor\software\* C:\temp\ && C:\temp\install.bat
+
+
+ESCENARI 4: PROBLEMES TÈCNICS
+─────────────────────────────
+1. Executa: fix_antivirus.bat
+2. Si opció 1 (portable) no funciona, prova opció 3 (manual)
+3. Si continua fallant, usa opció 5 (codi font directe)
+4. Com a últim recurs, opció 2 (configurar antivirus)
+
+================================================================================
+                           3. TROUBLESHOOTING
+================================================================================
+
+PROBLEMA: "Python no trobat"
+SOLUCIÓ: 
+- Descarrega Python de python.org
+- IMPORTANT: Marca "Add Python to PATH" durant la instal·lació
+- Reinicia el cmd/PowerShell
+
+PROBLEMA: "OSError Invalid argument" amb PyInstaller
+SOLUCIÓ:
+- USA simple_fix.bat en lloc de deploy.bat
+- O executa fix_antivirus.bat opció 1
+
+PROBLEMA: Dependencies fallen
+SOLUCIÓ:
+- pip install --user --no-cache-dir PyQt5 psycopg2-binary pandas
+- O usa requirements_minimal.txt
+
+PROBLEMA: No es connecta a la BBDD
+SOLUCIÓ:
+- Comprova connectivitat: ping 172.26.5.159
+- Verifica que estàs a la xarxa de l'empresa
+- Comprova credencials a config\database\db_config.json
+
+PROBLEMA: Antivirus bloqueja l'aplicació
+SOLUCIÓ:
+- Afegeix exclusions a l'antivirus per:
+  * La carpeta del projecte
+  * %TEMP%
+  * python.exe
+- O usa la versió portable que no té aquests problemes
+
+================================================================================
+                            4. RECOMANACIONS
+================================================================================
+
+PER A LA MAJORIA DE CASOS:
+→ USA simple_fix.bat
+  Motius: Ràpid, sempre funciona, fàcil de distribuir
+
+SI TENS ANTIVIRUS RESTRICTIU:
+→ USA deploy_portable.bat opció 1
+  Motius: Zero problemes amb antivirus, màxima compatibilitat
+
+SI ETS UNA EMPRESA GRAN:
+→ USA deploy.bat + servidor d'actualitzacions
+  Motius: Professional, actualitzacions automàtiques, gestió centralitzada
+
+SI NECESSITES MÀXIM RENDIMENT:
+→ USA deploy.bat opció 2 (PyInstaller)
+  Motius: Executable optimitzat, més ràpid
+
+EN CAS D'EMERGÈNCIA:
+→ USA fix_antivirus.bat opció 5 (codi font)
+  Motius: Sempre funciona, accés complet al codi
+
+================================================================================
+                          5. FITXERS IMPORTANTS
+================================================================================
+
+SCRIPTS PRINCIPALS:
+- simple_fix.bat           → Solució ràpida (30s)
+- deploy_portable.bat      → Paquet portable avançat
+- deploy.bat               → Deployment tradicional
+- fix_antivirus.bat        → Solucionador problemes
+
+DOCUMENTACIÓ:
+- RESUM_DEPLOYMENT_COMPLET.md    → Aquest document en format Markdown
+- INSTRUCCIONS_DEPLOYMENT.md     → Guia detallada tècnica
+- SOLUCIO_RAPIDA.md              → Solució específica antivirus
+
+CONFIGURACIÓ:
+- requirements_minimal.txt       → Dependencies bàsiques
+- config\database\db_config.json → Configuració BBDD
+
+================================================================================
+                         6. CONFIGURACIÓ AUTOMÀTICA
+================================================================================
+
+TOTS ELS DEPLOYMENTS INCLOUEN:
+- Connexió automàtica a BBDD: 172.26.5.159:5433
+- Base de dades: documentacio_tecnica
+- Usuari: administrador
+- Password: Some2025.!$%
+- Connexió automàtica en iniciar l'aplicació
+
+VARIABLES D'ENTORN:
+- APP_ENV=production
+- DB_AUTO_CONNECT=true
+- COMPANY_NAME=SOME
+- UPDATE_CHECK_INTERVAL=3600 (1 hora)
+
+================================================================================
+                              7. SUPORT
+================================================================================
+
+EN CAS DE PROBLEMES:
+1. Consulta els logs a la carpeta logs\
+2. Revisa SOLUCIO_RAPIDA.md
+3. Prova una opció diferent de deployment
+4. Contacta IT: it@some.com
+
+LOGS DISPONIBLES:
+- logs\app.log          → Log general de l'aplicació
+- logs\updates.log      → Log d'actualitzacions
+- logs\db.log           → Log de connexions BBDD
+
+================================================================================
+                                 FINAL
+================================================================================
+
+Aquest document conté totes les opcions de deployment creades per a 
+PythonTecnica_SOME. Cada opció està pensada per a diferents situacions
+i necessitats.
+
+La recomanació general és usar simple_fix.bat per a la majoria de casos,
+ja que és ràpid, sempre funciona i no té problemes amb antivirus.
+
+Versió: 1.0
+Data: 21 de juliol de 2025
+Equip: Desenvolupament PythonTecnica_SOME
+
+================================================================================
