@@ -15,22 +15,22 @@ PythonTecnica_SOME/
 │   ├── __init__.py
 │   │
 │   ├── data_processing/
-│   │   │── utils/
-│   │   │   │── __init__.py
-│   │   │   └── excel_reader.py       # Test succes!
-│   │   │── __init__.py
-│   │   │── data_processor.py         # Test success!
-│   │   │── data_transformer.py       # Test success!
-│   │   └── pipeline_manager.py       # Test success!
+│   │   ├── utils/
+│   │   │   ├── __init__.py
+│   │   │   └── excel_reader.py       # Excel file reading utilities - Test success!
+│   │   ├── __init__.py
+│   │   ├── data_processor.py         # Core data processing logic - Test success!
+│   │   ├── data_transformer.py       # Data transformation utilities - Test success!
+│   │   └── pipeline_manager.py       # Data processing pipeline manager - Test success!
 │   │
 │   ├── database/
-│   │   │── database_connection.py    # Test success!
-│   │   └── database_uploader.py      # Test success! - to reviw data uploaded, NaN, etc.
+│   │   ├── database_connection.py    # PostgreSQL connection handler - Test success!
+│   │   └── database_uploader.py      # Database upload functionality with PDF handling - Test success!
 │   │
 │   ├── exceptions/
-│   │   │── __init__.py          
-│   │   │── transformation_errors.py  # Test success!
-│   │   └── sample_errors.py          # Test success!
+│   │   ├── __init__.py          
+│   │   ├── transformation_errors.py  # Custom transformation exceptions - Test success!
+│   │   └── sample_errors.py          # Sample processing exceptions - Test success!
 │   │
 │   │── gui/
 │   │    ├── __init__.py
@@ -71,17 +71,17 @@ PythonTecnica_SOME/
 │   │   │   │── i_chart.py                   # Test success!
 │   │   │   └── mr_chart.py                  # Test success!
 │   │   │  
-│   │   │── capability/
-│   │   │   │── __init__.py
-│   │   │   │── sample_data_manager.py       # Test success!
-│   │   │   │── capability_analyzer.py       # Test success!
-│   │   │   │── capability_plotter.py        # Test success!
-│   │   │   └── extrapolation_manager.py     # Test success!
+│   │   ├── capability/               # Statistical capability analysis
+│   │   │   ├── __init__.py
+│   │   │   ├── sample_data_manager.py       # Sample data management - Test success!
+│   │   │   ├── capability_analyzer.py       # Capability analysis engine - Test success!
+│   │   │   ├── capability_study_manager.py  # Capability study orchestrator - Test success!
+│   │   │   └── extrapolation_manager.py     # Data extrapolation manager - Test success!
 │   │   │ 
-│   │   │── dimensional/
-│   │   │   │── __init__.py
-│   │   │   └── dimenisonal_analyzer.py      # To work on it (pending)
-│   │   └──  __init__.py
+│   │   ├── dimensional/              # Dimensional analysis
+│   │   │   ├── __init__.py
+│   │   │   └── dimensional_analyzer.py      # Dimensional analysis (pending development)
+│   │   └── __init__.py
 │   │
 │   ├── services/
 │   │    │── __init__.py 
@@ -110,83 +110,90 @@ PythonTecnica_SOME/
 │
 ├── config/
 │   ├── database/
-│   │   └── db_config.json
-│   │
+│   │   └── db_config.json            # Database connection configuration
 │   ├── column_mappings/
-│   │   │── columns_to_drop.json
-│   │   └── table_mappings.json
-│   │
-│   └── config.ini
+│   │   ├── columns_to_drop.json      # Column filtering configuration
+│   │   └── table_mappings.json       # Database table mappings
+│   └── config.ini                    # Main application configuration
 │
-├── tests/                          # Unit and integration tests
-│   ├── tests_services/
-│   ├── tests_utils/
-│   ├── test_data_uploader.py       # Test success!
-│   ├── test_data_transformer.py    # Test success!
-│   └── test_excel_processing.py    # Test success!
+├── tests/                            # Unit and integration tests
+│   ├── test_data_uploader.py         # Database uploader tests - Test success!
+│   ├── test_data_transformer.py      # Data transformation tests - Test success!
+│   └── test_excel_processing.py      # Excel processing tests - Test success!
 │
-├── docs/                           # Documentation (usage, API, developer notes)
+├── docs/                             # Documentation
 │   ├── capability/
-│   │   │── Estudi de capacitat.docx
+│   │   ├── Estudi de capacitat.docx
 │   │   └── Estudi de capacitat.pdf
-│   │
 │   ├── ddbb/
-│   │   │── Construcció_BBDD.docx
-│   │   │── Construcció_BBDD.pdf
-│   │   │── DDBB Class diagram.pdf
-│   │   │── DDBB Class diagram.svg
+│   │   ├── Construcció_BBDD.docx
+│   │   ├── Construcció_BBDD.pdf
+│   │   ├── DDBB Class diagram.pdf
+│   │   ├── DDBB Class diagram.svg
 │   │   └── Diagrama de classes.drawio
-│   │
 │   └── dimensional/
-│       │── Dimensional.docx
+│       ├── Dimensional.docx
 │       └── Dimensional.pdf
 │
-├── assets/                         # Static assets (icons, images)
-│   ├── README.md
-│   │
-│   ├── icons/
-│   │   └── README.md
-│   │
-│   ├── templates/
-│   │   └── qa
-│   │       └── Example QA - Report ZF.xslx
-│   │
-│   └── images/
-│       │── gui/
-│       │    └── dimensional/
-│       └── README.md
+├── assets/                           # Static assets
+│   ├── images/
+│   │   └── gui/
+│   │       └── logo_some.png         # Application logo
+│   └── templates/
+│       ├── 6555945_003.pdf          # PDF template
+│       └── qa/
+│           └── Example QA - Report ZF.xls    # QA report template
 │
-├── i18n/
-│   ├── ca.json                     # do not exist yet (empty)
-│   ├── en.json                     # do not exist yet (empty)
-│   └── pl.json                     # do not exist yet (empty)
+├── i18n/                             # Internationalization
+│   ├── ca.json                       # Catalan translations
+│   ├── en.json                       # English translations
+│   └── pl.json                       # Polish translations
 │
-├── logs/
-│ 
-├── test_service.py                 # Test success! for now...
-├── test_orchestrator.py            # Test success! for now...
-├── test_spc_charts.py              # Test success! for now...
-├── test_cap_manager.py             # Test success! seems okay
-├── test_data_uploader.py           # Test success! Review data uploaded...
-├── test_kop_processing.py          # Test success! looks fine
-├── test_data_transformer.py        # Test success! looks fine
+├── logs/                             # Application logs
+│   ├── gui.log                       # GUI application logs
+│   └── db_operations.log             # Database operation logs
 │
-├── main_app.py
-├── Configuració Set-Up.txt
-├── requirements.txt          # Python dependencies with comments
-├── README.md                 # Project overview and instructions
-└── ...                       # Other (now non existant files)
+├── test_orchestrator.py             # Integration test for orchestrator - Test success!
+├── test_spc_charts.py               # SPC charts testing - Test success!
+├── test_spc_manager.py              # SPC manager testing - Test success!
+├── test_data_uploader.py            # Data uploader testing - Test success!
+├── test_kop_processing.py           # KOP processing testing - Test success!
+├── test_data_transformer.py         # Data transformer testing - Test success!
+│
+├── main_app.py                       # Application entry point
+├── Configuració_Set_Up.txt          # Setup configuration notes
+├── requirements.txt                  # Python dependencies
+├── README.md                         # Project documentation
+└── .gitignore                        # Git ignore configuration
 ```
 
 ---
 
 ## How It Works
 
-- **src/** contains all logic, processing, and UI code. Each module is responsible for a specific part of the workflow (CSV processing, database connection, UI, etc).
-- **data/** is the only place where input and output files are stored. This keeps the project root clean and makes backups and deployments easier.
-- **tests/** contains all test code. Use `pytest` or `unittest` to run tests.
-- **docs/** contains all documentation, including API docs, usage guides, and developer notes.
-- **assets/** contains all static files (icons, images) for UI and documentation.
+- **src/** contains all logic, processing, and UI code. Each module is responsible for a specific part of the workflow:
+  - **data_processing/**: Excel file processing, data transformation, and pipeline management
+  - **database/**: PostgreSQL connection and data upload with PDF handling capabilities
+  - **gui/**: Complete PyQt5 GUI application with PDF viewer, data export, and interactive panels
+  - **models/**: Statistical analysis including capability studies, dimensional analysis, and SPC plotting
+  - **services/**: Application orchestration, database updates, and data export to Downloads folder
+- **config/** contains all configuration files for database connections, column mappings, and application settings
+- **assets/** contains static files including the application logo, PDF templates, and QA report examples
+- **i18n/** provides internationalization support for Catalan, English, and Polish languages
+- **logs/** stores application logs for debugging and monitoring
+- **tests/** contains comprehensive test suites for all major components
+- **docs/** contains project documentation including capability studies, database design, and dimensional analysis guides
+
+## Key Features
+
+- **🔄 Data Processing Pipeline**: Automated Excel processing with KOP client support
+- **📊 Statistical Analysis**: Capability studies, SPC charts, and normality analysis
+- **🖥️ Modern GUI**: PyQt5 interface with PDF viewer toggle functionality
+- **📁 Smart Export**: Data export directly to user's Downloads folder with cross-platform support
+- **🗄️ Database Integration**: PostgreSQL connection with automatic data upload
+- **📈 SPC Charts**: Individual charts, moving range charts, capability charts, and extrapolation plots
+- **🌍 Internationalization**: Multi-language support (Catalan, English, Polish)
+- **🧪 Comprehensive Testing**: Full test coverage for all major components
 
 ---
 
@@ -211,23 +218,53 @@ PythonTecnica_SOME/
 
 ## Usage
 
-- **Processing CSV Data:**
-  Use the `data_processor.py` handled by the `pipeline_manager.py` script and `data_transformer.py` in `src/data_processing/` to process read the quotation offer, excel files, and filter the necessary data. All outputs will be saved in the `data/processed/datasheets`, `data/processed/exports` and `data/temp/excel_processing` folders.
+### Running the Application
 
-- **Uploading data to the database:**
-   The filtered data read from the quotation offer in `data/processed/exports` will be read by the `database_uploader.py`, which using the connection from `database_connection.py` and the parameters of the database `config/database/` in file `db_config.json` will be able to connect and upload the filtered data to the database.
+Launch the GUI application:
 
-- **UI Integration:**
-  If using a UI, launch the UI module in `src/dbb_ui.py` (requires PyQt5 or PySide2, not included by default).
+```sh
+python main_app.py
+```
 
-- **SPC:**
-  Using the buttons and features from the GUI, the user will be able to perform statistical capability analysis, dimenisonal reports, or search quickly for info of the part.
+### Core Functionalities
 
-- **Testing:**
-  Run all tests with:
-  ```sh
-  python -m unittest discover tests
-  ```
+- **📊 Data Processing:**
+  Use the GUI or run scripts directly to process Excel quotation files. The `pipeline_manager.py` orchestrates the entire workflow from Excel reading to data transformation. Processed data is saved in structured formats for database upload.
+
+- **🗄️ Database Operations:**
+  Upload filtered and transformed data to PostgreSQL database using the GUI's database update functionality. The system handles column mappings, data validation, and PDF storage automatically.
+
+- **📱 GUI Features:**
+  - **PDF Viewer**: Toggle between text and PDF views using the "View Drawing" button
+  - **Data Export**: Export dimensional and capability studies directly to your Downloads folder
+  - **Statistical Analysis**: Generate SPC charts, capability studies, and dimensional reports
+  - **Project Search**: Quick search functionality for project references and data
+
+- **📈 Statistical Analysis:**
+  Generate comprehensive reports including:
+  - Capability studies with Cp, Cpk, Pp, Ppk indices
+  - SPC control charts (Individual, Moving Range)
+  - Normality analysis and extrapolation charts
+  - Dimensional analysis reports
+
+- **🔄 Data Export:**
+  Export analysis results as Excel or CSV files with automatic Downloads folder detection. Supports multiple sheets and cross-platform compatibility.
+
+### Testing
+
+Run all tests:
+
+```sh
+python -m unittest discover tests
+```
+
+Run specific component tests:
+
+```sh
+python test_orchestrator.py
+python test_spc_charts.py
+python test_data_transformer.py
+```
 
 ---
 

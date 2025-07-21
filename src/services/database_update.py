@@ -1,5 +1,6 @@
 import os
 import logging
+from pathlib import Path
 from src.database.database_uploader import DatabaseUploader
 
 logger = logging.getLogger(__name__)
@@ -29,8 +30,10 @@ def update_database(client: str, ref_project: str,
         # Build file names based on convention - adapt if needed
         datasheet_path = os.path.join(export_path, f"{client}_{ref_project}_datasheet.xlsx")
         export_csv_path = os.path.join(export_path, f"{client}_{ref_project}_export.csv")
+        pdf_path = Path("C:\Github\PythonTecnica_SOME\PythonTecnica_SOME\assets\templates\6555945_003.pdf")
+        
 
-        for file_path in [datasheet_path, export_csv_path]:
+        for file_path in [datasheet_path, export_csv_path, pdf_path]:
             try:
                 if os.path.exists(file_path):
                     os.remove(file_path)
