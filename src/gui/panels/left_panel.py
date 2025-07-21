@@ -62,14 +62,14 @@ class LeftPanel(QGroupBox):
         analysis_group.setLayout(analysis_layout)
         
         # View section
-        view_group = QGroupBox("View")
+        view_group = QGroupBox("Read")
         view_group.setStyleSheet(self.get_section_style())
         view_layout = QVBoxLayout()
         view_layout.setSpacing(10)
         
         drawing_icon = self.load_icon("drawing.svg")
-        self.plan_btn = ActionButton("View Drawing", drawing_icon)
-        self.plan_btn.clicked.connect(lambda: self.emit_action("view_drawing"))
+        self.plan_btn = ActionButton("Read Drawing", drawing_icon)
+        self.plan_btn.clicked.connect(lambda: self.emit_action("read_drawing"))
         
         view_layout.addWidget(self.plan_btn)
         #view_layout.addWidget(self.matrix_btn)
