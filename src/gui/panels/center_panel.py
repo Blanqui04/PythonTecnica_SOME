@@ -1,12 +1,11 @@
+from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QTextEdit, QScrollArea, 
+                             QTabWidget, QWidget, QHBoxLayout, QPushButton, 
+                             QLabel, QStackedLayout, QSizePolicy)
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtGui import QPixmap
 import os
 import platform
 import subprocess
-from PyQt5.QtWidgets import (
-    QGroupBox, QVBoxLayout, QTextEdit, QScrollArea, QPushButton, 
-    QHBoxLayout, QLabel, QTabWidget, QWidget, QSizePolicy
-)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QPixmap
 
 # Import shared logger
 from src.gui.logging_config import logger
@@ -148,6 +147,7 @@ class PDFLoadThread(QThread):
         except Exception as e:
             self.error_occurred.emit(str(e))
 
+
 class CenterPanel(QGroupBox):
     def __init__(self, parent=None):
         super().__init__("Visualizer & PDF Viewer", parent)
@@ -162,19 +162,14 @@ class CenterPanel(QGroupBox):
         layout = QVBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
 
-        # Create tab widget for text and PDF
+        # Create tab widget for different view modes
         self.tab_widget = QTabWidget()
         
-        # Text tab
+        # Text tab - for text content and visualizations
         text_tab = QWidget()
         text_layout = QVBoxLayout()
         
-        # Create a scroll area for text
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("border: none;")
-
-        # Mode 1: Text view (default)
+        # Create text widget (visualizer)
         self.text_widget = QTextEdit()
         self.text_widget.setReadOnly(True)
         self.text_widget.setPlainText("Welcome to Database Management System\n\n"
@@ -191,12 +186,17 @@ class CenterPanel(QGroupBox):
                 line-height: 1.5;
             }
         """)
-
-        scroll_area.setWidget(self.visualizer)
+        
+        # Create scroll area for text widget
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("border: none;")
+        scroll_area.setWidget(self.text_widget)
+        
         text_layout.addWidget(scroll_area)
         text_tab.setLayout(text_layout)
         
-        # PDF tab
+        # PDF tab - for PDF viewing
         pdf_tab = QWidget()
         pdf_layout = QVBoxLayout()
         
@@ -240,388 +240,38 @@ class CenterPanel(QGroupBox):
         pdf_layout.addWidget(self.pdf_viewer)
         pdf_tab.setLayout(pdf_layout)
         
-        # Add tabs
+        # Add tabs to tab widget
         self.tab_widget.addTab(text_tab, "Text Viewer")
         self.tab_widget.addTab(pdf_tab, "PDF Viewer")
         
-        layout.addWidget(self.tab_widget)
+        # Create stacked layout for backwards compatibility
+        self.stacked_layout = QStackedLayout()
+        
+        # Mode 2: Custom widget view (e.g., interactive form or preview)
+        self.custom_widget_container = QWidget()  # Placeholder, can be replaced dynamically
+        
+        # Add tab widget as the primary view (index 0)
+        # Add custom widget container for special cases (index 1)
+        self.stacked_layout.addWidget(self.tab_widget)
+        self.stacked_layout.addWidget(self.custom_widget_container)
+        
+        # Set default to tab widget view
+        self.stacked_layout.setCurrentIndex(0)
+        
+        layout.addLayout(self.stacked_layout)
         self.setLayout(layout)
-        logger.debug("UI for [CenterPanel] set up successfully")
+
+        # Create alias for backward compatibility
+        self.visualizer = self.text_widget
 
     def update_content(self, content: str):
         """Update visualizer text content and switch to text mode."""
         logger.debug(f"Updating content in [CenterPanel]: {content[:60]}{'...' if len(content) > 60 else ''}")
         self.text_widget.setPlainText(content)
+        # Ensure we're showing the tab widget and switch to text tab
         self.stacked_layout.setCurrentIndex(0)
-        # Switch to text tab when updating content
         self.tab_widget.setCurrentIndex(0)
         logger.info("Visualizer content updated")
-
-    def update_pdf_info(self, info):
-        """Update PDF info label"""
-        self.pdf_info_label.setText(info)
-
-    def view_pdf_plan(self):
-        """View PDF plan from database"""
-        try:
-            # Get parent window to access header panel
-            parent_window = self.parent()
-            while parent_window and not hasattr(parent_window, 'header'):
-                parent_window = parent_window.parent()
-            
-            if not parent_window:
-                self.update_content("Error: Could not find parent window with header panel")
-                return
-                
-            # Get project reference (primary requirement)
-            ref_project = parent_window.header.ref_project_edit.text().strip()
-            client = parent_window.header.ref_client_edit.text().strip()
-            
-            # Only project reference is required now
-            if not ref_project:
-                self.update_content("Please enter Project Reference to view PDF plans.")
-                return
-                
-            # Use project reference as the search key (or client if available)
-            search_key = client if client else ref_project
-                
-            # Switch to PDF tab
-            self.tab_widget.setCurrentIndex(1)
-            self.update_pdf_info("Loading PDF...")
-            
-            # Start PDF loading in thread using search_key as the client reference
-            self.pdf_thread = PDFLoadThread(search_key, ref_project, search_key)
-            self.pdf_thread.pdf_loaded.connect(self.on_pdf_loaded)
-            self.pdf_thread.error_occurred.connect(self.on_pdf_error)
-            self.pdf_thread.start()
-            
-        except Exception as e:
-            logger.error(f"Error in view_pdf_plan: {e}")
-            self.update_content(f"Error viewing PDF plan: {str(e)}")
-
-    def on_pdf_loaded(self, pdf_result):
-        """Handle PDF loaded from thread"""
-        try:
-            if pdf_result['success']:
-                # Save PDF to temporary file
-                uploader = DatabaseUploader("", "")  # We just need the save method
-                temp_path = uploader.save_temp_pdf(pdf_result['pdf_data'], pdf_result['filename'])
-                
-                if temp_path:
-                    # Load PDF preview
-                    preview_success = self.load_pdf_preview(
-                        pdf_result['pdf_data'], 
-                        pdf_result['filename'], 
-                        temp_path
-                    )
-                    
-                    if preview_success:
-                        self.update_pdf_info(f"Loaded: {pdf_result['filename']} (Plan: {pdf_result['num_planol']})")
-                        self.open_external_btn.setEnabled(True)
-                    else:
-                        self.update_pdf_info(f"Error loading preview: {pdf_result['filename']}")
-                        # Still enable external opening
-                        self.open_external_btn.setEnabled(True)
-                        
-                else:
-                    self.update_pdf_info("Error saving PDF to temporary file")
-            else:
-                self.update_pdf_info(f"No PDF found: {pdf_result['error']}")
-                self.pdf_viewer.setText(f"No PDF Plan Found\n\n{pdf_result['error']}")
-                
-        except Exception as e:
-            logger.error(f"Error handling PDF load: {e}")
-            self.update_pdf_info(f"Error: {str(e)}")
-
-    def on_pdf_error(self, error_message):
-        """Handle PDF loading error"""
-        logger.error(f"PDF loading error: {error_message}")
-        self.update_pdf_info(f"Error: {error_message}")
-        self.pdf_viewer.setText(f"Error Loading PDF\n\n{error_message}")
-
-    def load_pdf_preview(self, pdf_data, filename, temp_path):
-        """Load PDF preview in the viewer"""
-        try:
-            # Load PDF in viewer
-            success = self.pdf_viewer.load_pdf_from_data(pdf_data, filename)
-            
-            if success:
-                self.current_pdf_path = temp_path
-                self.current_pdf_data = pdf_data
-                return True
-            else:
-                return False
-        except Exception as e:
-            logger.error(f"Error loading PDF preview: {e}")
-            return False
-
-    def open_external_pdf(self):
-        """Open PDF in external viewer"""
-        if not self.current_pdf_path:
-            self.update_pdf_info("No PDF loaded to open externally")
-            return
-            
-        try:
-            if platform.system() == 'Windows':
-                os.startfile(self.current_pdf_path)
-            elif platform.system() == 'Darwin':  # macOS
-                subprocess.run(['open', self.current_pdf_path])
-            else:  # Linux
-                subprocess.run(['xdg-open', self.current_pdf_path])
-            
-            self.update_pdf_info("PDF opened in external viewer")
-            
-        except Exception as e:
-            logger.error(f"Error opening PDF externally: {e}")
-            self.update_pdf_info(f"Error opening externally: {str(e)}")
-
-    def zoom_in(self):
-        """Zoom in PDF"""
-        if FITZ_AVAILABLE:
-            self.pdf_viewer.zoom_in()
-
-    def zoom_out(self):
-        """Zoom out PDF"""
-        if FITZ_AVAILABLE:
-            self.pdf_viewer.zoom_out()
-
-    def reset_zoom(self):
-        """Reset PDF zoom"""
-        if FITZ_AVAILABLE:
-            self.pdf_viewer.reset_zoom()
-
-    def toggle_view_mode(self):
-        """Toggle between text and PDF view modes"""
-        current_index = self.tab_widget.currentIndex()
-        
-        if current_index == 0:  # Currently on text tab
-            # Switch to PDF tab and load PDF
-            self.switch_to_pdf_and_load()
-        else:  # Currently on PDF tab
-            # Switch to text tab
-            self.tab_widget.setCurrentIndex(0)
-            logger.info("Switched to text view mode")
-
-    def switch_to_pdf_and_load(self):
-        """Switch to PDF tab and automatically load PDF if project reference is available"""
-        try:
-            # Switch to PDF tab first
-            self.tab_widget.setCurrentIndex(1)
-            logger.info("Switched to PDF view mode")
-            
-            # Get parent window to access header panel
-            parent_window = self.parent()
-            while parent_window and not hasattr(parent_window, 'header'):
-                parent_window = parent_window.parent()
-            
-            if not parent_window:
-                self.update_pdf_info("Error: Could not find parent window with header panel")
-                return
-                
-            # Get project reference (primary requirement)
-            ref_project = parent_window.header.ref_project_edit.text().strip()
-            client = parent_window.header.ref_client_edit.text().strip()
-            
-            # Only project reference is required now
-            if not ref_project:
-                self.update_pdf_info("Please enter Project Reference to view PDF plans.")
-                self.pdf_viewer.setText("PDF Viewer\n\nPlease enter Project Reference\nin the header field above to view PDF plans.")
-                return
-                
-            # Automatically load PDF
-            self.view_pdf_plan()
-            
-        except Exception as e:
-            logger.error(f"Error in switch_to_pdf_and_load: {e}")
-            self.update_pdf_info(f"Error: {str(e)}")
-
-    def switch_to_text(self):
-        """Switch to text tab"""
-        self.tab_widget.setCurrentIndex(0)
-        logger.info("Switched to text view mode")
-
-    def update_pdf_info(self, info):
-        """Update PDF info label"""
-        self.pdf_info_label.setText(info)
-
-    def view_pdf_plan(self):
-        """View PDF plan from database"""
-        try:
-            # Get parent window to access header panel
-            parent_window = self.parent()
-            while parent_window and not hasattr(parent_window, 'header'):
-                parent_window = parent_window.parent()
-            
-            if not parent_window:
-                self.update_content("Error: Could not find parent window with header panel")
-                return
-                
-            # Get project reference (primary requirement)
-            ref_project = parent_window.header.ref_project_edit.text().strip()
-            client = parent_window.header.ref_client_edit.text().strip()
-            
-            # Only project reference is required now
-            if not ref_project:
-                self.update_content("Please enter Project Reference to view PDF plans.")
-                return
-                
-            # Use project reference as the search key (or client if available)
-            search_key = client if client else ref_project
-                
-            # Switch to PDF tab
-            self.tab_widget.setCurrentIndex(1)
-            self.update_pdf_info("Loading PDF...")
-            
-            # Start PDF loading in thread using search_key as the client reference
-            self.pdf_thread = PDFLoadThread(search_key, ref_project, search_key)
-            self.pdf_thread.pdf_loaded.connect(self.on_pdf_loaded)
-            self.pdf_thread.error_occurred.connect(self.on_pdf_error)
-            self.pdf_thread.start()
-            
-        except Exception as e:
-            logger.error(f"Error in view_pdf_plan: {e}")
-            self.update_content(f"Error viewing PDF plan: {str(e)}")
-
-    def on_pdf_loaded(self, pdf_result):
-        """Handle PDF loaded from thread"""
-        try:
-            if pdf_result['success']:
-                # Save PDF to temporary file
-                uploader = DatabaseUploader("", "")  # We just need the save method
-                temp_path = uploader.save_temp_pdf(pdf_result['pdf_data'], pdf_result['filename'])
-                
-                if temp_path:
-                    # Load PDF preview
-                    preview_success = self.load_pdf_preview(
-                        pdf_result['pdf_data'], 
-                        pdf_result['filename'], 
-                        temp_path
-                    )
-                    
-                    if preview_success:
-                        self.update_pdf_info(f"Loaded: {pdf_result['filename']} (Plan: {pdf_result['num_planol']})")
-                        self.open_external_btn.setEnabled(True)
-                    else:
-                        self.update_pdf_info(f"Error loading preview: {pdf_result['filename']}")
-                        # Still enable external opening
-                        self.open_external_btn.setEnabled(True)
-                        
-                else:
-                    self.update_pdf_info("Error saving PDF to temporary file")
-            else:
-                self.update_pdf_info(f"No PDF found: {pdf_result['error']}")
-                self.pdf_viewer.setText(f"No PDF Plan Found\n\n{pdf_result['error']}")
-                
-        except Exception as e:
-            logger.error(f"Error handling PDF load: {e}")
-            self.update_pdf_info(f"Error: {str(e)}")
-
-    def on_pdf_error(self, error_message):
-        """Handle PDF loading error"""
-        logger.error(f"PDF loading error: {error_message}")
-        self.update_pdf_info(f"Error: {error_message}")
-        self.pdf_viewer.setText(f"Error Loading PDF\n\n{error_message}")
-
-    def load_pdf_preview(self, pdf_data, filename, temp_path):
-        """Load PDF preview in the viewer"""
-        try:
-            # Load PDF in viewer
-            success = self.pdf_viewer.load_pdf_from_data(pdf_data, filename)
-            
-            if success:
-                self.current_pdf_path = temp_path
-                self.current_pdf_data = pdf_data
-                return True
-            else:
-                return False
-        except Exception as e:
-            logger.error(f"Error loading PDF preview: {e}")
-            return False
-
-    def open_external_pdf(self):
-        """Open PDF in external viewer"""
-        if not self.current_pdf_path:
-            self.update_pdf_info("No PDF loaded to open externally")
-            return
-            
-        try:
-            if platform.system() == 'Windows':
-                os.startfile(self.current_pdf_path)
-            elif platform.system() == 'Darwin':  # macOS
-                subprocess.run(['open', self.current_pdf_path])
-            else:  # Linux
-                subprocess.run(['xdg-open', self.current_pdf_path])
-            
-            self.update_pdf_info("PDF opened in external viewer")
-            
-        except Exception as e:
-            logger.error(f"Error opening PDF externally: {e}")
-            self.update_pdf_info(f"Error opening externally: {str(e)}")
-
-    def zoom_in(self):
-        """Zoom in PDF"""
-        if FITZ_AVAILABLE:
-            self.pdf_viewer.zoom_in()
-
-    def zoom_out(self):
-        """Zoom out PDF"""
-        if FITZ_AVAILABLE:
-            self.pdf_viewer.zoom_out()
-
-    def reset_zoom(self):
-        """Reset PDF zoom"""
-        if FITZ_AVAILABLE:
-            self.pdf_viewer.reset_zoom()
-
-    def toggle_view_mode(self):
-        """Toggle between text and PDF view modes"""
-        current_index = self.tab_widget.currentIndex()
-        
-        if current_index == 0:  # Currently on text tab
-            # Switch to PDF tab and load PDF
-            self.switch_to_pdf_and_load()
-        else:  # Currently on PDF tab
-            # Switch to text tab
-            self.tab_widget.setCurrentIndex(0)
-            logger.info("Switched to text view mode")
-
-    def switch_to_pdf_and_load(self):
-        """Switch to PDF tab and automatically load PDF if project reference is available"""
-        try:
-            # Switch to PDF tab first
-            self.tab_widget.setCurrentIndex(1)
-            logger.info("Switched to PDF view mode")
-            
-            # Get parent window to access header panel
-            parent_window = self.parent()
-            while parent_window and not hasattr(parent_window, 'header'):
-                parent_window = parent_window.parent()
-            
-            if not parent_window:
-                self.update_pdf_info("Error: Could not find parent window with header panel")
-                return
-                
-            # Get project reference (primary requirement)
-            ref_project = parent_window.header.ref_project_edit.text().strip()
-            client = parent_window.header.ref_client_edit.text().strip()  # noqa: F841
-            
-            # Only project reference is required now
-            if not ref_project:
-                self.update_pdf_info("Please enter Project Reference to view PDF plans.")
-                self.pdf_viewer.setText("PDF Viewer\n\nPlease enter Project Reference\nin the header field above to view PDF plans.")
-                return
-                
-            # Automatically load PDF
-            self.view_pdf_plan()
-            
-        except Exception as e:
-            logger.error(f"Error in switch_to_pdf_and_load: {e}")
-            self.update_pdf_info(f"Error: {str(e)}")
-
-    def switch_to_text(self):
-        """Switch to text tab"""
-        self.tab_widget.setCurrentIndex(0)
-        logger.info("Switched to text view mode")
 
     def set_custom_widget(self, widget):
         """Set a custom widget and switch to custom view mode"""
@@ -828,7 +478,7 @@ class CenterPanel(QGroupBox):
                 return
                 
             # Use client reference as the search key (or project reference if client not available)
-            search_key = ref_project if ref_project else ref_client  # noqa: F841
+            search_key = ref_client if ref_client else ref_project  # noqa: F841
             
         except Exception as e:
             logger.error(f"Error in switch_to_pdf_and_load: {e}")
