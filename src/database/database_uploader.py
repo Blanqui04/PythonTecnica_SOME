@@ -133,24 +133,41 @@ class DatabaseUploader:
         self.upload_all()
         self.cleanup_csv()
 
-    def get_planol_pdf(self, ref_client):
+    def get_planol_pdf(self, ref_client, project_id=None):
         """
-        Retrieve the latest PDF plan for a given client reference.
+        Retrieve the latest PDF plan for a given client reference and optionally project.
         
         Args:
-            ref_client: Client reference ID
+            ref_client: Client reference ID (client name)
+            project_id: Optional project ID to filter drawings by project
             
         Returns:
             dict: Contains success status, PDF data, filename, and planol number
         """
-        query = """
-        SELECT num_planol, imatge 
-        FROM planol 
-        WHERE id_referencia_client = %s
-        ORDER BY num_planol DESC
-        LIMIT 1
-        """
-        params = (ref_client,)
+        if project_id:
+            # If project_id provided, filter by drawings that start with project prefix
+            project_prefix = project_id[:3] if len(project_id) >= 3 else project_id
+            query = """
+            SELECT num_planol, imatge 
+            FROM planol 
+            WHERE id_referencia_client = %s 
+              AND num_planol LIKE %s
+              AND imatge IS NOT NULL
+            ORDER BY num_planol DESC
+            LIMIT 1
+            """
+            params = (ref_client, f"{project_prefix}%")
+        else:
+            # Original query for backward compatibility
+            query = """
+            SELECT num_planol, imatge 
+            FROM planol 
+            WHERE id_referencia_client = %s
+              AND imatge IS NOT NULL
+            ORDER BY num_planol DESC
+            LIMIT 1
+            """
+            params = (ref_client,)
         
         try:
             conn = self.conn.connect()
@@ -168,8 +185,8 @@ class DatabaseUploader:
                     imatge_data = imatge_json
                 
                 # Extract PDF data
-                pdf_base64 = imatge_data.get('data', '')
-                filename = imatge_data.get('nom', f'planol_{num_planol}.pdf')
+                pdf_base64 = imatge_data.get('pdf_data', '')  # Usar 'pdf_data' en lloc de 'data'
+                filename = imatge_data.get('filename', f'planol_{num_planol}.pdf')  # Usar 'filename' en lloc de 'nom'
                 
                 # Decode base64 to binary
                 pdf_binary = base64.b64decode(pdf_base64)

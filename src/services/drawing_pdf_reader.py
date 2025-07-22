@@ -20,7 +20,7 @@ class DrawingPDFReader:
     """Gestiona la cerca i guardada de PDFs de dibuixos"""
     
     # Configuració del servidor
-    SERVER_BASE_PATH = r"\\server.some.local\Projectes en curs"
+    SERVER_BASE_PATH = r"\\server.some.local\SOME\Projectes en curs"
     TECHNICAL_INFO_FOLDER = "2-PART TECHNICAL INFO"
     DRAWINGS_FOLDER = "1-CUSTOMER PART DRAWINGS"
     
@@ -228,17 +228,19 @@ class DrawingPDFReader:
                     query = """
                     INSERT INTO planol (id_referencia_client, num_planol, imatge)
                     VALUES (%s, %s, %s)
-                    ON CONFLICT (id_referencia_client, num_planol) 
-                    DO UPDATE SET imatge = EXCLUDED.imatge
+                    ON CONFLICT (num_planol) 
+                    DO UPDATE SET 
+                        imatge = EXCLUDED.imatge,
+                        id_referencia_client = EXCLUDED.id_referencia_client
                     """
                     
                     params = (
-                        self.client_name,
+                        self.project_id,  # Usar project_id com a id_referencia_client
                         pdf_info['drawing_number'],
                         json.dumps(pdf_json)
                     )
                     
-                    conn.execute_query(query, params)
+                    conn.execute(query, params, commit=True)
                     saved_count += 1
                     
                     logger.info(f"PDF guardat: {pdf_info['filename']} (dibuix: {pdf_info['drawing_number']}, versió: {pdf_info['version']})")
