@@ -1,3 +1,4 @@
+# src/gui/windows/spc_chart_window.py
 import os
 import subprocess
 import platform
@@ -38,20 +39,25 @@ class ChartGenerationWorker(QThread):
     error = pyqtSignal(str)
     progress = pyqtSignal(int)
 
-    def __init__(self, client: str, ref_project: str):
+    def __init__(self, client: str, ref_project: str, batch_number: str):
         super().__init__()
         self.client = client
         self.ref_project = ref_project
+        self.batch_number = batch_number
         self.service = None
 
     def run(self):
         try:
-            study_id = f"{self.client}_{self.ref_project}"
+            study_id = f"{self.ref_project}_{self.batch_number}"
             logger.info(f"Starting chart generation for study: {study_id}")
 
             self.progress.emit(10)
 
-            self.service = SPCChartService(study_id)
+            # Pass all required params, not study_id string alone
+            self.service = SPCChartService(
+                self.client, self.ref_project, self.batch_number
+            )
+
             if not self.service.initialize_chart_manager():
                 self.error.emit(
                     f"Failed to initialize chart manager for study: {study_id}"
@@ -102,34 +108,81 @@ class ChartDisplayWidget(QWidget):
 
     def setup_ui(self):
         self.main_layout = QVBoxLayout()
-        self.main_layout.setSpacing(20)
-        self.main_layout.setContentsMargins(20, 20, 20, 20)
+        self.main_layout.setSpacing(0)
+        self.main_layout.setContentsMargins(0, 0, 0, 0)
 
-        # Control bar
-        control_bar = self.create_control_bar()
-        self.main_layout.addWidget(control_bar)
+        # Create main container that will hold both the controls and charts
+        self.container = QWidget()
+        self.container_layout = QVBoxLayout()
+        self.container_layout.setContentsMargins(0, 0, 0, 0)
+        self.container_layout.setSpacing(0)
+
+        # Create floating control bar (positioned over the chart area)
+        control_bar = self.create_floating_control_bar()
+        self.container_layout.addWidget(control_bar)
 
         # Chart container
         self.chart_container = QWidget()
         self.chart_layout = QVBoxLayout()
+        self.chart_layout.setContentsMargins(15, 15, 15, 15)
+        self.chart_layout.setSpacing(15)
         self.chart_container.setLayout(self.chart_layout)
-        self.main_layout.addWidget(self.chart_container)
+        self.container_layout.addWidget(self.chart_container)
 
+        self.container.setLayout(self.container_layout)
+        self.main_layout.addWidget(self.container)
         self.setLayout(self.main_layout)
 
-    def create_control_bar(self):
+    def create_floating_control_bar(self):
+        """Create a floating control bar that overlays the chart area"""
         control_frame = QFrame()
         control_frame.setStyleSheet("""
             QFrame {
-                background-color: #ffffff;
-                border: 1px solid #ecf0f1;
+                background-color: rgba(248, 249, 250, 0.95);
+                border: 1px solid #dee2e6;
                 border-radius: 8px;
-                padding: 8px;
+                margin: 10px;
+            }
+            QLabel {
+                color: #495057;
+                font-weight: 500;
+            }
+            QRadioButton {
+                color: #495057;
+                font-size: 9pt;
+                spacing: 5px;
+            }
+            QRadioButton::indicator {
+                width: 12px;
+                height: 12px;
+            }
+            QSpinBox {
+                background-color: white;
+                border: 1px solid #ced4da;
+                border-radius: 3px;
+                padding: 2px 4px;
+                font-size: 9pt;
+                min-height: 16px;
+            }
+            QSlider::groove:horizontal {
+                background-color: #dee2e6;
+                height: 4px;
+                border-radius: 2px;
+            }
+            QSlider::handle:horizontal {
+                background-color: #007bff;
+                width: 12px;
+                height: 12px;
+                border-radius: 6px;
+                margin: -4px 0;
             }
         """)
-        control_frame.setMaximumHeight(60)
+        control_frame.setFixedHeight(50)
+        control_frame.setContentsMargins(5, 5, 5, 5)
 
         layout = QHBoxLayout()
+        layout.setSpacing(12)
+        layout.setContentsMargins(10, 8, 10, 8)
 
         # Layout mode selector
         layout_label = QLabel("Layout:")
@@ -141,21 +194,24 @@ class ChartDisplayWidget(QWidget):
         auto_radio = QRadioButton("Auto")
         auto_radio.setChecked(True)
         auto_radio.toggled.connect(lambda: self.set_layout_mode("auto"))
+        auto_radio.setFont(QFont("Segoe UI", 9))
         self.layout_group.addButton(auto_radio)
         layout.addWidget(auto_radio)
 
         grid_radio = QRadioButton("Grid")
         grid_radio.toggled.connect(lambda: self.set_layout_mode("grid"))
+        grid_radio.setFont(QFont("Segoe UI", 9))
         self.layout_group.addButton(grid_radio)
         layout.addWidget(grid_radio)
 
         vertical_radio = QRadioButton("Vertical")
         vertical_radio.toggled.connect(lambda: self.set_layout_mode("vertical"))
+        vertical_radio.setFont(QFont("Segoe UI", 9))
         self.layout_group.addButton(vertical_radio)
         layout.addWidget(vertical_radio)
 
         # Spacing
-        layout.addItem(QSpacerItem(25, 0, QSizePolicy.Fixed, QSizePolicy.Minimum))
+        layout.addItem(QSpacerItem(20, 0, QSizePolicy.Fixed, QSizePolicy.Minimum))
 
         # Charts per row (for grid mode)
         per_row_label = QLabel("Per Row:")
@@ -166,6 +222,7 @@ class ChartDisplayWidget(QWidget):
         self.per_row_spin.setRange(1, 4)
         self.per_row_spin.setValue(2)
         self.per_row_spin.valueChanged.connect(self.set_charts_per_row)
+        self.per_row_spin.setFont(QFont("Segoe UI", 9))
         layout.addWidget(self.per_row_spin)
 
         layout.addStretch()
@@ -184,7 +241,7 @@ class ChartDisplayWidget(QWidget):
 
         self.zoom_label = QLabel("100%")
         self.zoom_label.setFont(QFont("Segoe UI", 9))
-        self.zoom_label.setMinimumWidth(40)
+        self.zoom_label.setMinimumWidth(35)
         layout.addWidget(self.zoom_label)
 
         control_frame.setLayout(layout)
@@ -234,7 +291,7 @@ class ChartDisplayWidget(QWidget):
             empty_label.setAlignment(Qt.AlignCenter)
             empty_label.setStyleSheet("""
                 QLabel {
-                    color: #95a5a6;
+                    color: #6c757d;
                     font-size: 16px;
                     font-style: italic;
                     padding: 50px;
@@ -297,33 +354,34 @@ class ChartDisplayWidget(QWidget):
         chart_widget.setStyleSheet("""
             QFrame {
                 background-color: #ffffff;
-                border: 1px solid #ecf0f1;
-                border-radius: 8px;
-                padding: 15px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                padding: 10px;
             }
         """)
 
         layout = QVBoxLayout()
+        layout.setSpacing(8)
 
-        # Chart title
+        # Chart title - smaller and more proportional
         title_label = QLabel(chart_info["type"].replace("_", " ").title())
-        title_label.setFont(QFont("Segoe UI", 11, QFont.Medium))
-        title_label.setStyleSheet("color: #2c3e50; margin-bottom: 10px;")
+        title_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        title_label.setStyleSheet("color: #495057; margin-bottom: 5px;")
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
 
-        # Chart image
+        # Chart image - better proportions
         chart_label = QLabel()
         pixmap = chart_info["pixmap"]
 
         if not pixmap.isNull():
-            # Calculate size based on zoom and layout mode
+            # Better size calculations for more balanced display
             if is_grid:
-                target_width = int(400 * zoom_factor)
-                target_height = int(300 * zoom_factor)
+                target_width = int(500 * zoom_factor)  # Increased from 400
+                target_height = int(350 * zoom_factor)  # Increased from 300
             else:
-                target_width = int(800 * zoom_factor)
-                target_height = int(600 * zoom_factor)
+                target_width = int(900 * zoom_factor)  # Increased from 800
+                target_height = int(650 * zoom_factor)  # Increased from 600
 
             scaled_pixmap = pixmap.scaled(
                 target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation
@@ -338,10 +396,11 @@ class ChartDisplayWidget(QWidget):
 
 
 class ModernSPCChartWindow(QDialog):
-    def __init__(self, client: str, ref_project: str, parent=None):
+    def __init__(self, client: str, ref_project: str, batch_number: str, parent=None):
         super().__init__(parent)
         self.client = client
         self.ref_project = ref_project
+        self.batch_number = batch_number
         self.study_id = f"{client}_{ref_project}"
         self.chart_service = None
         self.elements_data = {}
@@ -355,9 +414,14 @@ class ModernSPCChartWindow(QDialog):
     def setup_ui(self):
         self.setWindowTitle(f"SPC Charts - {self.client} - {self.ref_project}")
 
-        # Set window to maximized state
+        # Enable window controls (minimize, maximize, close)
+        self.setWindowFlags(
+            Qt.Window | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint
+        )
+
+        # Set initial size and show maximized
+        self.resize(1400, 900)  # Set a reasonable default size
         self.showMaximized()
-        self.setMinimumSize(1980, 1080)
 
         main_layout = QVBoxLayout()
         main_layout.setSpacing(0)
@@ -372,8 +436,8 @@ class ModernSPCChartWindow(QDialog):
         content_splitter.addWidget(self.create_control_panel())
         content_splitter.addWidget(self.create_chart_display_area())
 
-        # Adjust splitter sizes for maximized window - give more space to charts
-        content_splitter.setSizes([300, 1200])
+        # Better splitter proportions
+        content_splitter.setSizes([350, 1050])
         main_layout.addWidget(content_splitter)
 
         # Footer
@@ -384,56 +448,59 @@ class ModernSPCChartWindow(QDialog):
 
     def create_header_section(self):
         header_frame = QFrame()
-        header_frame.setStyleSheet(f"""
-            QFrame {{
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 {self.colors["secondary"]}, stop:1 {self.colors["secondary_dark"]});
+        header_frame.setStyleSheet("""
+            QFrame {
+                background-color: #343a40;
                 border: none;
                 padding: 20px;
-            }}
+            }
+            QLabel {
+                color: #ffffff;
+                background: transparent;
+            }
         """)
-        header_frame.setFixedHeight(140)  # Increased height for better visibility
+        header_frame.setFixedHeight(120)
 
         layout = QVBoxLayout()
-        layout.setSpacing(10)
+        layout.setSpacing(5)
+        layout.setContentsMargins(20, 15, 20, 15)
 
-        # Title
+        # Title - better contrast and readability
         title_label = QLabel("Anàlisi de Capacitat SPC")
-        title_label.setFont(QFont("Segoe UI", 16, QFont.Bold))  # Increased font size
-        title_label.setStyleSheet("color: #ffffff; margin-bottom: 5px;")
+        title_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
+        title_label.setStyleSheet("color: #ffffff; margin-bottom: 3px; background: transparent;")
         layout.addWidget(title_label)
 
-        # Subtitle
+        # Subtitle - better contrast
         subtitle_label = QLabel(f"Client: {self.client} | Projecte: {self.ref_project}")
-        subtitle_label.setFont(QFont("Segoe UI", 10))  # Increased font size
-        subtitle_label.setStyleSheet("color: #ecf0f1; margin-bottom: 10px;")
+        subtitle_label.setFont(QFont("Segoe UI", 11))
+        subtitle_label.setStyleSheet("color: #e9ecef; margin-bottom: 5px; background: transparent;")
         layout.addWidget(subtitle_label)
 
         # Status and progress
         status_layout = QHBoxLayout()
+        status_layout.setContentsMargins(0, 0, 0, 0)
 
         self.status_label = QLabel("⏳ Inicialitzant generació de gràfics...")
-        self.status_label.setFont(
-            QFont("Segoe UI", 11, QFont.Medium)
-        )  # Increased font size
-        self.status_label.setStyleSheet("color: #ffffff;")
+        self.status_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        self.status_label.setStyleSheet("color: #ffffff; background: transparent;")
         status_layout.addWidget(self.status_label)
 
         status_layout.addStretch()
 
         self.progress_bar = QProgressBar()
-        self.progress_bar.setFixedWidth(250)  # Increased width
-        self.progress_bar.setFixedHeight(8)  # Increased height
-        self.progress_bar.setStyleSheet(f"""
-            QProgressBar {{
-                background-color: rgba(255, 255, 255, 0.2);
+        self.progress_bar.setFixedWidth(200)
+        self.progress_bar.setFixedHeight(6)
+        self.progress_bar.setStyleSheet("""
+            QProgressBar {
+                background-color: #495057;
                 border: none;
-                border-radius: 4px;
-            }}
-            QProgressBar::chunk {{
-                background-color: {self.colors["primary"]};
-                border-radius: 4px;
-            }}
+                border-radius: 3px;
+            }
+            QProgressBar::chunk {
+                background-color: #28a745;
+                border-radius: 3px;
+            }
         """)
         status_layout.addWidget(self.progress_bar)
 
@@ -444,19 +511,18 @@ class ModernSPCChartWindow(QDialog):
 
     def create_control_panel(self):
         control_widget = QWidget()
-        control_widget.setStyleSheet(f"""
-            QWidget {{
-                background-color: {self.colors["surface"]};
-                border-right: 1px solid {self.colors["border"]};
-            }}
+        control_widget.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border-right: 1px solid #dee2e6;
+            }
         """)
-        control_widget.setMinimumWidth(
-            350
-        )  # Ensure minimum width for proper text display
+        control_widget.setMinimumWidth(320)
+        control_widget.setMaximumWidth(400)
 
         main_layout = QVBoxLayout()
-        main_layout.setContentsMargins(25, 25, 25, 25)  # Increased margins
-        main_layout.setSpacing(25)  # Increased spacing
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(20)
 
         # Element selection group
         element_group = self.create_element_group()
@@ -477,24 +543,41 @@ class ModernSPCChartWindow(QDialog):
 
     def create_element_group(self):
         group = QGroupBox("🔍 Selecció d'Element")
-        group.setFont(QFont("Segoe UI", 12, QFont.Medium))  # Increased font size
+        group.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        group.setStyleSheet("""
+            QGroupBox {
+                color: #495057;
+                font-weight: 600;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: transparent;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                background-color: transparent;
+            }
+        """)
+
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
         # Element selector
         self.element_combo = ModernComboBox()
         self.element_combo.setEnabled(False)
-        self.element_combo.setMinimumHeight(35)  # Increased height
+        self.element_combo.setMinimumHeight(32)
         self.element_combo.currentTextChanged.connect(self.on_element_changed)
         layout.addWidget(self.element_combo)
 
         # Element information
         self.element_info = ModernTextEdit()
-        self.element_info.setMaximumHeight(140)  # Increased height
-        self.element_info.setMinimumHeight(100)
+        self.element_info.setMaximumHeight(100)
+        self.element_info.setMinimumHeight(80)
         self.element_info.setReadOnly(True)
         self.element_info.setPlainText("Carregant informació dels elements...")
-        # Ensure text wrapping and proper display
         self.element_info.setWordWrapMode(True)
         layout.addWidget(self.element_info)
 
@@ -503,9 +586,33 @@ class ModernSPCChartWindow(QDialog):
 
     def create_chart_type_group(self):
         group = QGroupBox("📈 Tipus de Gràfics")
-        group.setFont(QFont("Segoe UI", 12, QFont.Medium))  # Increased font size
+        group.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        group.setStyleSheet("""
+            QGroupBox {
+                color: #495057;
+                font-weight: 600;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: transparent;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                background-color: transparent;
+            }
+            QCheckBox {
+                color: #495057;
+                font-size: 10pt;
+                spacing: 5px;
+                background-color: transparent;
+            }
+        """)
+
         layout = QVBoxLayout()
-        layout.setSpacing(10)
+        layout.setSpacing(8)
 
         # Select all/none buttons
         button_layout = QHBoxLayout()
@@ -513,13 +620,49 @@ class ModernSPCChartWindow(QDialog):
         self.select_all_btn = CompactButton("Tots")
         self.select_all_btn.clicked.connect(self.select_all_charts)
         self.select_all_btn.setEnabled(False)
-        self.select_all_btn.setMinimumHeight(30)  # Increased height
+        self.select_all_btn.setMinimumHeight(28)
+        self.select_all_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 9pt;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+                color: #dee2e6;
+            }
+        """)
         button_layout.addWidget(self.select_all_btn)
 
         self.select_none_btn = CompactButton("Cap")
         self.select_none_btn.clicked.connect(self.select_no_charts)
         self.select_none_btn.setEnabled(False)
-        self.select_none_btn.setMinimumHeight(30)  # Increased height
+        self.select_none_btn.setMinimumHeight(28)
+        self.select_none_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 4px 12px;
+                font-size: 9pt;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #545b62;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+                color: #dee2e6;
+            }
+        """)
         button_layout.addWidget(self.select_none_btn)
 
         layout.addLayout(button_layout)
@@ -536,8 +679,8 @@ class ModernSPCChartWindow(QDialog):
 
         for chart_type, display_name in chart_types:
             checkbox = QCheckBox(display_name)
-            checkbox.setFont(QFont("Segoe UI", 11))  # Increased font size
-            checkbox.setMinimumHeight(25)  # Increased height for better clickability
+            checkbox.setFont(QFont("Segoe UI", 10))
+            checkbox.setMinimumHeight(22)
             checkbox.setEnabled(False)
             checkbox.stateChanged.connect(self.on_chart_selection_changed)
             layout.addWidget(checkbox)
@@ -548,15 +691,32 @@ class ModernSPCChartWindow(QDialog):
 
     def create_statistics_group(self):
         group = QGroupBox("📊 Estadístiques")
-        group.setFont(QFont("Segoe UI", 12, QFont.Medium))  # Increased font size
+        group.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        group.setStyleSheet("""
+            QGroupBox {
+                color: #495057;
+                font-weight: 600;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                margin-top: 10px;
+                padding-top: 10px;
+                background-color: transparent;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+                background-color: transparent;
+            }
+        """)
+
         layout = QVBoxLayout()
 
         self.stats_info = ModernTextEdit()
-        self.stats_info.setMaximumHeight(120)  # Increased height
+        self.stats_info.setMaximumHeight(100)
         self.stats_info.setMinimumHeight(80)
         self.stats_info.setReadOnly(True)
         self.stats_info.setPlainText("Estadístiques no disponibles...")
-        # Ensure proper text display
         self.stats_info.setWordWrapMode(True)
         layout.addWidget(self.stats_info)
 
@@ -566,11 +726,11 @@ class ModernSPCChartWindow(QDialog):
     def create_chart_display_area(self):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet(f"""
-            QScrollArea {{
-                background-color: {self.colors["background"]};
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                background-color: #ffffff;
                 border: none;
-            }}
+            }
         """)
 
         self.chart_display = ChartDisplayWidget()
@@ -580,30 +740,64 @@ class ModernSPCChartWindow(QDialog):
 
     def create_footer_section(self):
         footer_frame = QFrame()
-        footer_frame.setStyleSheet(f"""
-            QFrame {{
-                background-color: {self.colors["surface"]};
-                border-top: 1px solid {self.colors["border"]};
-                padding: 20px 25px;
-            }}
+        footer_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border-top: 1px solid #dee2e6;
+                padding: 15px 20px;
+            }
         """)
-        footer_frame.setFixedHeight(90)  # Increased height
+        footer_frame.setFixedHeight(70)
 
         layout = QHBoxLayout()
 
-        # Action buttons
+        # Action buttons with better styling
         self.open_folder_btn = ActionButton("📁 Obrir Carpeta")
         self.open_folder_btn.clicked.connect(self.open_results_folder)
         self.open_folder_btn.setEnabled(False)
-        self.open_folder_btn.setMinimumHeight(40)  # Increased height
-        self.open_folder_btn.setFont(QFont("Segoe UI", 11))  # Increased font size
+        self.open_folder_btn.setMinimumHeight(36)
+        self.open_folder_btn.setFont(QFont("Segoe UI", 10))
+        self.open_folder_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+                color: #dee2e6;
+            }
+        """)
         layout.addWidget(self.open_folder_btn)
 
         self.export_btn = ActionButton("📤 Exportar Gràfics")
         self.export_btn.clicked.connect(self.export_charts)
         self.export_btn.setEnabled(False)
-        self.export_btn.setMinimumHeight(40)  # Increased height
-        self.export_btn.setFont(QFont("Segoe UI", 11))  # Increased font size
+        self.export_btn.setMinimumHeight(36)
+        self.export_btn.setFont(QFont("Segoe UI", 10))
+        self.export_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #ffc107;
+                color: #212529;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #e0a800;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+                color: #dee2e6;
+            }
+        """)
         layout.addWidget(self.export_btn)
 
         layout.addStretch()
@@ -611,8 +805,21 @@ class ModernSPCChartWindow(QDialog):
         # Close button
         close_btn = ModernButton("Tancar", primary=True)
         close_btn.clicked.connect(self.close)
-        close_btn.setMinimumHeight(40)  # Increased height
-        close_btn.setFont(QFont("Segoe UI", 11))  # Increased font size
+        close_btn.setMinimumHeight(36)
+        close_btn.setFont(QFont("Segoe UI", 10))
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
         layout.addWidget(close_btn)
 
         footer_frame.setLayout(layout)
@@ -623,7 +830,9 @@ class ModernSPCChartWindow(QDialog):
         self.setStyleSheet(global_style())
 
     def start_chart_generation(self):
-        self.chart_worker = ChartGenerationWorker(self.client, self.ref_project)
+        self.chart_worker = ChartGenerationWorker(
+            self.client, self.ref_project, self.batch_number
+        )
         self.chart_worker.finished.connect(self.on_charts_generated)
         self.chart_worker.error.connect(self.on_chart_generation_error)
         self.chart_worker.progress.connect(self.on_progress_update)
@@ -642,9 +851,7 @@ class ModernSPCChartWindow(QDialog):
 
         # Update status
         self.status_label.setText("✅ Gràfics generats correctament!")
-        self.status_label.setStyleSheet(
-            f"color: {self.colors['success']}; font-weight: bold;"
-        )
+        self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
         self.progress_bar.setValue(100)
 
         # Enable controls
@@ -675,9 +882,7 @@ class ModernSPCChartWindow(QDialog):
     def on_chart_generation_error(self, error_msg):
         logger.error(f"Chart generation failed: {error_msg}")
         self.status_label.setText("❌ Error generant gràfics")
-        self.status_label.setStyleSheet(
-            f"color: {self.colors['danger']}; font-weight: bold;"
-        )
+        self.status_label.setStyleSheet("color: #dc3545; font-weight: bold;")
         self.progress_bar.setValue(0)
 
         QMessageBox.critical(

@@ -116,7 +116,7 @@ class ElementInputWidget(QWidget):
         basic_info_layout.addWidget(self.cavity_input, 1, 1)
 
         # Batch
-        basic_info_layout.addWidget(QLabel("Batch (Optional):"), 1, 2)
+        basic_info_layout.addWidget(QLabel("Batch:"), 1, 2)
         self.batch_input = ModernLineEdit("Enter batch number")
         basic_info_layout.addWidget(self.batch_input, 1, 3)
 
@@ -257,7 +257,9 @@ class ElementInputWidget(QWidget):
         # Target sample size
         extrap_params_layout.addWidget(QLabel("Target Sample Size:"), 0, 0)
         self.target_size_combo = ModernComboBox()
-        self.target_size_combo.addItems(["10", "20", "30", "40", "50", "60", "70", "80", "90", "100", "125", "150"])
+        self.target_size_combo.addItems(
+            ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100", "125", "150"]
+        )
         self.target_size_combo.setCurrentText("100")
         extrap_params_layout.addWidget(self.target_size_combo, 0, 1)
 
@@ -346,13 +348,16 @@ class ElementInputWidget(QWidget):
         if not cavity:
             self._show_error("Cavity cannot be empty.")
             return
+        if not batch:
+            self._show_error("Batch number cannot be empty.")
+            return
         try:
             nominal_f = float(nominal)
             tol_minus_f = float(tol_minus)
             tol_plus_f = float(tol_plus)
             values_f = [float(v) for v in values if v]
             if len(values_f) != 10:
-                self._show_error("Please enter exactly 10 measured values.")
+                self._show_error("Please enter a minimum of 10 measured values.")
                 return
         except ValueError:
             self._show_error("Please enter valid numeric values.")

@@ -190,24 +190,25 @@ class MainWindow(QMainWindow):
         try:
             client = self.header.ref_client_edit.text().strip()
             ref_project = self.header.ref_project_edit.text().strip()
+            batch_number = self.header.num_batch_edit.text().strip()
 
-            if not client or not ref_project:
+            if not client or not ref_project or not batch_number:
                 QMessageBox.critical(
                     self,
                     "Missing Info",
-                    "Client i Project Reference són obligatoris.",
+                    "Client, Project Reference and Batch number són obligatoris.",
                     QMessageBox.Ok,
                 )
                 return
 
             self.status_bar.update_status("Executant estudi de capacitat...")
             self.center_panel.update_content(
-                "⏳ Executant estudi de capacitat...\n\nAixò pot trigar uns moments."
+                f"⏳ Executant estudi de capacitat...\n\nBatch: {batch_number if batch_number else 'N/A'}"
             )
 
             self.worker_thread = QThread()
             self.worker = CapabilityStudyWorker(
-                client, ref_project, elements, extrap_config
+                client, ref_project, elements, extrap_config, batch_number=batch_number
             )
             self.worker.moveToThread(self.worker_thread)
 
@@ -238,14 +239,15 @@ class MainWindow(QMainWindow):
             # Get client and project info from header
             client = self.header.ref_client_edit.text().strip()
             ref_project = self.header.ref_project_edit.text().strip()
+            batch_number = self.header.num_batch_edit.text().strip()
             
-            if not client or not ref_project:
+            if not client or not ref_project or not batch_number:
                 logger.warning("Client or project information missing, cannot display charts")
                 return
                 
             # Create and show chart window
-            logger.info(f"Opening SPC charts for {client}_{ref_project}")
-            self.chart_window = SPCChartWindow(client, ref_project, parent=self)
+            logger.info(f"Opening SPC charts for study: {ref_project}_{batch_number}")
+            self.chart_window = SPCChartWindow(client, ref_project, batch_number, parent=self)
             self.chart_window.show()
             
         except Exception as e:
