@@ -17,6 +17,9 @@ def update_database(client: str, ref_project: str,
     Returns True if success, False if failure.
     """
     try:
+        # Ensure export directory exists
+        os.makedirs(export_path, exist_ok=True)
+        
         uploader = DatabaseUploader(
             client=client,
             ref_project=ref_project,
@@ -30,7 +33,7 @@ def update_database(client: str, ref_project: str,
         # Build file names based on convention - adapt if needed
         datasheet_path = os.path.join(export_path, f"{client}_{ref_project}_datasheet.xlsx")
         export_csv_path = os.path.join(export_path, f"{client}_{ref_project}_export.csv")
-        pdf_path = Path("C:\Github\PythonTecnica_SOME\PythonTecnica_SOME\assets\templates\6555945_003.pdf")
+        pdf_path = os.path.join("assets", "templates", "6555945_003.pdf")
         
 
         for file_path in [datasheet_path, export_csv_path, pdf_path]:

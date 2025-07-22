@@ -121,6 +121,9 @@ class DatabaseUploader:
 
 
     def cleanup_csv(self):
+        # Ensure export directory exists before trying to list it
+        os.makedirs(self.export_path, exist_ok=True)
+        
         for filename in os.listdir(self.export_path):
             if self.ref_project in filename and self.client in filename and filename.endswith(".csv"):
                 os.remove(os.path.join(self.export_path, filename))
