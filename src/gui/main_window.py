@@ -148,6 +148,9 @@ class MainWindow(QMainWindow):
             elif action_name == "update_db":
                 self._update_database()
 
+            elif action_name == "read_drawing":
+                self._read_drawing()
+
             elif action_name == "view_drawing":
                 self._view_drawing()
 
@@ -304,6 +307,90 @@ class MainWindow(QMainWindow):
                 "Database update failed. Check logs for details."
             )
             self.status_bar.update_status("Processing error")
+
+    def _read_drawing(self):
+        """Read and save drawing PDFs from server to database"""
+        try:
+            # Get client and project info
+            client = self.header.ref_client_edit.text().strip()
+            project_id = self.header.ref_project_edit.text().strip()
+            
+            if not client or not project_id:
+                self.center_panel.update_content(
+                    "❌ Falten dades\n\n"
+                    "Si us plau, introdueix:\n"
+                    "• Nom del Client (No Client)\n"
+                    "• ID del Projecte\n\n"
+                    "Aquestes dades són necessàries per buscar els dibuixos al servidor."
+                )
+                self.status_bar.update_status("Missing client or project data")
+                return
+            
+            # Import here to avoid circular imports
+            from src.services.drawing_pdf_reader import DrawingPDFReader
+            
+            # Update UI to show processing
+            self.center_panel.update_content(
+                f"🔍 Buscant dibuixos...\n\n"
+                f"Client: {client}\n"
+                f"Projecte: {project_id}\n\n"
+                f"Cercant al servidor: \\\\server.some.local\\Projectes en curs\n"
+                f"Carpeta: {client}\\{project_id} - ...\\2-PART TECHNICAL INFO\\1-CUSTOMER PART DRAWINGS\n\n"
+                f"Si us plau, espera..."
+            )
+            self.status_bar.update_status("Reading drawings from server...")
+            
+            # Process in background (this could be moved to a thread for better UX)
+            reader = DrawingPDFReader(client, project_id)
+            result = reader.read_and_save_drawings()
+            
+            # Update UI with results
+            if result['success']:
+                message = (
+                    f"✅ Dibuixos processats correctament\n\n"
+                    f"Client: {client}\n"
+                    f"Projecte: {project_id}\n\n"
+                    f"📊 Resum:\n"
+                    f"• PDFs trobats: {result['pdfs_found']}\n"
+                    f"• PDFs guardats/actualitzats: {result['pdfs_saved']}\n\n"
+                )
+                
+                if result.get('pdf_list'):
+                    message += "📄 Fitxers processats:\n"
+                    for pdf_name in result['pdf_list']:
+                        message += f"• {pdf_name}\n"
+                
+                message += f"\n{result['message']}"
+                
+                self.center_panel.update_content(message)
+                self.status_bar.update_status("Drawings processed successfully")
+                logger.info(f"Successfully processed {result['pdfs_saved']} drawings for {client}/{project_id}")
+            else:
+                error_message = (
+                    f"❌ Error processant dibuixos\n\n"
+                    f"Client: {client}\n"
+                    f"Projecte: {project_id}\n\n"
+                    f"Error: {result['error']}\n\n"
+                    f"Comprova:\n"
+                    f"• Connexió al servidor \\\\server.some.local\\Projectes en curs\n"
+                    f"• Que existeixi la carpeta del client '{client}'\n"
+                    f"• Que existeixi la carpeta del projecte que comenci per '{project_id}'\n"
+                    f"• Que existeixi la subcarpeta '2-PART TECHNICAL INFO\\1-CUSTOMER PART DRAWINGS'\n"
+                    f"• Que hi hagi fitxers PDF amb el format adequat"
+                )
+                
+                self.center_panel.update_content(error_message)
+                self.status_bar.update_status("Error reading drawings")
+                logger.error(f"Error processing drawings for {client}/{project_id}: {result['error']}")
+            
+        except Exception as e:
+            logger.error(f"Error in _read_drawing: {e}")
+            self.center_panel.update_content(
+                f"❌ Error inesperat\n\n"
+                f"Error: {str(e)}\n\n"
+                f"Consulta els logs per més detalls."
+            )
+            self.status_bar.update_status("Unexpected error")
 
     def _view_drawing(self):
         """Toggle view between text and PDF drawing mode"""
