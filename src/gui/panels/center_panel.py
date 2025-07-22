@@ -38,7 +38,8 @@ class PDFViewer(QLabel):
         self.current_pdf_doc = None
         self.current_page = 0
         self.zoom_factor = 1.0
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.base_size = None  # Store the base size for proper zoom calculation
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Preferred)
         
     def load_pdf_from_data(self, pdf_data, filename):
         """Load PDF from binary data"""
@@ -51,6 +52,7 @@ class PDFViewer(QLabel):
             self.current_pdf_doc = fitz.open(stream=pdf_data, filetype="pdf")
             self.current_page = 0
             self.zoom_factor = 1.0
+            self.base_size = None  # Reset base size for new PDF
             self.display_current_page()
             return True
         except Exception as e:
@@ -67,8 +69,34 @@ class PDFViewer(QLabel):
             # Get the page
             page = self.current_pdf_doc[self.current_page]
             
-            # Create a matrix for zoom
-            mat = fitz.Matrix(self.zoom_factor, self.zoom_factor)
+            # Get the original page size
+            page_rect = page.rect
+            
+            # Calculate base size to fit the parent widget (scroll area viewport)
+            if self.base_size is None and self.parent():
+                # Get the parent scroll area viewport size
+                parent_widget = self.parent()
+                if hasattr(parent_widget, 'viewport'):
+                    viewport_size = parent_widget.viewport().size()
+                else:
+                    viewport_size = parent_widget.size()
+                
+                # Calculate scale to fit in viewport while maintaining aspect ratio
+                scale_x = (viewport_size.width() - 20) / page_rect.width
+                scale_y = (viewport_size.height() - 20) / page_rect.height
+                base_scale = min(scale_x, scale_y, 1.0)  # Don't scale up initially
+                
+                self.base_size = (int(page_rect.width * base_scale), 
+                                int(page_rect.height * base_scale))
+            elif self.base_size is None:
+                # Fallback if no parent available
+                self.base_size = (600, 800)
+            
+            # Calculate final scale including zoom
+            final_scale = (self.base_size[0] / page_rect.width) * self.zoom_factor
+            
+            # Create a matrix for the final scale
+            mat = fitz.Matrix(final_scale, final_scale)
             
             # Render page to image
             pix = page.get_pixmap(matrix=mat)
@@ -78,14 +106,9 @@ class PDFViewer(QLabel):
             qimg = QPixmap()
             qimg.loadFromData(img_data)
             
-            # Scale to fit the widget while maintaining aspect ratio
-            scaled_pixmap = qimg.scaled(
-                self.size(), 
-                Qt.KeepAspectRatio, 
-                Qt.SmoothTransformation
-            )
-            
-            self.setPixmap(scaled_pixmap)
+            # Set the pixmap and resize the widget to match
+            self.setPixmap(qimg)
+            self.resize(qimg.size())
                 
         except Exception as e:
             self.setText(f"Error displaying PDF page:\n{str(e)}")
@@ -93,21 +116,21 @@ class PDFViewer(QLabel):
             
     def zoom_in(self):
         """Zoom in"""
-        if not FITZ_AVAILABLE:
+        if not FITZ_AVAILABLE or not self.current_pdf_doc:
             return
-        self.zoom_factor = min(self.zoom_factor * 1.2, 3.0)
+        self.zoom_factor = min(self.zoom_factor * 1.25, 5.0)  # Increased max zoom and increment
         self.display_current_page()
         
     def zoom_out(self):
         """Zoom out"""
-        if not FITZ_AVAILABLE:
+        if not FITZ_AVAILABLE or not self.current_pdf_doc:
             return
-        self.zoom_factor = max(self.zoom_factor / 1.2, 0.3)
+        self.zoom_factor = max(self.zoom_factor / 1.25, 0.2)  # Better zoom out increment
         self.display_current_page()
         
     def reset_zoom(self):
         """Reset zoom to fit"""
-        if not FITZ_AVAILABLE:
+        if not FITZ_AVAILABLE or not self.current_pdf_doc:
             return
         self.zoom_factor = 1.0
         self.display_current_page()
@@ -119,13 +142,7 @@ class PDFViewer(QLabel):
             self.current_pdf_doc = None
         self.clear()
         self.setText("PDF Preview\n\nClick 'View PDF Plan' to load and preview a PDF")
-    
-    def resizeEvent(self, event):
-        """Handle resize events to update PDF display"""
-        super().resizeEvent(event)
-        if self.current_pdf_doc and FITZ_AVAILABLE:
-            # Redisplay current page with new size
-            self.display_current_page()
+        self.base_size = None  # Reset base size
 
 
 class PDFLoadThread(QThread):
@@ -142,7 +159,8 @@ class PDFLoadThread(QThread):
     def run(self):
         try:
             uploader = DatabaseUploader(self.client, self.ref_project)
-            result = uploader.get_planol_pdf(self.ref_client)
+            # Pass project_id to enable filtering by project
+            result = uploader.get_planol_pdf(self.ref_client, self.ref_project)
             self.pdf_loaded.emit(result)
         except Exception as e:
             self.error_occurred.emit(str(e))
@@ -220,9 +238,14 @@ class CenterPanel(QGroupBox):
             self.reset_zoom_btn = QPushButton("Reset Zoom")
             self.reset_zoom_btn.clicked.connect(self.reset_zoom)
             
+            # Zoom level indicator
+            self.zoom_label = QLabel("100%")
+            self.zoom_label.setStyleSheet("color: #666; font-size: 11px; padding: 5px; margin-left: 10px;")
+            
             controls_layout.addWidget(self.zoom_in_btn)
             controls_layout.addWidget(self.zoom_out_btn)
             controls_layout.addWidget(self.reset_zoom_btn)
+            controls_layout.addWidget(self.zoom_label)
         
         controls_layout.addWidget(self.view_pdf_btn)
         controls_layout.addWidget(self.open_external_btn)
@@ -232,12 +255,16 @@ class CenterPanel(QGroupBox):
         self.pdf_info_label = QLabel("No PDF loaded")
         self.pdf_info_label.setStyleSheet("color: #666; font-size: 11px; padding: 5px;")
         
-        # PDF viewer
+        # PDF viewer with scroll area
         self.pdf_viewer = PDFViewer()
+        self.pdf_scroll_area = QScrollArea()
+        self.pdf_scroll_area.setWidget(self.pdf_viewer)
+        self.pdf_scroll_area.setWidgetResizable(True)
+        self.pdf_scroll_area.setAlignment(Qt.AlignCenter)
         
         pdf_layout.addLayout(controls_layout)
         pdf_layout.addWidget(self.pdf_info_label)
-        pdf_layout.addWidget(self.pdf_viewer)
+        pdf_layout.addWidget(self.pdf_scroll_area)
         pdf_tab.setLayout(pdf_layout)
         
         # Add tabs to tab widget
@@ -317,25 +344,23 @@ class CenterPanel(QGroupBox):
                 self.update_content("Error: Could not find parent window with header panel")
                 return
                 
-            # Get project reference (primary requirement)
+            # Get both client and project references
             ref_project = parent_window.header.ref_project_edit.text().strip()
             ref_client = parent_window.header.ref_client_edit.text().strip()
             
-            # Only project reference is required now
+            # Project reference is required (it's the id_referencia_client in DB)
             if not ref_project:
                 self.update_content("Please enter Project Reference to view PDF plans.")
                 return
-                
-            # Use client reference as the search key (or project reference if client not available)
-            search_key = ref_client if ref_client else ref_project
                 
             # Switch to tab widget view and PDF tab
             self.stacked_layout.setCurrentIndex(0)
             self.tab_widget.setCurrentIndex(1)
             self.update_pdf_info("Loading PDF...")
             
-            # Start PDF loading in thread using search_key as the client reference
-            self.pdf_thread = PDFLoadThread(search_key, ref_project, search_key)
+            # Start PDF loading in thread using project_id as the search key
+            # (since id_referencia_client in DB is actually the project_id)
+            self.pdf_thread = PDFLoadThread(ref_client, ref_project, ref_project)
             self.pdf_thread.pdf_loaded.connect(self.on_pdf_loaded)
             self.pdf_thread.error_occurred.connect(self.on_pdf_error)
             self.pdf_thread.start()
@@ -393,6 +418,7 @@ class CenterPanel(QGroupBox):
             if success:
                 self.current_pdf_path = temp_path
                 self.current_pdf_data = pdf_data
+                self.update_zoom_label()  # Update zoom label when PDF loads
                 return True
             else:
                 return False
@@ -424,16 +450,25 @@ class CenterPanel(QGroupBox):
         """Zoom in PDF"""
         if FITZ_AVAILABLE:
             self.pdf_viewer.zoom_in()
+            self.update_zoom_label()
 
     def zoom_out(self):
         """Zoom out PDF"""
         if FITZ_AVAILABLE:
             self.pdf_viewer.zoom_out()
+            self.update_zoom_label()
 
     def reset_zoom(self):
         """Reset PDF zoom"""
         if FITZ_AVAILABLE:
             self.pdf_viewer.reset_zoom()
+            self.update_zoom_label()
+    
+    def update_zoom_label(self):
+        """Update the zoom level display"""
+        if hasattr(self, 'zoom_label') and self.pdf_viewer.current_pdf_doc:
+            zoom_percent = int(self.pdf_viewer.zoom_factor * 100)
+            self.zoom_label.setText(f"{zoom_percent}%")
 
     def toggle_view_mode(self):
         """Toggle between text and PDF view modes"""
