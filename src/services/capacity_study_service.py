@@ -13,7 +13,9 @@ def perform_capability_study(
     elements: list,
     extrap_config: dict = None,
     min_sample_size: int = 5,
+    batch_number: str = None,
 ):
+
     """
     Perform capability study with the provided elements
 
@@ -64,10 +66,11 @@ def perform_capability_study(
     )
 
     manager = CapabilityStudyManager(config)
+    study_id = f"{ref_project}_{batch_number}" if batch_number else f"{ref_project}_unknown"
 
     results = manager.run_capability_study(
         sample_data,
-        study_id=f"{client}_{ref_project}",
+        study_id=study_id,
         interactive_extrapolation=False,
     )
 
@@ -92,7 +95,7 @@ def _convert_elements_to_sample_data(elements):
             "element_id": element["element_id"],
             "class": element["class"],
             "cavity": element["cavity"],
-            "batch": element["batch"],
+            "batch_number": element["batch"],
             "nominal": element["nominal"],
             "tol_minus": element["tol_minus"],
             "tol_plus": element["tol_plus"],
