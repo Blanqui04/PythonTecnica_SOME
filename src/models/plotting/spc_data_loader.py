@@ -1,5 +1,7 @@
+# src/models/plotting/spc_data_loader.py
+import os
 import json
-import logging
+from .logging_config import logger as base_logger
 
 
 class SPCDataLoader:
@@ -7,23 +9,43 @@ class SPCDataLoader:
         self.study_id = study_id
         self.base_path = base_path
         self.elements_data = {}
+        self.logger = base_logger.getChild(self.__class__.__name__)
 
-    def load_complete_report(self):
-        path = f"{self.base_path}/{self.study_id}_complete_report.json"
+
+    def load_complete_report(self, report_path: str = None):
+        # If no path is passed, try to find one as before (legacy behavior)
+        if report_path is None:
+            nested_path = (
+                f"{self.base_path}/{self.study_id}/{self.study_id}_complete_report.json"
+            )
+            flat_path = f"{self.base_path}/{self.study_id}_complete_report.json"
+
+            if os.path.exists(nested_path):
+                report_path = nested_path
+            elif os.path.exists(flat_path):
+                report_path = flat_path
+            else:
+                self.logger.error(
+                    f"Report not found in either location:\n{nested_path}\n{flat_path}"
+                )
+                return None
+
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            print(f"Trying to load: {report_path}")
+            print("File exists:", os.path.exists(report_path))
+            with open(report_path, "r", encoding="utf-8") as f:
                 report = json.load(f)
-            logging.info(f"Loaded JSON report from {path}")
+            self.logger.info(f"Loaded JSON report from {report_path}")
         except Exception as e:
-            logging.error(f"Failed to load JSON report: {e}")
-            return
+            self.logger.error(f"Failed to load JSON report: {e}")
+            return None
 
         detailed_results = report.get("detailed_results", [])
         extrapolation_results = report.get("extrapolation_results", [])
 
         if not detailed_results:
-            logging.warning("No detailed_results found in JSON report.")
-            return
+            self.logger.warning("No detailed_results found in JSON report.")
+            return None
 
         # Build a lookup dict for extrapolation results by element_name
         extrapolation_lookup = {
@@ -31,6 +53,8 @@ class SPCDataLoader:
             for item in extrapolation_results
             if "element_name" in item
         }
+
+        self.elements_data = {}
 
         for element_info in detailed_results:
             element_name = element_info.get("element_name")
@@ -41,6 +65,8 @@ class SPCDataLoader:
 
             self.elements_data[element_name] = {
                 "nominal": element_info.get("nominal"),
+                "batch": element_info.get("batch_number"),
+                "cavity": element_info.get("cavity"),
                 "tolerance": element_info.get("tolerance"),
                 "mean": element_info.get("statistics", {}).get("mean"),
                 "sample_size": element_info.get("statistics", {}).get("sample_size"),
@@ -70,7 +96,9 @@ if __name__ == "__main__":
     import sys
     import pprint
 
-    logging.basicConfig(level=logging.INFO)
+    from .logging_config import logger as base_logger
+    logger = base_logger.getChild("SPCDataLoader")
+
 
     study_id = "test_study"  # Per defecte, el teu estudi
     loader = SPCDataLoader(study_id)

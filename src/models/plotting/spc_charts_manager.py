@@ -6,14 +6,14 @@ from typing import Dict, List, Optional, Any
 import tempfile
 import os
 
-from base_chart import get_spc_logger
+from .logging_config import logger as base_logger
 
-from spc_data_loader import SPCDataLoader
-from i_chart import IChart
-from mr_chart import MRChart
-from capability_chart import CapabilityChart
-from extrapolation_chart import ExtrapolatedSPCChart
-from normality_plot import NormalityAnalysisChart
+from .spc_data_loader import SPCDataLoader
+from .i_chart import IChart
+from .mr_chart import MRChart
+from .capability_chart import CapabilityChart
+from .extrapolation_chart import ExtrapolatedSPCChart
+from .normality_plot import NormalityAnalysisChart
 
 
 class SPCChartManager:
@@ -25,44 +25,38 @@ class SPCChartManager:
     CHART_TYPES = {
         "normality": NormalityAnalysisChart,
         # Add more chart types here as they are implemented
-        'individuals': IChart,
-        'moving_range': MRChart,
-        'capability': CapabilityChart,
-        'extrapolation': ExtrapolatedSPCChart
+        "individuals": IChart,
+        "moving_range": MRChart,
+        "capability": CapabilityChart,
+        "extrapolation": ExtrapolatedSPCChart,
     }
 
     def __init__(
         self,
-        study_id: str,
+        client: str,
+        ref_project: str,
+        batch_number: str,
         base_path: str = "./data/spc",
         output_dir: str = "./data/reports/charts",
         lang: str = "ca",
         logger: Optional[logging.Logger] = None,
     ):
-        """
-        Initialize the SPC Chart Manager.
-
-        Args:
-            study_id: Study identifier
-            base_path: Base path for data files
-            output_dir: Output directory for charts
-            lang: Language for chart labels
-            logger: Optional logger instance
-        """
-        self.study_id = study_id
+        self.client = client
+        self.ref_project = ref_project
+        self.batch_number = batch_number
         self.base_path = Path(base_path)
         self.output_dir = Path(output_dir)
         self.lang = lang
-        self.logger = logger or get_spc_logger()
+        self.logger = logger or base_logger.getChild(self.__class__.__name__)
 
-        # Create output directory if it doesn't exist
-        self.output_dir.mkdir(parents=True, exist_ok=True)
+        # Compose folder and filename
+        self.folder_name = f"{self.client}_{self.ref_project}"
+        self.filename = f"{self.ref_project}_{self.batch_number}_complete_report.json"
 
-        # Initialize data loader
-        self.data_loader = SPCDataLoader(study_id, base_path)
+        self.logger.info(
+            f"Initialized SPCChartManager for study folder '{self.folder_name}', file '{self.filename}'"
+        )
         self.elements_data = {}
-
-        self.logger.info(f"Initialized SPCChartManager for study '{study_id}'")
 
     def load_data(self) -> bool:
         """
@@ -71,22 +65,25 @@ class SPCChartManager:
         Returns:
             bool: True if data loaded successfully, False otherwise
         """
-        self.logger.info(f"Loading data for study '{self.study_id}'")
+        self.logger.info(f"Loading data for: {self.folder_name}/{self.filename}")
+        report_path = self.base_path / self.folder_name / self.filename
+
+        if not report_path.exists():
+            self.logger.error(f"SPC report not found at path: {report_path}")
+            return False
 
         try:
-            self.elements_data = self.data_loader.load_complete_report()
+            self.elements_data = SPCDataLoader(
+                self.ref_project, self.base_path
+            ).load_complete_report(report_path)
             if not self.elements_data:
-                self.logger.error("No elements data loaded")
+                self.logger.error(f"No data loaded from report: {report_path}")
                 return False
-
-            self.logger.info(
-                f"Successfully loaded data for {len(self.elements_data)} elements: {list(self.elements_data.keys())}"
-            )
-            return True
-
         except Exception as e:
-            self.logger.error(f"Failed to load data: {e}", exc_info=True)
+            self.logger.error(f"Exception loading report: {e}", exc_info=True)
             return False
+
+        return True
 
     def _convert_element_data_for_chart(
         self, element_name: str, element_data: Dict[str, Any]
@@ -142,8 +139,8 @@ class SPCChartManager:
         return chart_data
 
     def create_chart(
-        self, element_name: str, chart_type: str, show: bool = False, save: bool = True
-    ) -> bool:
+    self, element_name: str, chart_type: str, show: bool = False, save: bool = True
+) -> bool:
         """
         Create a single chart for a specific element and chart type.
 
@@ -164,6 +161,10 @@ class SPCChartManager:
 
         if element_name not in self.elements_data:
             self.logger.error(f"Element '{element_name}' not found in loaded data")
+            return False
+        
+        if not self.batch_number or not self.ref_project:
+            self.logger.error("cagada pastorets, falta numero de lot i referencia de la peça.")
             return False
 
         try:
@@ -191,8 +192,10 @@ class SPCChartManager:
                 if save:
                     save_path = (
                         self.output_dir
-                        / f"{self.study_id}_{element_name}_{chart_type}.png"
+                        / f"{self.ref_project}_{self.batch_number}_{element_name}_{chart_type}.png"
                     )
+                    # Ensure output directory exists
+                    save_path.parent.mkdir(parents=True, exist_ok=True)
 
                 # Create chart instance
                 chart = chart_class(
@@ -230,6 +233,7 @@ class SPCChartManager:
                 exc_info=True,
             )
             return False
+
 
     def create_all_charts(
         self,
@@ -333,22 +337,3 @@ class SPCChartManager:
             }
 
         return summary
-
-
-if __name__ == "__main__":
-    # Simple test
-    logging.basicConfig(level=logging.INFO)
-
-    study_id = "test_study"
-    manager = SPCChartManager(study_id)
-
-    if manager.load_data():
-        print("Data loaded successfully")
-        summary = manager.get_elements_summary()
-        print(f"Elements summary: {summary}")
-
-        # Create all available charts
-        results = manager.create_all_charts(show=True, save=True)
-        print(f"Chart creation results: {results}")
-    else:
-        print("Failed to load data")
