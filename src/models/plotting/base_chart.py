@@ -1,35 +1,11 @@
+# src/models/plotting/base_chart.py
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import logging
-import sys
-
-
-def get_spc_logger(
-    log_file: str | Path = "spc_charts.log", level=logging.DEBUG
-) -> logging.Logger:
-    logger = logging.getLogger("SPCCharts")
-    if logger.hasHandlers():
-        return logger
-
-    logger.setLevel(level)
-
-    ch = logging.StreamHandler(sys.stdout)
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(logging.Formatter("[%(levelname)s] %(message)s"))
-    logger.addHandler(ch)
-
-    fh = logging.FileHandler(log_file, mode="a", encoding="utf-8")
-    fh.setLevel(level)
-    fh.setFormatter(
-        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    )
-    logger.addHandler(fh)
-
-    logger.debug("Logger initialized.")
-    return logger
+from .logging_config import logger as base_logger
 
 
 class SPCChartBase(ABC):
@@ -53,7 +29,7 @@ class SPCChartBase(ABC):
         logger: logging.Logger = None,
         element_name: str = None,  # NEW: allows targeting a single element from the JSON
     ):
-        self.logger = logger or get_spc_logger()
+        self.logger = logger or base_logger.getChild(self.__class__.__name__)
         self.logger.info(f"Initializing SPCChartBase with input: {input_json_path}")
 
         self.input_json_path = Path(input_json_path)

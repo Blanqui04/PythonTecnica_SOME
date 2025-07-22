@@ -295,7 +295,7 @@ class SampleDataManager:
         summary = {
             "total_elements": len(self.sample_data),
             "elements_by_type": {
-                "dimensional": len(self.get_elements_by_type(ElementType.DIMENSION)),
+                "dimension": len(self.get_elements_by_type(ElementType.DIMENSION)),
                 "gdt": len(self.get_elements_by_type(ElementType.GDT)),
                 "traction": len(self.get_elements_by_type(ElementType.TRACTION)),
             },
@@ -388,7 +388,7 @@ class SampleDataManager:
                     12.48,
                 ],
                 element_type=ElementType.DIMENSION,
-                batch_number=1234366,
+                batch_number="PRJ1234366",
                 cavity=1
             ),
             ElementData(
@@ -408,8 +408,8 @@ class SampleDataManager:
                     29.88,
                     30.19,
                 ],
-                element_type=ElementType.GDT,
-                batch_number=1234366,
+                element_type=ElementType.DIMENSION,
+                batch_number="PRJ1234366",
                 cavity=1
             ),
             ElementData(

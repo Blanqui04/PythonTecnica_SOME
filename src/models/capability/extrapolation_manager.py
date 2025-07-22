@@ -23,7 +23,7 @@ class ExtrapolationConfig:
 
     def __post_init__(self):
         if self.available_sizes is None:
-            self.available_sizes = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150]
+            self.available_sizes = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150]
 
 
 class ExtrapolationManager:

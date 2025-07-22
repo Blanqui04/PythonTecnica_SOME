@@ -20,7 +20,7 @@ from .logging_config import logger # Configured logger for calculations
 class ElementType(Enum):
     """Element type classification"""
 
-    DIMENSION = "dimensional"
+    DIMENSION = "dimension"
     GDT = "gdt"
     TRACTION = "traction"
 

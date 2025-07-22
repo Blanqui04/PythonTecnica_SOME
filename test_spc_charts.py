@@ -36,6 +36,8 @@ def create_test_data():
             {
                 "element_name": "Element_A",
                 "nominal": 10.0,
+                "batch": "PRJ1234366",
+                "cavity": 1,
                 "tolerance": [-0.5, 0.5],
                 "original_values": [10.1, 10.3, 10.2, 10.4, 10.2, 10.5, 10.1, 10.3, 10.2, 10.4],
                 "statistics": {
@@ -58,6 +60,8 @@ def create_test_data():
             {
                 "element_name": "Element_B",
                 "nominal": 5.0,
+                "batch": "PRJ1234366",
+                "cavity": 2,
                 "tolerance": [-0.3, 0.3],
                 "original_values": [5.09, 5.14, 4.97, 5.11, 5.04, 5.16, 4.99, 5.07, 5.13, 5.02],
                 "statistics": {
