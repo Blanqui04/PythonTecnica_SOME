@@ -1,13 +1,20 @@
 import pandas as pd
 import os
 from datetime import datetime
+from pathlib import Path
 
 class DataProcessor:
     """Process raw Excel data into structured format"""
     
     def __init__(self):
-        self.csv_folder = r'C:\Github\PythonTecnica_SOME\data\temp\excel_processing'
-        self.processed_folder = r'C:\Github\PythonTecnica_SOME\data\processed\datasheets'
+        # Use relative paths from project root
+        project_root = Path(__file__).parent.parent.parent
+        self.csv_folder = project_root / 'data' / 'temp' / 'excel_processing'
+        self.processed_folder = project_root / 'data' / 'processed' / 'datasheets'
+        
+        # Ensure directories exist
+        self.csv_folder.mkdir(parents=True, exist_ok=True)
+        self.processed_folder.mkdir(parents=True, exist_ok=True)
     
     def process_kop_data(self, raw_data, client, ref_project):
         """Process KOP specific data"""
@@ -48,7 +55,7 @@ class DataProcessor:
             cleaned_data.append(filtered_row)
         
         # Save as CSV (optional)
-        csv_path = os.path.join(self.csv_folder, f"estructura_{client}_{ref_project}.csv")
+        csv_path = self.csv_folder / f"estructura_{client}_{ref_project}.csv"
         cleaned_df = pd.DataFrame(cleaned_data)
         cleaned_df.to_csv(csv_path, index=False, header=False)
         
@@ -69,7 +76,7 @@ class DataProcessor:
         result = pd.concat([p_1, p_2], ignore_index=True)
         
         # Save as CSV (optional)
-        csv_path = os.path.join(self.csv_folder, f"dades_extra_{client}_{ref_project}.csv")
+        csv_path = self.csv_folder / f"dades_extra_{client}_{ref_project}.csv"
         result.to_csv(csv_path, index=False, header=False)
         
         return result.to_dict('records')
@@ -93,7 +100,7 @@ class DataProcessor:
             combined_df = combined_df.iloc[:2]
         
         # Save final datasheet
-        csv_path = os.path.join(self.processed_folder, f"datasheet_{client}_{ref_project}.csv")
+        csv_path = self.processed_folder / f"datasheet_{client}_{ref_project}.csv"
         combined_df.to_csv(csv_path, index=False, header=False)
         
         return combined_df.to_dict('records')
