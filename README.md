@@ -17,20 +17,20 @@ PythonTecnica_SOME/
 │   ├── data_processing/
 │   │   ├── utils/
 │   │   │   ├── __init__.py
-│   │   │   └── excel_reader.py       # Excel file reading utilities - Test success!
+│   │   │   └── excel_reader.py       # Test success!
 │   │   ├── __init__.py
-│   │   ├── data_processor.py         # Core data processing logic - Test success!
-│   │   ├── data_transformer.py       # Data transformation utilities - Test success!
-│   │   └── pipeline_manager.py       # Data processing pipeline manager - Test success!
+│   │   ├── data_processor.py         # Test success!
+│   │   ├── data_transformer.py       # Test success!
+│   │   └── pipeline_manager.py       # Test success!
 │   │
 │   ├── database/
-│   │   ├── database_connection.py    # PostgreSQL connection handler - Test success!
-│   │   └── database_uploader.py      # Database upload functionality with PDF handling - Test success!
+│   │   ├── database_connection.py    # Test success!
+│   │   └── database_uploader.py      # Test success!
 │   │
 │   ├── exceptions/
 │   │   ├── __init__.py          
-│   │   ├── transformation_errors.py  # Custom transformation exceptions - Test success!
-│   │   └── sample_errors.py          # Sample processing exceptions - Test success!
+│   │   ├── transformation_errors.py  # Test success!
+│   │   └── sample_errors.py          # Test success!
 │   │
 │   │── gui/
 │   │    ├── __init__.py
@@ -38,55 +38,58 @@ PythonTecnica_SOME/
 │   │    ├── logging_config.py            # Logging configuration for GUI
 │   │    ├── widgets/                     # Custom UI widgets
 │   │    │   ├── __init__.py
-│   │    │   ├── element_input_widget.py  # Test success!
-│   │    │   ├── buttons.py               # Test success!
-│   │    │   ├── inputs.py                # Test success!
+│   │    │   ├── element_input_widget.py        # Test success!
+│   │    │   ├── buttons.py                     # Test success!
+│   │    │   ├── inputs.py                      # Test success!
 │   │    ├── panels/
 │   │    │   ├── __init__.py
-│   │    │   ├── header.py                # Test success!
-│   │    │   ├── left_panel.py            # Test success!
-│   │    │   ├── center_panel.py          # Test success!
-│   │    │   ├── right_panel.py           # Test success!
-│   │    │   └── status_bar.py            # Test success!
+│   │    │   ├── header.py                      # Test success!
+│   │    │   ├── left_panel.py                  # Test success!
+│   │    │   ├── center_panel.py                # Test success!
+│   │    │   ├── right_panel.py                 # Test success!
+│   │    │   └── status_bar.py                  # Test success!
 │   │    ├── workers/                      
 │   │    │   └── capability_study_worker.py     # Test success!
 │   │    ├── window/                      
 │   │    │   ├── __init__.py
-│   │    │   └── spc_chart_window.py     # Test success!
+│   │    │   └── spc_chart_window.py            # Test success!
 │   │    └── utils/
-│   │        ├── chart_utils.py
+│   │        ├── chart_utils.py             # Chart utilities
 │   │        ├── element_input_styles.py    # Styling utilities
 │   │        └── styles.py                  # Styling utilities
 │   │
 │   ├── models/
 │   │   │── plotting/
 │   │   │   │── __init__.py  
-│   │   │   │── logging_config.py            # Test success!
-│   │   │   │── spc_charts_manager.py        # Test success!
-│   │   │   │── base_chart.py                # Test success!
-│   │   │   │── spc_data_loader.py           # Test success!
-│   │   │   │── capability_chart.py          # Test success!
-│   │   │   │── normality_plot.py            # Test success!
-│   │   │   │── extrapolation_chart.py       # Test success!
-│   │   │   │── i_chart.py                   # Test success!
-│   │   │   └── mr_chart.py                  # Test success!
+│   │   │   │── logging_config.py               # Test success!
+│   │   │   │── spc_charts_manager.py           # Test success!
+│   │   │   │── base_chart.py                   # Test success!
+│   │   │   │── spc_data_loader.py              # Test success!
+│   │   │   │── capability_chart.py             # Test success!
+│   │   │   │── normality_plot.py               # Test success!
+│   │   │   │── extrapolation_chart.py          # Test success!
+│   │   │   │── i_chart.py                      # Test success!
+│   │   │   └── mr_chart.py                     # Test success!
 │   │   │  
 │   │   ├── capability/               # Statistical capability analysis
 │   │   │   ├── __init__.py
-│   │   │   ├── sample_data_manager.py       # Sample data management - Test success!
-│   │   │   ├── capability_analyzer.py       # Capability analysis engine - Test success!
-│   │   │   ├── capability_study_manager.py  # Capability study orchestrator - Test success!
-│   │   │   └── extrapolation_manager.py     # Data extrapolation manager - Test success!
+│   │   │   ├── logging_config.py       
+│   │   │   ├── sample_data_manager.py          # Test success!
+│   │   │   ├── capability_analyzer.py          # Test success!
+│   │   │   ├── capability_study_manager.py     # Test success!
+│   │   │   └── extrapolation_manager.py        # Test success!
 │   │   │ 
 │   │   ├── dimensional/              # Dimensional analysis
 │   │   │   ├── __init__.py
-│   │   │   └── dimensional_analyzer.py      # Dimensional analysis (pending development)
+│   │   │   └── dimensional_analyzer.py         # Developing
 │   │   └── __init__.py
 │   │
 │   ├── services/
 │   │    │── __init__.py 
 │   │    │── spc_chart_service.py               # Test success! <-
 │   │    │── capacity_study_service.py          # Test success! <-
+│   │    │── data_export_service.py             # Test success! <-
+│   │    │── pdf_service.py                     # Test success! <-
 │   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
 │   │    └── database_update.py                 # Test success! <- to clean...
 │   │
@@ -116,12 +119,18 @@ PythonTecnica_SOME/
 │   │   └── table_mappings.json       # Database table mappings
 │   └── config.ini                    # Main application configuration
 │
-├── tests/                            # Unit and integration tests
-│   ├── test_data_uploader.py         # Database uploader tests - Test success!
-│   ├── test_data_transformer.py      # Data transformation tests - Test success!
-│   └── test_excel_processing.py      # Excel processing tests - Test success!
+├── tests/                       # Unit and integration tests
+│   ├── test_orchestrator.py          # Test success!
+│   ├── test_spc_charts.py            # Test success!
+│   ├── test_spc_manager.py           # Test success!
+│   ├── test_data_uploader.py         # Test success!
+│   ├── test_kop_processing.py        # Test success!
+│   ├── test_data_transformer.py      # Test success!
+│   ├── test_data_uploader.py         # Test success!
+│   ├── test_data_transformer.py      # Test success!
+│   └── test_excel_processing.py      # Test success!
 │
-├── docs/                             # Documentation
+├── docs/                        # Documentation
 │   ├── capability/
 │   │   ├── Estudi de capacitat.docx
 │   │   └── Estudi de capacitat.pdf
@@ -153,15 +162,9 @@ PythonTecnica_SOME/
 │   ├── gui.log                       # GUI application logs
 │   └── db_operations.log             # Database operation logs
 │
-├── test_orchestrator.py             # Integration test for orchestrator - Test success!
-├── test_spc_charts.py               # SPC charts testing - Test success!
-├── test_spc_manager.py              # SPC manager testing - Test success!
-├── test_data_uploader.py            # Data uploader testing - Test success!
-├── test_kop_processing.py           # KOP processing testing - Test success!
-├── test_data_transformer.py         # Data transformer testing - Test success!
 │
 ├── main_app.py                       # Application entry point
-├── Configuració_Set_Up.txt          # Setup configuration notes
+├── Configuració_Set_Up.txt           # Setup configuration notes
 ├── requirements.txt                  # Python dependencies
 ├── README.md                         # Project documentation
 └── .gitignore                        # Git ignore configuration
