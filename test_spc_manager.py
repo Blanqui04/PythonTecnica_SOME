@@ -62,7 +62,7 @@ def test_capability_study_manager():
 
         full_manager = CapabilityStudyManager(config)
         study_results = full_manager.run_capability_study(
-            default_data, study_id="test_study", interactive_extrapolation=False
+            default_data, study_id="test_study", interactive_extrapolation=True
         )
 
         print("   ✓ Full study completed successfully")

@@ -1,12 +1,11 @@
+from PyQt5.QtWidgets import (QGroupBox, QVBoxLayout, QTextEdit, QScrollArea, 
+                             QTabWidget, QWidget, QHBoxLayout, QPushButton, 
+                             QLabel, QStackedLayout, QSizePolicy)
+from PyQt5.QtCore import QThread, pyqtSignal, Qt
+from PyQt5.QtGui import QPixmap
 import os
 import platform
 import subprocess
-from PyQt5.QtWidgets import (
-    QGroupBox, QVBoxLayout, QTextEdit, QScrollArea, QPushButton, 
-    QHBoxLayout, QLabel, QTabWidget, QWidget, QSizePolicy
-)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QPixmap
 
 # Import shared logger
 from src.gui.logging_config import logger
@@ -148,6 +147,7 @@ class PDFLoadThread(QThread):
         except Exception as e:
             self.error_occurred.emit(str(e))
 
+
 class CenterPanel(QGroupBox):
     def __init__(self, parent=None):
         super().__init__("Visualizer & PDF Viewer", parent)
@@ -162,26 +162,21 @@ class CenterPanel(QGroupBox):
         layout = QVBoxLayout()
         layout.setContentsMargins(5, 5, 5, 5)
 
-        # Create tab widget for text and PDF
+        # Create tab widget for different view modes
         self.tab_widget = QTabWidget()
         
-        # Text tab
+        # Text tab - for text content and visualizations
         text_tab = QWidget()
         text_layout = QVBoxLayout()
         
-        # Create a scroll area for text
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setStyleSheet("border: none;")
-
-        # Create the text edit
-        self.visualizer = QTextEdit()
-        self.visualizer.setReadOnly(True)
-        self.visualizer.setPlainText("Welcome to Database Management System\n\n"
-                                     "Use the search fields above to find data.\n"
-                                     "Select actions from the side panels to process data.\n\n"
-                                     "Results and visualizations will appear here.")
-        self.visualizer.setStyleSheet("""
+        # Create text widget (visualizer)
+        self.text_widget = QTextEdit()
+        self.text_widget.setReadOnly(True)
+        self.text_widget.setPlainText("Welcome to Database Management System\n\n"
+                                      "Use the search fields above to find data.\n"
+                                      "Select actions from the side panels to process data.\n\n"
+                                      "Results and visualizations will appear here.")
+        self.text_widget.setStyleSheet("""
             QTextEdit {
                 background-color: white;
                 border: none;
@@ -191,12 +186,17 @@ class CenterPanel(QGroupBox):
                 line-height: 1.5;
             }
         """)
-
-        scroll_area.setWidget(self.visualizer)
+        
+        # Create scroll area for text widget
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setStyleSheet("border: none;")
+        scroll_area.setWidget(self.text_widget)
+        
         text_layout.addWidget(scroll_area)
         text_tab.setLayout(text_layout)
         
-        # PDF tab
+        # PDF tab - for PDF viewing
         pdf_tab = QWidget()
         pdf_layout = QVBoxLayout()
         
@@ -240,20 +240,66 @@ class CenterPanel(QGroupBox):
         pdf_layout.addWidget(self.pdf_viewer)
         pdf_tab.setLayout(pdf_layout)
         
-        # Add tabs
+        # Add tabs to tab widget
         self.tab_widget.addTab(text_tab, "Text Viewer")
         self.tab_widget.addTab(pdf_tab, "PDF Viewer")
         
-        layout.addWidget(self.tab_widget)
+        # Create stacked layout for backwards compatibility
+        self.stacked_layout = QStackedLayout()
+        
+        # Mode 2: Custom widget view (e.g., interactive form or preview)
+        self.custom_widget_container = QWidget()  # Placeholder, can be replaced dynamically
+        
+        # Add tab widget as the primary view (index 0)
+        # Add custom widget container for special cases (index 1)
+        self.stacked_layout.addWidget(self.tab_widget)
+        self.stacked_layout.addWidget(self.custom_widget_container)
+        
+        # Set default to tab widget view
+        self.stacked_layout.setCurrentIndex(0)
+        
+        layout.addLayout(self.stacked_layout)
         self.setLayout(layout)
-        logger.debug("UI for [CenterPanel] set up successfully")
 
-    def update_content(self, content):
+        # Create alias for backward compatibility
+        self.visualizer = self.text_widget
+
+    def update_content(self, content: str):
+        """Update visualizer text content and switch to text mode."""
         logger.debug(f"Updating content in [CenterPanel]: {content[:60]}{'...' if len(content) > 60 else ''}")
-        self.visualizer.setPlainText(content)
-        # Switch to text tab when updating content
+        self.text_widget.setPlainText(content)
+        # Ensure we're showing the tab widget and switch to text tab
+        self.stacked_layout.setCurrentIndex(0)
         self.tab_widget.setCurrentIndex(0)
         logger.info("Visualizer content updated")
+
+    def set_custom_widget(self, widget):
+        """Set a custom widget and switch to custom view mode"""
+        # Remove old widget if exists
+        old_widget = self.stacked_layout.widget(1)
+        if old_widget:
+            self.stacked_layout.removeWidget(old_widget)
+            old_widget.deleteLater()
+        
+        # Add new custom widget
+        self.stacked_layout.addWidget(widget)
+        self.custom_widget_container = widget
+        
+        # Switch to custom widget view
+        self.stacked_layout.setCurrentIndex(1)
+        logger.info("Switched to custom widget view")
+
+    def show_custom_widget(self, widget):
+        """Show a custom widget (alias for set_custom_widget for backward compatibility)"""
+        self.set_custom_widget(widget)
+
+    def reset_to_text_view(self):
+        """Reset to text view mode (switch back from custom widget to tab widget and text tab)"""
+        # Switch back to tab widget view
+        self.stacked_layout.setCurrentIndex(0)
+        # Switch to text tab
+        self.tab_widget.setCurrentIndex(0)
+        logger.info("Reset to text view mode")
 
     def update_pdf_info(self, info):
         """Update PDF info label"""
@@ -273,17 +319,18 @@ class CenterPanel(QGroupBox):
                 
             # Get project reference (primary requirement)
             ref_project = parent_window.header.ref_project_edit.text().strip()
-            client = parent_window.header.ref_client_edit.text().strip()
+            ref_client = parent_window.header.ref_client_edit.text().strip()
             
             # Only project reference is required now
             if not ref_project:
                 self.update_content("Please enter Project Reference to view PDF plans.")
                 return
                 
-            # Use project reference as the search key (or client if available)
-            search_key = client if client else ref_project
+            # Use client reference as the search key (or project reference if client not available)
+            search_key = ref_client if ref_client else ref_project
                 
-            # Switch to PDF tab
+            # Switch to tab widget view and PDF tab
+            self.stacked_layout.setCurrentIndex(0)
             self.tab_widget.setCurrentIndex(1)
             self.update_pdf_info("Loading PDF...")
             
@@ -390,6 +437,9 @@ class CenterPanel(QGroupBox):
 
     def toggle_view_mode(self):
         """Toggle between text and PDF view modes"""
+        # Ensure we're in tab widget view
+        self.stacked_layout.setCurrentIndex(0)
+        
         current_index = self.tab_widget.currentIndex()
         
         if current_index == 0:  # Currently on text tab
@@ -403,7 +453,8 @@ class CenterPanel(QGroupBox):
     def switch_to_pdf_and_load(self):
         """Switch to PDF tab and automatically load PDF if project reference is available"""
         try:
-            # Switch to PDF tab first
+            # Ensure we're in tab widget view and switch to PDF tab
+            self.stacked_layout.setCurrentIndex(0)
             self.tab_widget.setCurrentIndex(1)
             logger.info("Switched to PDF view mode")
             
@@ -418,7 +469,7 @@ class CenterPanel(QGroupBox):
                 
             # Get project reference (primary requirement)
             ref_project = parent_window.header.ref_project_edit.text().strip()
-            client = parent_window.header.ref_client_edit.text().strip()
+            ref_client = parent_window.header.ref_client_edit.text().strip()
             
             # Only project reference is required now
             if not ref_project:
@@ -426,8 +477,8 @@ class CenterPanel(QGroupBox):
                 self.pdf_viewer.setText("PDF Viewer\n\nPlease enter Project Reference\nin the header field above to view PDF plans.")
                 return
                 
-            # Automatically load PDF
-            self.view_pdf_plan()
+            # Use client reference as the search key (or project reference if client not available)
+            search_key = ref_client if ref_client else ref_project  # noqa: F841
             
         except Exception as e:
             logger.error(f"Error in switch_to_pdf_and_load: {e}")
@@ -435,5 +486,6 @@ class CenterPanel(QGroupBox):
 
     def switch_to_text(self):
         """Switch to text tab"""
+        self.stacked_layout.setCurrentIndex(0)
         self.tab_widget.setCurrentIndex(0)
         logger.info("Switched to text view mode")

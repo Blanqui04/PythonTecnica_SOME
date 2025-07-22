@@ -8,48 +8,33 @@ import json
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-import logging
 from typing import Dict, List, Tuple, Optional, Union  # noqa: F401
 from dataclasses import dataclass
 from enum import Enum
 
 from ...exceptions.sample_errors import SampleErrors
 
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file = os.path.join(LOG_DIR, "app.log")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),  # Save logs to file
-        logging.StreamHandler(),  # Also print logs to console
-    ],
-)
-
-logger = logging.getLogger(__name__)
+from .logging_config import logger # Configured logger for calculations
 
 
 class ElementType(Enum):
     """Element type classification"""
 
-    DIMENSIONAL = "dimensional"
+    DIMENSION = "dimension"
     GDT = "gdt"
     TRACTION = "traction"
 
 
 @dataclass
 class ElementData:
-    """Data structure for element information"""
-
     name: str
     nominal: float
     tol_minus: float
     tol_plus: float
     values: List[float]
-    element_type: ElementType = ElementType.DIMENSIONAL
+    element_type: ElementType = ElementType.DIMENSION
+    batch_number: Optional[str] = None
+    cavity: Optional[str] = None
 
 
 @dataclass
@@ -144,7 +129,7 @@ class CapabilityAnalyzer:
         elif any(kw in name for kw in traction_keywords):
             element_type = ElementType.TRACTION
         else:
-            element_type = ElementType.DIMENSIONAL
+            element_type = ElementType.DIMENSION
 
         logger.debug(f"Detected element type: {element_type.value}")
         return element_type
@@ -446,6 +431,8 @@ class CapabilityAnalyzer:
         # Prepare results dictionary
         results = {
             "element_name": element_data.name,
+            "batch_number": element_data.batch_number,
+            "cavity": element_data.cavity,
             "nominal": element_data.nominal,
             "tolerance": [element_data.tol_minus, element_data.tol_plus],
             "original_values": element_data.values,
@@ -526,6 +513,8 @@ class CapabilityAnalyzer:
 
             flattened_result = {
                 "Element": result["element_name"],
+                "Batch": result.get("batch_number", ""),
+                "Cavity": result.get("cavity", ""),
                 "Nominal": result["nominal"],
                 "Tolerance": json.dumps(result["tolerance"]),
                 "Original_Values": json.dumps(result["original_values"]),

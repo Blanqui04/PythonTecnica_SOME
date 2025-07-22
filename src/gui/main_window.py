@@ -1,3 +1,4 @@
+# src/gui/main_window.py
 import sys
 from PyQt5.QtWidgets import (
     QApplication,
@@ -7,8 +8,10 @@ from PyQt5.QtWidgets import (
     QWidget,
     QMessageBox,
 )
+
+# from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
 from PyQt5.QtGui import QFont
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, QThread
 from .panels.header import HeaderPanel
 from .panels.left_panel import LeftPanel
 from .panels.center_panel import CenterPanel
@@ -18,9 +21,14 @@ from .utils.styles import global_style
 
 # Configure logging
 from src.gui.logging_config import logger
+
 from src.services.data_processing_orchestrator import DataProcessingOrchestrator
 from src.services.database_update import update_database
+from src.gui.workers.capability_study_worker import CapabilityStudyWorker
 
+# from src.services.capacity_study_service import perform_capability_study
+from src.gui.widgets.element_input_widget import ElementInputWidget
+from .windows.spc_chart_window import SPCChartWindow
 
 
 class MainWindow(QMainWindow):
@@ -79,9 +87,9 @@ class MainWindow(QMainWindow):
         self.right_panel = RightPanel()
         self.right_panel.action_requested.connect(self.handle_action)
 
-        content_layout.addWidget(self.left_panel, 1)
-        content_layout.addWidget(self.center_panel, 2)
-        content_layout.addWidget(self.right_panel, 1)
+        content_layout.addWidget(self.left_panel, 2)
+        content_layout.addWidget(self.center_panel, 5)
+        content_layout.addWidget(self.right_panel, 2)
 
         # Status bar
         self.status_bar = StatusBar()
@@ -171,12 +179,86 @@ class MainWindow(QMainWindow):
         self.status_bar.update_status("Dimensional analysis completed")
 
     def _run_capacity_analysis(self):
-        """Run capacity analysis"""
-        from src.models.capability.capability_analyzer import run_analysis
+        self.element_input_widget = ElementInputWidget()
+        self.element_input_widget.study_requested.connect(
+            self.run_capacity_study_with_elements
+        )
+        self.center_panel.show_custom_widget(self.element_input_widget)
+        self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
 
-        result = run_analysis()
-        self.center_panel.update_content(f"Capacity Study Results:\n\n{result}")
-        self.status_bar.update_status("Capacity analysis completed")
+    def run_capacity_study_with_elements(self, elements, extrap_config):
+        try:
+            client = self.header.ref_client_edit.text().strip()
+            ref_project = self.header.ref_project_edit.text().strip()
+            batch_number = self.header.num_batch_edit.text().strip()
+
+            if not client or not ref_project or not batch_number:
+                QMessageBox.critical(
+                    self,
+                    "Missing Info",
+                    "Client, Project Reference and Batch number són obligatoris.",
+                    QMessageBox.Ok,
+                )
+                return
+
+            self.status_bar.update_status("Executant estudi de capacitat...")
+            self.center_panel.update_content(
+                f"⏳ Executant estudi de capacitat...\n\nBatch: {batch_number if batch_number else 'N/A'}"
+            )
+
+            self.worker_thread = QThread()
+            self.worker = CapabilityStudyWorker(
+                client, ref_project, elements, extrap_config, batch_number=batch_number
+            )
+            self.worker.moveToThread(self.worker_thread)
+
+            self.worker_thread.started.connect(self.worker.run)
+            self.worker.finished.connect(self.on_study_finished)
+            self.worker.finished.connect(self.worker_thread.quit)
+            self.worker.finished.connect(self.worker.deleteLater)
+            self.worker_thread.finished.connect(self.worker_thread.deleteLater)
+
+            self.worker_thread.start()
+
+        except Exception as e:
+            self.status_bar.update_status(f"Error a l'estudi: {e}")
+            self.center_panel.update_content(f"❌ Error a l'estudi de capacitat: {e}")
+            logger.error(f"Error a l'estudi de capacitat: {e}")
+
+    # Replace your existing on_study_finished method with this:
+    def on_study_finished(self, result):
+        """Handle capability study completion"""
+        # Update center panel with completion message
+        self.center_panel.reset_to_text_view()
+        self.center_panel.update_content(
+            f"✅ Estudi de capacitat finalitzat!\n\n{result}"
+        )
+        self.status_bar.update_status("Estudi de capacitat completat")
+        
+        try:
+            # Get client and project info from header
+            client = self.header.ref_client_edit.text().strip()
+            ref_project = self.header.ref_project_edit.text().strip()
+            batch_number = self.header.num_batch_edit.text().strip()
+            
+            if not client or not ref_project or not batch_number:
+                logger.warning("Client or project information missing, cannot display charts")
+                return
+                
+            # Create and show chart window
+            logger.info(f"Opening SPC charts for study: {ref_project}_{batch_number}")
+            self.chart_window = SPCChartWindow(client, ref_project, batch_number, parent=self)
+            self.chart_window.show()
+            
+        except Exception as e:
+            logger.error(f"Error opening SPC charts: {e}")
+            # Show error message to user
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(
+                self, 
+                "Error", 
+                f"No s'han pogut mostrar els gràfics SPC:\n\n{str(e)}"
+            )
 
     def _process_data(self):
         """Process data files"""
@@ -207,7 +289,9 @@ class MainWindow(QMainWindow):
         ref_project = self.header.ref_project_edit.text().strip()
 
         if not client or not ref_project:
-            self.status_label.setText("Client and Project Reference are required to update database.")
+            self.status_bar.update_status(
+                "Client and Project Reference are required to update database."
+            )
             return
 
         success = update_database(client, ref_project)
@@ -216,7 +300,9 @@ class MainWindow(QMainWindow):
             self.center_panel.update_content("Database update completed successfully!")
             self.status_bar.update_status("Processing completed")
         else:
-            self.center_panel.update_content("Database update failed. Check logs for details.")
+            self.center_panel.update_content(
+                "Database update failed. Check logs for details."
+            )
             self.status_bar.update_status("Processing error")
 
     def _view_drawing(self):

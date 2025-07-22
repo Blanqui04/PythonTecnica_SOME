@@ -6,7 +6,6 @@ Capability Study Manager - Main orchestrator for capability studies
 import os
 import json
 import pandas as pd
-import logging
 from typing import List, Dict, Optional, Union
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -15,19 +14,7 @@ from .sample_data_manager import SampleDataManager
 from .capability_analyzer import CapabilityAnalyzer, ElementData, ElementType  # noqa: F401
 from ...exceptions.sample_errors import SampleErrors
 
-# Configuració del logger
-log_dir = "logs"
-os.makedirs(log_dir, exist_ok=True)
-log_path = os.path.join(log_dir, "capability_study.log")
-
-logging.basicConfig(
-    filename=log_path,
-    filemode="a",  # append mode
-    format="%(asctime)s %(levelname)s: %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-    level=logging.INFO,
-)
-logger = logging.getLogger(__name__)
+from .logging_config import logger as base_logger
 
 
 @dataclass
@@ -41,7 +28,7 @@ class StudyConfig:
         default_factory=ExtrapolationConfig
     )
     export_detailed_results: bool = True
-    export_summary: bool = True
+    export_summary: bool = False
 
     def __post_init__(self):
         if self.min_sample_size < 5:
@@ -87,22 +74,7 @@ class CapabilityStudyManager:
         os.makedirs(self.config.output_directory, exist_ok=True)
 
         # Setup logger for the class
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.logger.setLevel(logging.DEBUG)  # You can adjust the level here
-
-        # Create console handler with a higher log level
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)  # Default output level, can be DEBUG for more details
-
-        # Create formatter and add it to the handlers
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
-        ch.setFormatter(formatter)
-
-        # Add the handlers to logger if not already added
-        if not self.logger.hasHandlers():
-            self.logger.addHandler(ch)
+        self.logger = base_logger.getChild(self.__class__.__name__)
 
     def load_data_from_source(
         self, source: Union[str, List[Dict], pd.DataFrame]
@@ -255,12 +227,24 @@ class CapabilityStudyManager:
                         )
                     )
                 else:
-                    # Use default target size for batch processing
+                    # Get correct target size from config
+                    target_size = None
+                    if (
+                        self.config.extrapolation_config
+                        and self.config.extrapolation_config.available_sizes
+                    ):
+                        target_size = self.config.extrapolation_config.available_sizes[
+                            0
+                        ]
+
+                    if not target_size:
+                        target_size = 50  # fallback default
+
                     self.logger.info(
-                        "Running batch extrapolation with default target size 50"
+                        f"Running batch extrapolation with target size {target_size}"
                     )
                     extrap_results = self.extrapolation_manager.batch_extrapolate(
-                        extrapolation_data, target_size=50
+                        extrapolation_data, target_size=target_size
                     )
 
                 # Convert to dictionaries for storage

@@ -12,6 +12,8 @@ PythonTecnica_SOME is a modular Python application for processing technical and 
 PythonTecnica_SOME/
 │
 ├── src/                              # Main source code (all modules)
+│   ├── __init__.py
+│   │
 │   ├── data_processing/
 │   │   ├── utils/
 │   │   │   ├── __init__.py
@@ -30,36 +32,44 @@ PythonTecnica_SOME/
 │   │   ├── transformation_errors.py  # Custom transformation exceptions - Test success!
 │   │   └── sample_errors.py          # Sample processing exceptions - Test success!
 │   │
-│   ├── gui/                          # PyQt5 GUI application
-│   │   ├── __init__.py
-│   │   ├── main_window.py            # Main application window with export functionality
-│   │   ├── logging_config.py         # Logging configuration for GUI
-│   │   ├── widgets/                  # Custom UI widgets
-│   │   │   ├── __init__.py
-│   │   │   ├── buttons.py            # Custom button components - Test success!
-│   │   │   └── inputs.py             # Custom input components - Test success!
-│   │   ├── panels/                   # Main UI sections
-│   │   │   ├── __init__.py
-│   │   │   ├── header.py             # Application header panel - Test success!
-│   │   │   ├── left_panel.py         # Left action panel - Test success!
-│   │   │   ├── center_panel.py       # Center panel with PDF viewer toggle - Test success!
-│   │   │   ├── right_panel.py        # Right export panel - Test success!
-│   │   │   └── status_bar.py         # Application status bar - Test success!
-│   │   └── utils/
-│   │       ├── __init__.py
-│   │       └── styles.py             # GUI styling utilities
+│   │── gui/
+│   │    ├── __init__.py
+│   │    ├── main_window.py               # Main application window
+│   │    ├── logging_config.py            # Logging configuration for GUI
+│   │    ├── widgets/                     # Custom UI widgets
+│   │    │   ├── __init__.py
+│   │    │   ├── element_input_widget.py  # Test success!
+│   │    │   ├── buttons.py               # Test success!
+│   │    │   ├── inputs.py                # Test success!
+│   │    ├── panels/
+│   │    │   ├── __init__.py
+│   │    │   ├── header.py                # Test success!
+│   │    │   ├── left_panel.py            # Test success!
+│   │    │   ├── center_panel.py          # Test success!
+│   │    │   ├── right_panel.py           # Test success!
+│   │    │   └── status_bar.py            # Test success!
+│   │    ├── workers/                      
+│   │    │   └── capability_study_worker.py     # Test success!
+│   │    ├── window/                      
+│   │    │   ├── __init__.py
+│   │    │   └── spc_chart_window.py     # Test success!
+│   │    └── utils/
+│   │        ├── chart_utils.py
+│   │        ├── element_input_styles.py    # Styling utilities
+│   │        └── styles.py                  # Styling utilities
 │   │
-│   ├── models/                       # Data models and analysis
-│   │   ├── plotting/                 # SPC plotting functionality
-│   │   │   ├── __init__.py
-│   │   │   ├── spc_charts_manager.py        # SPC charts manager - Test success!
-│   │   │   ├── base_chart.py                # Base chart class - Test success!
-│   │   │   ├── spc_data_loader.py           # SPC data loading utilities - Test success!
-│   │   │   ├── capability_chart.py          # Capability charts - Test success!
-│   │   │   ├── normality_plot.py            # Normality analysis plots - Test success!
-│   │   │   ├── extrapolation_chart.py       # Extrapolation charts - Test success!
-│   │   │   ├── i_chart.py                   # Individual control charts - Test success!
-│   │   │   └── mr_chart.py                  # Moving range charts - Test success!
+│   ├── models/
+│   │   │── plotting/
+│   │   │   │── __init__.py  
+│   │   │   │── logging_config.py            # Test success!
+│   │   │   │── spc_charts_manager.py        # Test success!
+│   │   │   │── base_chart.py                # Test success!
+│   │   │   │── spc_data_loader.py           # Test success!
+│   │   │   │── capability_chart.py          # Test success!
+│   │   │   │── normality_plot.py            # Test success!
+│   │   │   │── extrapolation_chart.py       # Test success!
+│   │   │   │── i_chart.py                   # Test success!
+│   │   │   └── mr_chart.py                  # Test success!
 │   │   │  
 │   │   ├── capability/               # Statistical capability analysis
 │   │   │   ├── __init__.py
@@ -73,13 +83,32 @@ PythonTecnica_SOME/
 │   │   │   └── dimensional_analyzer.py      # Dimensional analysis (pending development)
 │   │   └── __init__.py
 │   │
-│   └── services/                     # Application services
-│       ├── data_processing_orchestrator.py    # Data processing orchestration - Test success!
-│       ├── database_update.py                 # Database update service - Test success!
-│       ├── data_export_service.py             # Data export to Downloads folder - NEW!
-│       └── pdf_service.py                     # PDF handling service (placeholder)
+│   ├── services/
+│   │    │── __init__.py 
+│   │    │── spc_chart_service.py               # Test success! <-
+│   │    │── capacity_study_service.py          # Test success! <-
+│   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
+│   │    └── database_update.py                 # Test success! <- to clean...
+│   │
+│   └── utils/
+│       └──  __init__.py
 │
-├── config/                           # Configuration files
+├── data/
+│   │   │── pending/
+│   │   └── processed/
+│   │ 
+│   ├── processed/
+│   │   │── datasheets/
+│   │   │── export/
+│   │   └── reports/
+│   │       │── dimensional/
+│   │       └── statistics/
+│   │
+│   └── temp/
+│       │── excel_processing/
+│       └── report_generation/
+│
+├── config/
 │   ├── database/
 │   │   └── db_config.json            # Database connection configuration
 │   ├── column_mappings/

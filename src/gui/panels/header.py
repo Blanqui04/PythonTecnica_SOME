@@ -80,7 +80,7 @@ class HeaderPanel(QWidget):
         
         self.num_oferta_edit = ModernLineEdit("Enter offer number")
         self.ref_client_edit = ModernLineEdit("Enter client's name")
-        self.num_lot_edit = ModernLineEdit("Enter lot number")
+        self.num_batch_edit = ModernLineEdit("Enter batch number")
         self.ref_project_edit = ModernLineEdit("Enter project reference")
         
         label_style = """
@@ -94,10 +94,10 @@ class HeaderPanel(QWidget):
         
         num_oferta_label = QLabel("Offer Number:")
         ref_client_label = QLabel("Client:")
-        num_lot_label = QLabel("Lot Number:")
+        num_batch_label = QLabel("Batch Number:")
         ref_project_label = QLabel("Project Reference:")
         
-        for label in [num_oferta_label, ref_client_label, num_lot_label, ref_project_label]:
+        for label in [num_oferta_label, ref_client_label, num_batch_label, ref_project_label]:
             label.setStyleSheet(label_style)
         
         search_icon = self.load_icon("search.svg")
@@ -113,8 +113,8 @@ class HeaderPanel(QWidget):
         search_layout.addWidget(self.num_oferta_edit, 1, 0)
         search_layout.addWidget(ref_client_label, 0, 1)
         search_layout.addWidget(self.ref_client_edit, 1, 1)
-        search_layout.addWidget(num_lot_label, 0, 2)
-        search_layout.addWidget(self.num_lot_edit, 1, 2)
+        search_layout.addWidget(num_batch_label, 0, 2)
+        search_layout.addWidget(self.num_batch_edit, 1, 2)
         search_layout.addWidget(ref_project_label, 0, 3)
         search_layout.addWidget(self.ref_project_edit, 1, 3)
         
@@ -179,7 +179,7 @@ class HeaderPanel(QWidget):
         criteria = {
             'num_oferta': self.num_oferta_edit.text().strip(),
             'client': self.ref_client_edit.text().strip(),
-            'num_lot': self.num_lot_edit.text().strip(),
+            'num_lot': self.num_batch_edit.text().strip(),
             'ref_project': self.ref_project_edit.text().strip()
         }
         logger.debug(f"Search criteria retrieved: {criteria}")
@@ -199,7 +199,7 @@ class HeaderPanel(QWidget):
         logger.debug("Clearing search fields")
         self.num_oferta_edit.clear()
         self.ref_client_edit.clear()
-        self.num_lot_edit.clear()
+        self.num_batch_edit.clear()
         self.ref_project_edit.clear()
         self.result_info.setText("Search fields cleared")
         logger.info("Search fields cleared by user")

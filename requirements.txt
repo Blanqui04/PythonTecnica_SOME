@@ -27,7 +27,7 @@ Reportlab       # For PDF generation
 Requests        # For making HTTP requests
 Scikit-learn    # For machine learning
 Seaborn         # For statistical data visualization
-TensorFlow      # For deep learning tasks
-Keras           # High-level neural networks API
+# TensorFlow      # For deep learning tasks
+# Keras           # High-level neural networks API
 # ---------- Logging is part of Python stdlib, no need to list
 

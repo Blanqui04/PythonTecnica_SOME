@@ -3,7 +3,6 @@
 Sample Data Manager - Handles sample data loading, validation, and management
 """
 
-import logging
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Union  # noqa: F401
@@ -13,21 +12,7 @@ import os
 from src.models.capability.capability_analyzer import ElementData, ElementType
 from ...exceptions.sample_errors import SampleErrors
 
-LOG_DIR = "logs"
-os.makedirs(LOG_DIR, exist_ok=True)
-
-log_file = os.path.join(LOG_DIR, "app.log")
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(log_file),    # Save logs to file
-        logging.StreamHandler()            # Also print logs to console
-    ]
-)
-
-logger = logging.getLogger(__name__)
+from .logging_config import logger  # Configured logger for calculations
 
 
 class SampleDataManager:
@@ -55,21 +40,32 @@ class SampleDataManager:
 
         for item in data:
             try:
+                logger.debug(f"Processing item: {item}")  # ADD THIS LINE
+                logger.debug(f"Item keys: {list(item.keys())}")  # ADD THIS LINE
                 element_data = ElementData(
-                    name=str(item["Element"]),
-                    nominal=float(item["Nominal"]),
-                    tol_minus=float(item["Tol-"]),
-                    tol_plus=float(item["Tol+"]),
-                    values=[float(v) for v in item["Values"]],
+                    name=str(item["element_id"]),
+                    nominal=float(item["nominal"]),
+                    tol_minus=float(item["tol_minus"]),
+                    tol_plus=float(item["tol_plus"]),
+                    values=[float(v) for v in item["values"]],
+                    batch_number=item.get("batch_number"),
+                    cavity=item.get("cavity"),
+                    element_type=ElementType(item["element_type"].lower())
+                    if "element_type" in item
+                    else ElementType.DIMENSION,
                 )
 
                 # Detect element type
                 from .capability_analyzer import CapabilityAnalyzer
 
                 analyzer = CapabilityAnalyzer()
-                element_data.element_type = analyzer.detect_element_type(
-                    element_data.name
-                )
+                if "element_type" not in item:
+                    from .capability_analyzer import CapabilityAnalyzer
+
+                    analyzer = CapabilityAnalyzer()
+                    element_data.element_type = analyzer.detect_element_type(
+                        element_data.name
+                    )
 
                 elements.append(element_data)
                 logger.debug(
@@ -78,65 +74,15 @@ class SampleDataManager:
 
             except (KeyError, ValueError, TypeError) as e:
                 logger.error(
-                    f"Error processant element {item.get('Element', 'unknown')}: {e}"
+                    f"Error processant element {item.get('element_id', 'unknown')}: {e}"
                 )
                 raise SampleErrors(
-                    f"Error processing element {item.get('Element', 'unknown')}: {e}"
+                    f"Error processing element {item.get('element_id', 'unknown')}: {e}"
                 )
 
         self.sample_data = elements
         logger.info(
             f"Càrrega de dades des de dict finalitzada amb {len(elements)} elements"
-        )
-        return elements
-
-    def load_sample_data_from_dataframe(self, df: pd.DataFrame) -> List[ElementData]:
-        """
-        Load sample data from DataFrame
-
-        Args:
-            df: DataFrame with sample data
-
-        Returns:
-            List[ElementData]: List of element data objects
-        """
-        logger.info(f"Iniciant càrrega de dades des de DataFrame amb {len(df)} files")
-        elements = []
-
-        for _, row in df.iterrows():
-            try:
-                element_data = ElementData(
-                    name=str(row["Element"]),
-                    nominal=float(row["Nominal"]),
-                    tol_minus=float(row["Tol-"]),
-                    tol_plus=float(row["Tol+"]),
-                    values=[float(v) for v in row["Values"]],
-                )
-
-                # Detect element type
-                from .capability_analyzer import CapabilityAnalyzer
-
-                analyzer = CapabilityAnalyzer()
-                element_data.element_type = analyzer.detect_element_type(
-                    element_data.name
-                )
-
-                elements.append(element_data)
-                logger.debug(
-                    f"Afegit element: {element_data.name} tipus: {element_data.element_type}"
-                )
-
-            except (KeyError, ValueError, TypeError) as e:
-                logger.error(
-                    f"Error processant fila {row.get('Element', 'unknown')}: {e}"
-                )
-                raise SampleErrors(
-                    f"Error processing row {row.get('Element', 'unknown')}: {e}"
-                )
-
-        self.sample_data = elements
-        logger.info(
-            f"Càrrega de dades des de DataFrame finalitzada amb {len(elements)} elements"
         )
         return elements
 
@@ -349,7 +295,7 @@ class SampleDataManager:
         summary = {
             "total_elements": len(self.sample_data),
             "elements_by_type": {
-                "dimensional": len(self.get_elements_by_type(ElementType.DIMENSIONAL)),
+                "dimension": len(self.get_elements_by_type(ElementType.DIMENSION)),
                 "gdt": len(self.get_elements_by_type(ElementType.GDT)),
                 "traction": len(self.get_elements_by_type(ElementType.TRACTION)),
             },
@@ -381,6 +327,8 @@ class SampleDataManager:
                     "Tol+": element.tol_plus,
                     "Values": json.dumps(element.values),
                     "Element_Type": element.element_type.value,
+                    "Batch_Number": element.batch_number,
+                    "Cavity": element.cavity,
                 }
             )
 
@@ -388,6 +336,7 @@ class SampleDataManager:
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         df.to_csv(filepath, index=False)
+
 
     def export_sample_data_to_json(self, filepath: str) -> None:
         """
@@ -407,12 +356,15 @@ class SampleDataManager:
                     "Tol+": element.tol_plus,
                     "Values": element.values,
                     "Element_Type": element.element_type.value,
+                    "Batch_Number": element.batch_number,
+                    "Cavity": element.cavity,
                 }
             )
 
         os.makedirs(os.path.dirname(filepath), exist_ok=True)
         with open(filepath, "w") as f:
             json.dump(data_for_export, f, indent=2)
+
 
     @staticmethod
     def get_default_sample_data() -> List[ElementData]:
@@ -435,7 +387,9 @@ class SampleDataManager:
                     12.48,
                     12.48,
                 ],
-                element_type=ElementType.DIMENSIONAL,
+                element_type=ElementType.DIMENSION,
+                batch_number="PRJ1234366",
+                cavity=1
             ),
             ElementData(
                 name="Dimensio_Anomaly",
@@ -454,7 +408,9 @@ class SampleDataManager:
                     29.88,
                     30.19,
                 ],
-                #element_type=ElementType.DIMENSIONAL,
+                element_type=ElementType.DIMENSION,
+                batch_number="PRJ1234366",
+                cavity=1
             ),
             ElementData(
                 name="Dimensio_1",
@@ -473,7 +429,9 @@ class SampleDataManager:
                     24.979,
                     25.022,
                 ],
-                #element_type=ElementType.DIMENSIONAL,
+                # element_type=ElementType.DIMENSIONAL,
+                batch_number=1234366,
+                cavity=2
             ),
             ElementData(
                 name="Traccio_1",
@@ -493,6 +451,8 @@ class SampleDataManager:
                     17585,
                 ],
                 element_type=ElementType.TRACTION,
+                batch_number=1234366,
+                cavity=2
             ),
         ]
         return default_data
