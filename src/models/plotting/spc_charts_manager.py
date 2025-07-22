@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Any
 import tempfile
 import os
 
-from .base_chart import get_spc_logger
+from .logging_config import logger as base_logger
 
 from .spc_data_loader import SPCDataLoader
 from .i_chart import IChart
@@ -53,7 +53,7 @@ class SPCChartManager:
         self.base_path = Path(base_path)
         self.output_dir = Path(output_dir)
         self.lang = lang
-        self.logger = logger or get_spc_logger()
+        self.logger = logger or base_logger.getChild(self.__class__.__name__)
 
         # Create output directory if it doesn't exist
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -72,7 +72,9 @@ class SPCChartManager:
             bool: True if data loaded successfully, False otherwise
         """
         self.logger.info(f"Loading data for study: '{self.study_id}'")
-        report_path = self.base_path / self.study_id / f"{self.study_id}_complete_report.json"
+        report_path = (
+            self.base_path / self.study_id / f"{self.study_id}_complete_report.json"
+        )
         print(report_path)
         if not report_path.exists():
             legacy_path = self.base_path / f"{self.study_id}_complete_report.json"
@@ -80,12 +82,16 @@ class SPCChartManager:
                 self.logger.warning(f"Using legacy report path: {legacy_path}")
                 report_path = legacy_path
             else:
-                self.logger.error(f"SPC report not found in either path:\n  - {report_path}\n  - {legacy_path}")
+                self.logger.error(
+                    f"SPC report not found in either path:\n  - {report_path}\n  - {legacy_path}"
+                )
                 return False  # no exception, just return False
 
         # Try loading the data with the chosen report_path
         try:
-            self.elements_data = SPCDataLoader(self.study_id, self.base_path).load_complete_report(report_path)
+            self.elements_data = SPCDataLoader(
+                self.study_id, self.base_path
+            ).load_complete_report(report_path)
             # You can check if elements_data is empty or None here and return False if needed
             if not self.elements_data:
                 self.logger.error(f"No data loaded from report: {report_path}")
@@ -95,8 +101,6 @@ class SPCChartManager:
             return False
 
         return True
-
-
 
     def _convert_element_data_for_chart(
         self, element_name: str, element_data: Dict[str, Any]
@@ -346,11 +350,9 @@ class SPCChartManager:
 
 
 if __name__ == "__main__":
-    # Simple test
-    logging.basicConfig(level=logging.INFO)
-
     study_id = "test_study"
-    manager = SPCChartManager(study_id)
+    logger = base_logger.getChild("SPCChartManager")
+    manager = SPCChartManager(study_id, logger=logger)
 
     if manager.load_data():
         print("Data loaded successfully")
