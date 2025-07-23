@@ -11,6 +11,7 @@ openpyxl>=3.0.0        # Excel file reading/writing (if working with .xlsx files
 PyQt5>=5.15.0          # GUI framework for the application
 Flask>=2.0.0           # Web framework for building the application (if needed)
 pytest>=7.0.0          # For testing the application
+schedule>=1.2.0        # Task scheduling for automatic backups
 # Database dependencies
 psycopg2-binary>=2.9.0 # PostgreSQL adapter for Python
 SQLAlchemy>=1.4.0      # ORM for database interactions (if needed)
