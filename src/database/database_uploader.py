@@ -5,6 +5,7 @@ import base64
 import tempfile
 import pandas as pd
 from .database_connection import PostgresConn
+from ..services.temp_file_cleaner import TempFileCleaner
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -117,6 +118,25 @@ class DatabaseUploader:
             print("\n🚨 Errors durant la pujada:")
             for table, err in errors.items():
                 print(f" - {table}: {err}")
+        else:
+            # Si no hi ha errors, executem la neteja automàtica dels fitxers temporals
+            try:
+                cleaner = TempFileCleaner(config_path="config/cleanup_config.json")
+                
+                # Determinar polítiques segons el client
+                cleanup_result = cleaner.clean_for_project_universal(
+                    client=self.client,
+                    ref_project=self.ref_project
+                )
+                
+                logger.info(f"Neteja automàtica completada: {cleanup_result.get('summary', 'OK')}")
+                print(f"🧹 Neteja automàtica: {cleanup_result.get('files_cleaned', 0)} fitxers eliminats")
+                
+                if cleanup_result.get('space_freed'):
+                    print(f"💾 Espai alliberat: {cleanup_result['space_freed']}")
+                    
+            except Exception as cleanup_error:
+                logger.warning(f"Error en la neteja automàtica: {cleanup_error}")
 
 
 
@@ -128,6 +148,60 @@ class DatabaseUploader:
             if self.ref_project in filename and self.client in filename and filename.endswith(".csv"):
                 os.remove(os.path.join(self.export_path, filename))
                 print(f"🧹 Eliminat: {filename}")
+    
+    def cleanup_for_any_project(self):
+        """Neteja universal per qualsevol tipus de client/projecte."""
+        try:
+            cleaner = TempFileCleaner(config_path="config/cleanup_config.json")
+            
+            # Neteja universal basada en el client i projecte actual
+            cleanup_result = cleaner.clean_for_project_universal(
+                client=self.client,
+                ref_project=self.ref_project
+            )
+            
+            # Neteja també fitxers CSV específics d'aquest client/projecte
+            self.cleanup_csv()
+            
+            logger.info(f"Neteja universal completada per {self.client}/{self.ref_project}: {cleanup_result.get('summary', 'OK')}")
+            return cleanup_result
+            
+        except Exception as e:
+            logger.error(f"Error en neteja universal per {self.client}/{self.ref_project}: {e}")
+            return {"success": False, "error": str(e)}
+    
+    def cleanup_for_zf_project(self):
+        """Neteja específica per projectes ZF amb més control."""
+        try:
+            cleaner = TempFileCleaner(config_path="config/cleanup_config.json")
+            
+            # Detectar si és un projecte ZF
+            is_zf_project = self.client.upper() == 'ZF' or 'ZF' in self.client.upper()
+            
+            if is_zf_project:
+                # Neteja específica per ZF
+                cleanup_result = cleaner.clean_for_zf_project(
+                    ref_project=self.ref_project,
+                    aggressive=False  # Canvia a True si vols neteja més agressiva
+                )
+            else:
+                # Neteja estàndard per altres clients
+                cleanup_result = cleaner.clean_temp_files(
+                    project_id=self.ref_project,
+                    age_minutes_temp=60,
+                    age_hours_processed=6,
+                    age_hours_exports=12
+                )
+            
+            # Neteja també fitxers CSV específics d'aquest client/projecte
+            self.cleanup_csv()
+            
+            logger.info(f"Neteja completada per {self.client}/{self.ref_project}: {cleanup_result.get('summary', 'OK')}")
+            return cleanup_result
+            
+        except Exception as e:
+            logger.error(f"Error en neteja per {self.client}/{self.ref_project}: {e}")
+            return {"success": False, "error": str(e)}
 
     def run(self):
         self.upload_all()
