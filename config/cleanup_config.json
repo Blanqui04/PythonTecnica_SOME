@@ -1,0 +1,100 @@
+{
+  "auto_cleanup_config": {
+    "enabled": true,
+    "description": "Configuració per la neteja automàtica de fitxers temporals",
+    
+    "schedules": {
+      "normal": {
+        "description": "Neteja normal diària",
+        "age_minutes_temp": 60,
+        "age_hours_processed": 6,
+        "age_hours_exports": 24,
+        "frequency": "daily"
+      },
+      "aggressive": {
+        "description": "Neteja agressiva setmanal",
+        "age_minutes_temp": 15,
+        "age_hours_processed": 1,
+        "age_hours_exports": 3,
+        "frequency": "weekly"
+      },
+      "maintenance": {
+        "description": "Neteja de manteniment mensual",
+        "age_minutes_temp": 5,
+        "age_hours_processed": 0.5,
+        "age_hours_exports": 1,
+        "frequency": "monthly"
+      }
+    },
+    
+    "directories": {
+      "data_temp": "data/temp/",
+      "data_processed": "data/processed/",
+      "data_exports": "data/processed/exports/",
+      "system_temp": "%TEMP%"
+    },
+    
+    "file_patterns": {
+      "temp_files": ["*.csv", "*.tmp", "*.temp"],
+      "processed_files": ["*_processed_*.csv", "*_transformed_*.csv"],
+      "export_files": ["*_export_*.csv", "*_upload_*.csv"],
+      "log_files": ["*.log"],
+      "client_specific": {
+        "zf": ["*ZF*", "datasheet_ZF_*", "*_zf_*"],
+        "seat": ["*SEAT*", "datasheet_SEAT_*", "*_seat_*"],
+        "audi": ["*AUDI*", "datasheet_AUDI_*", "*_audi_*"],
+        "bmw": ["*BMW*", "datasheet_BMW_*", "*_bmw_*"],
+        "vw": ["*VW*", "*VOLKSWAGEN*", "datasheet_VW_*"],
+        "mercedes": ["*MERCEDES*", "*BENZ*", "datasheet_MERCEDES_*"],
+        "porsche": ["*PORSCHE*", "datasheet_PORSCHE_*"]
+      }
+    },
+    
+    "retention_policies": {
+      "zf_projects": {
+        "description": "Política específica per projectes ZF (neteja ràpida)",
+        "age_minutes_temp": 30,
+        "age_hours_processed": 2,
+        "age_hours_exports": 4
+      },
+      "vag_projects": {
+        "description": "Política per grup VAG (SEAT, Audi, VW)",
+        "age_minutes_temp": 45,
+        "age_hours_processed": 4,
+        "age_hours_exports": 8
+      },
+      "bmw_projects": {
+        "description": "Política per BMW Group (conservadora)",
+        "age_minutes_temp": 90,
+        "age_hours_processed": 8,
+        "age_hours_exports": 16
+      },
+      "premium_projects": {
+        "description": "Política per clients premium (Mercedes, Porsche, etc.)",
+        "age_minutes_temp": 120,
+        "age_hours_processed": 12,
+        "age_hours_exports": 24
+      },
+      "standard_projects": {
+        "description": "Política estàndard per altres projectes",
+        "age_minutes_temp": 120,
+        "age_hours_processed": 12,
+        "age_hours_exports": 48
+      }
+    },
+    
+    "safety_checks": {
+      "min_file_age_minutes": 5,
+      "max_files_per_batch": 1000,
+      "require_confirmation_above_mb": 100,
+      "exclude_patterns": ["*.bak", "*_backup_*", "important_*"]
+    },
+    
+    "logging": {
+      "level": "INFO",
+      "file": "logs/auto_cleanup.log",
+      "max_size_mb": 10,
+      "backup_count": 5
+    }
+  }
+}
