@@ -81,11 +81,15 @@ PythonTecnica_SOME/
 │   │   │ 
 │   │   ├── dimensional/              # Dimensional analysis
 │   │   │   ├── __init__.py
+│   │   │   ├── gdt_interpreter.py              # Developing
+│   │   │   ├── measurement_validator.py        # Developing
+│   │   │   ├── dimensional_result.py           # Developing
 │   │   │   └── dimensional_analyzer.py         # Developing
 │   │   └── __init__.py
 │   │
 │   ├── services/
 │   │    │── __init__.py 
+│   │    │── dimensional_service.py             # Test success! <-
 │   │    │── spc_chart_service.py               # Test success! <-
 │   │    │── capacity_study_service.py          # Test success! <-
 │   │    │── data_export_service.py             # Test success! <-
@@ -127,7 +131,7 @@ PythonTecnica_SOME/
 │   ├── test_kop_processing.py        # Test success!
 │   ├── test_data_transformer.py      # Test success!
 │   ├── test_data_uploader.py         # Test success!
-│   ├── test_data_transformer.py      # Test success!
+│   ├── test_dimensional_analyzer.py  # Test success!
 │   └── test_excel_processing.py      # Test success!
 │
 ├── docs/                        # Documentation

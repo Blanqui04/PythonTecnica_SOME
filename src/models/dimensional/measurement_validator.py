@@ -1,7 +1,7 @@
 # models/dimensional/measurement_validator.py
 
 from typing import Tuple, List
-
+from math import isnan, isinf
 
 def validate_measurements(row: dict) -> Tuple[bool, List[str]]:
     warnings = []
@@ -12,19 +12,24 @@ def validate_measurements(row: dict) -> Tuple[bool, List[str]]:
         if len(measurements) < 1:
             return False, ["No measurements provided."]
 
+        floats = []
         for m in measurements:
-            _ = float(m)
+            val = float(m)
+            if isnan(val) or isinf(val):
+                return False, [f"Invalid measurement value: {m}"]
+            floats.append(val)
 
-        if len(measurements) < 5:
-            warnings.append(
-                f"Only {len(measurements)} measurements provided; recommended is 5 or more."
-            )
-        if len(measurements) == 1:
-            warnings.append(
-                "Only 1 measurement provided; dimensional analysis results may be unreliable."
-            )
+        unique_vals = set(floats)
+        if len(unique_vals) == 1:
+            warnings.append("All measurements are identical; no variation detected.")
+
+        if len(floats) < 5:
+            warnings.append(f"Only {len(floats)} measurements provided; 5 or more recommended.")
+        if len(floats) == 1:
+            warnings.append("Only 1 measurement provided; dimensional analysis results may be unreliable.")
 
         return True, warnings
 
     except (ValueError, TypeError):
-        return False, ["All measurements must be convertible to float."]
+        return False, ["All measurements must be numeric."]
+
