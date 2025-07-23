@@ -1,6 +1,91 @@
+# src/models/dimensional/dimensional_analyzer.py
 from statistics import mean, stdev
-from .dimensional_result import DimensionalResult
+from .dimensional_result import DimensionalResult, DimensionalStatus
 from .gdt_interpreter import parse_gdt_flags
+
+
+def parse_tolerances(raw_tol, description: str) -> tuple[float, float, list[str]]:
+    warnings = []
+    gdt_flags = parse_gdt_flags(description)
+
+    lower_tol, upper_tol = 0.0, 0.0
+
+    if isinstance(raw_tol, list):
+        if len(raw_tol) == 2:
+            lower_tol, upper_tol = float(raw_tol[0]), float(raw_tol[1])
+        elif len(raw_tol) == 1:
+            t = float(raw_tol[0])
+            if (
+                gdt_flags.get("MIN")
+                or gdt_flags.get("MMC")
+                or gdt_flags.get("LMC")
+                or gdt_flags.get("PROFILE")
+            ):
+                lower_tol = 0.0
+                upper_tol = abs(t)
+            elif gdt_flags.get("MAX"):
+                lower_tol = abs(t)
+                upper_tol = 0.0
+            else:
+                upper_tol = abs(t)
+                lower_tol = 0.0
+                warnings.append(
+                    "Single tolerance value interpreted as symmetric dimensional tolerance."
+                )
+    elif isinstance(raw_tol, (int, float)):
+        t = float(raw_tol)
+        if (
+            gdt_flags.get("MIN")
+            or gdt_flags.get("MMC")
+            or gdt_flags.get("LMC")
+            or gdt_flags.get("PROFILE")
+        ):
+            lower_tol = 0.0
+            upper_tol = abs(t)
+        elif gdt_flags.get("MAX"):
+            lower_tol = abs(t)
+            upper_tol = 0.0
+        else:
+            upper_tol = abs(t)
+            lower_tol = 0.0
+            warnings.append(
+                "Single numeric tolerance interpreted as symmetric dimensional tolerance."
+            )
+
+    # Prevent negative tolerances in GD&T cases
+    if any(
+        gdt_flags.get(k)
+        for k in ("MMC", "LMC", "PROFILE", "FLATNESS", "CIRCULARITY", "PARALLELISM")
+    ):
+        lower_tol = max(0.0, lower_tol)
+        upper_tol = max(0.0, upper_tol)
+
+    return lower_tol, upper_tol, warnings
+
+
+def apply_bonus_tolerance(
+    gdt_flags, lower_tol, upper_tol, datum_nominal, datum_measurement
+) -> tuple[float, float]:
+    effective_lower_tol = lower_tol
+    effective_upper_tol = upper_tol
+
+    if (
+        (gdt_flags.get("MMC") or gdt_flags.get("LMC"))
+        and datum_nominal is not None
+        and datum_measurement is not None
+    ):
+        if gdt_flags.get("MMC"):
+            mmc_size = datum_nominal + (lower_tol if lower_tol < 0 else 0)
+            bonus_tol = mmc_size - datum_measurement
+            if bonus_tol > 0:
+                effective_upper_tol = upper_tol + bonus_tol
+        elif gdt_flags.get("LMC"):
+            lmc_size = datum_nominal + (upper_tol if upper_tol > 0 else 0)
+            bonus_tol = datum_measurement - lmc_size
+            if bonus_tol > 0:
+                effective_upper_tol = upper_tol + bonus_tol
+
+    return effective_lower_tol, effective_upper_tol
 
 
 class DimensionalAnalyzer:
@@ -14,8 +99,8 @@ class DimensionalAnalyzer:
         deviation = [m - nominal for m in measurements]
 
         raw_tol = row["tolerance"]
+        gdt_flags = parse_gdt_flags(description)
 
-        # Early check for empty tolerance list - no acceptable range
         if isinstance(raw_tol, list) and len(raw_tol) == 0:
             return DimensionalResult(
                 element_id=element_id,
@@ -30,8 +115,8 @@ class DimensionalAnalyzer:
                 mean=mean(measurements) if measurements else 0.0,
                 std_dev=stdev(measurements) if len(measurements) > 1 else 0.0,
                 out_of_spec_count=len(measurements),
-                status="BAD",
-                gdt_flags=parse_gdt_flags(description),
+                status=DimensionalStatus.BAD,
+                gdt_flags=gdt_flags,
                 datum_element_id=row.get("datum_element_id"),
                 effective_tolerance_upper=None,
                 effective_tolerance_lower=None,
@@ -39,63 +124,21 @@ class DimensionalAnalyzer:
                 warnings=["No tolerance provided"],
             )
 
-        lower_tol, upper_tol = 0.0, 0.0
+        # Parse tolerances
+        lower_tol, upper_tol, tol_warnings = parse_tolerances(raw_tol, description)
 
-        # Parse tolerance list or number
-        if isinstance(raw_tol, list):
-            if len(raw_tol) == 2:
-                lower_tol, upper_tol = float(raw_tol[0]), float(raw_tol[1])
-            elif len(raw_tol) == 1:
-                t = float(raw_tol[0])
-                lower_tol = t if t < 0 else 0.0
-                upper_tol = t if t > 0 else 0.0
-        elif isinstance(raw_tol, (int, float)):
-            t = float(raw_tol)
-            lower_tol = t if t < 0 else 0.0
-            upper_tol = t if t > 0 else 0.0
-
-        # Parse GD&T flags
-        gdt_flags = parse_gdt_flags(description)
-
-        # Override tolerance for MIN/MAX flags
-        if gdt_flags.get("MIN"):
-            lower_tol = 0.0
-        if gdt_flags.get("MAX"):
-            upper_tol = 0.0
-
-        # Initialize effective tolerances
-        effective_upper_tol = upper_tol
-        effective_lower_tol = lower_tol
-
-        # Handle MMC/LMC
+        # Effective tolerances
         datum_element_id = row.get("datum_element_id")
         datum_nominal = row.get("datum_nominal")
         datum_measurement = row.get("datum_measurement")
 
-        if (
-            (gdt_flags.get("MMC") or gdt_flags.get("LMC"))
-            and datum_nominal is not None
-            and datum_measurement is not None
-        ):
-            if gdt_flags.get("MMC"):
-                mmc_size = datum_nominal + (lower_tol if lower_tol < 0 else 0)
-                bonus_tol = mmc_size - datum_measurement
-                if bonus_tol > 0:
-                    effective_upper_tol = upper_tol + bonus_tol
+        effective_lower_tol, effective_upper_tol = apply_bonus_tolerance(
+            gdt_flags, lower_tol, upper_tol, datum_nominal, datum_measurement
+        )
 
-            elif gdt_flags.get("LMC"):
-                lmc_size = datum_nominal + (upper_tol if upper_tol > 0 else 0)
-                bonus_tol = datum_measurement - lmc_size
-                if bonus_tol > 0:
-                    # Apply bonus to lower_tol (extend downward), never above 0
-                    effective_lower_tol = lower_tol + bonus_tol
-                    effective_lower_tol = min(effective_lower_tol, 0.0)
-
-        # Determine spec limits
         lower_limit = nominal + effective_lower_tol
         upper_limit = nominal + effective_upper_tol
 
-        # If both tolerances are zero, enforce exact match
         if lower_tol == 0.0 and upper_tol == 0.0:
             out_of_spec = [m for m in measurements if m != nominal]
         else:
@@ -103,13 +146,13 @@ class DimensionalAnalyzer:
                 m for m in measurements if not (lower_limit <= m <= upper_limit)
             ]
 
-        status = "GOOD" if len(out_of_spec) == 0 else "BAD"
+        status = (
+            DimensionalStatus.GOOD if len(out_of_spec) == 0 else DimensionalStatus.BAD
+        )
 
-        # Compute statistics
         avg = mean(measurements) if measurements else 0.0
         sd = stdev(measurements) if len(measurements) > 1 else 0.0
 
-        # Infer feature type
         desc_lower = description.lower()
         if any(k in desc_lower for k in ["diam", "ø", "circle", "dia"]):
             feature_type = "diameter"
@@ -131,6 +174,7 @@ class DimensionalAnalyzer:
             warnings.append(
                 "WARNING: Only 1 measurement provided; results may be unreliable."
             )
+        warnings += tol_warnings
 
         return DimensionalResult(
             element_id=element_id,

@@ -1,6 +1,7 @@
 # models/dimensional/dimensional_result.py
 from dataclasses import dataclass
 from typing import List, Optional
+from enum import Enum
 
 
 @dataclass
@@ -27,3 +28,9 @@ class DimensionalResult:
     # New optional fields
     feature_type: Optional[str] = None
     warnings: Optional[List[str]] = None
+
+
+class DimensionalStatus(str, Enum):
+    GOOD = "GOOD"
+    BAD = "BAD"
+    WARNING = "WARNING"
