@@ -124,8 +124,8 @@ class ChartDisplayWidget(QWidget):
         # Chart container
         self.chart_container = QWidget()
         self.chart_layout = QVBoxLayout()
-        self.chart_layout.setContentsMargins(15, 15, 15, 15)
-        self.chart_layout.setSpacing(15)
+        self.chart_layout.setContentsMargins(20, 20, 20, 20)
+        self.chart_layout.setSpacing(20)
         self.chart_container.setLayout(self.chart_layout)
         self.container_layout.addWidget(self.chart_container)
 
@@ -361,12 +361,19 @@ class ChartDisplayWidget(QWidget):
         """)
 
         layout = QVBoxLayout()
-        layout.setSpacing(8)
+        layout.setSpacing(12)
 
         # Chart title - smaller and more proportional
         title_label = QLabel(chart_info["type"].replace("_", " ").title())
         title_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        title_label.setStyleSheet("color: #495057; margin-bottom: 5px;")
+        title_label.setStyleSheet("""
+            QLabel {
+                color: #343a40;
+                background-color: transparent;
+                margin-bottom: 8px;
+                padding: 0;
+            }
+        """)
         title_label.setAlignment(Qt.AlignCenter)
         layout.addWidget(title_label)
 
@@ -377,11 +384,11 @@ class ChartDisplayWidget(QWidget):
         if not pixmap.isNull():
             # Better size calculations for more balanced display
             if is_grid:
-                target_width = int(500 * zoom_factor)  # Increased from 400
-                target_height = int(350 * zoom_factor)  # Increased from 300
+                target_width = int(520 * zoom_factor)  # Increased from 400
+                target_height = int(380 * zoom_factor)  # Increased from 300
             else:
-                target_width = int(900 * zoom_factor)  # Increased from 800
-                target_height = int(650 * zoom_factor)  # Increased from 600
+                target_width = int(950 * zoom_factor)  # Increased from 800
+                target_height = int(700 * zoom_factor)  # Increased from 600
 
             scaled_pixmap = pixmap.scaled(
                 target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation
@@ -447,67 +454,161 @@ class ModernSPCChartWindow(QDialog):
         self.setLayout(main_layout)
 
     def create_header_section(self):
+        """Create an improved header with proper spacing and logo"""
         header_frame = QFrame()
         header_frame.setStyleSheet("""
             QFrame {
-                background-color: #343a40;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #2c3e50, stop:1 #34495e);
                 border: none;
-                padding: 20px;
             }
+        """)
+        header_frame.setFixedHeight(140)
+
+        # Main layout with proper margins
+        main_layout = QHBoxLayout()
+        main_layout.setContentsMargins(30, 25, 30, 25)
+        main_layout.setSpacing(20)
+
+        # Left side - Text content
+        text_widget = QWidget()
+        text_widget.setStyleSheet("QWidget { background: transparent; }")  # Ensure transparent background
+        text_layout = QVBoxLayout()
+        text_layout.setSpacing(12)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Title with improved typography - NO background color to avoid covering text
+        title_label = QLabel("Anàlisi de Capacitat SPC")
+        title_label.setFont(QFont("Segoe UI", 20, QFont.Bold))
+        title_label.setStyleSheet("""
             QLabel {
                 color: #ffffff;
                 background: transparent;
+                padding: 5px 0px 10px 0px;
+                margin: 0;
+                letter-spacing: 0.5px;
             }
         """)
-        header_frame.setFixedHeight(120)
+        title_label.setMinimumHeight(35)  # Ensure enough height for the text
+        text_layout.addWidget(title_label)
 
-        layout = QVBoxLayout()
-        layout.setSpacing(5)
-        layout.setContentsMargins(20, 15, 20, 15)
+        # Subtitle with better spacing - NO background color
+        subtitle_label = QLabel(f"Client: {self.client} | Projecte: {self.ref_project} | NºLot: {self.batch_number}")
+        subtitle_label.setFont(QFont("Segoe UI", 12, QFont.Normal))
+        subtitle_label.setStyleSheet("""
+            QLabel {
+                color: #ecf0f1;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+            }
+        """)
+        text_layout.addWidget(subtitle_label)
 
-        # Title - better contrast and readability
-        title_label = QLabel("Anàlisi de Capacitat SPC")
-        title_label.setFont(QFont("Segoe UI", 18, QFont.Bold))
-        title_label.setStyleSheet("color: #ffffff; margin-bottom: 3px; background: transparent;")
-        layout.addWidget(title_label)
-
-        # Subtitle - better contrast
-        subtitle_label = QLabel(f"Client: {self.client} | Projecte: {self.ref_project}")
-        subtitle_label.setFont(QFont("Segoe UI", 11))
-        subtitle_label.setStyleSheet("color: #e9ecef; margin-bottom: 5px; background: transparent;")
-        layout.addWidget(subtitle_label)
-
-        # Status and progress
+        # Status and progress section
+        status_widget = QWidget()
+        status_widget.setStyleSheet("QWidget { background: transparent; }")
         status_layout = QHBoxLayout()
-        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setContentsMargins(0, 8, 0, 0)
+        status_layout.setSpacing(15)
 
         self.status_label = QLabel("⏳ Inicialitzant generació de gràfics...")
-        self.status_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        self.status_label.setStyleSheet("color: #ffffff; background: transparent;")
+        self.status_label.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        self.status_label.setStyleSheet("""
+            QLabel {
+                color: #bdc3c7;
+                background: transparent;
+                padding: 0;
+                margin: 0;
+            }
+        """)
         status_layout.addWidget(self.status_label)
 
-        status_layout.addStretch()
-
         self.progress_bar = QProgressBar()
-        self.progress_bar.setFixedWidth(200)
-        self.progress_bar.setFixedHeight(6)
+        self.progress_bar.setFixedSize(220, 8)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                background-color: #495057;
+                background-color: rgba(189, 195, 199, 0.3);
                 border: none;
-                border-radius: 3px;
+                border-radius: 4px;
             }
             QProgressBar::chunk {
-                background-color: #28a745;
-                border-radius: 3px;
+                background-color: #27ae60;
+                border-radius: 4px;
             }
         """)
         status_layout.addWidget(self.progress_bar)
 
-        layout.addLayout(status_layout)
-        header_frame.setLayout(layout)
+        status_layout.addStretch()
+        status_widget.setLayout(status_layout)
+        text_layout.addWidget(status_widget)
 
+        text_widget.setLayout(text_layout)
+        main_layout.addWidget(text_widget)
+
+        # Right side - Logo
+        logo_widget = self.create_logo_widget()
+        main_layout.addWidget(logo_widget)
+
+        header_frame.setLayout(main_layout)
         return header_frame
+
+    def create_logo_widget(self):
+        """Create the logo widget for the header"""
+        logo_widget = QWidget()
+        logo_widget.setFixedSize(120, 90)
+        logo_widget.setStyleSheet("QWidget { background: transparent; }")  # Transparent background
+        
+        logo_layout = QVBoxLayout()
+        logo_layout.setContentsMargins(0, 0, 0, 0)
+        logo_layout.setSpacing(0)
+
+        logo_label = QLabel()
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setStyleSheet("QLabel { background: transparent; }")  # Transparent background
+        
+        # Try to load the logo
+        logo_path = "./assets/images/gui/logo_some.png"
+        if os.path.exists(logo_path):
+            pixmap = QPixmap(logo_path)
+            if not pixmap.isNull():
+                # Scale the logo to fit properly within the widget size
+                scaled_pixmap = pixmap.scaled(
+                    300, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                )
+                logo_label.setPixmap(scaled_pixmap)
+            else:
+                # Fallback if image can't be loaded - cleaner fallback design
+                logo_label.setText("LOGO")
+                logo_label.setStyleSheet("""
+                    QLabel {
+                        color: #ecf0f1;
+                        background: transparent;
+                        border: 2px solid rgba(236, 240, 241, 0.3);
+                        border-radius: 8px;
+                        padding: 15px;
+                        font-size: 14px;
+                        font-weight: bold;
+                    }
+                """)
+        else:
+            # Fallback if file doesn't exist - cleaner fallback design
+            logo_label.setText("LOGO")
+            logo_label.setStyleSheet("""
+                QLabel {
+                    color: #ecf0f1;
+                    background: transparent;
+                    border: 2px solid rgba(236, 240, 241, 0.3);
+                    border-radius: 8px;
+                    padding: 15px;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+            """)
+
+        logo_layout.addWidget(logo_label)
+        logo_widget.setLayout(logo_layout)
+        return logo_widget
 
     def create_control_panel(self):
         control_widget = QWidget()
