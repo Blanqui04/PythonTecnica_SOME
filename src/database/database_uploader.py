@@ -144,6 +144,8 @@ class DatabaseUploader:
         Returns:
             dict: Contains success status, PDF data, filename, and planol number
         """
+        logger.debug(f"get_planol_pdf cridat amb ref_client='{ref_client}', project_id='{project_id}'")
+        
         if project_id:
             # If project_id provided, filter by drawings that start with project prefix
             project_prefix = project_id[:3] if len(project_id) >= 3 else project_id
@@ -157,6 +159,7 @@ class DatabaseUploader:
             LIMIT 1
             """
             params = (ref_client, f"{project_prefix}%")
+            logger.debug(f"Consulta amb project_id: query={query}, params={params}")
         else:
             # Original query for backward compatibility
             query = """
@@ -168,12 +171,22 @@ class DatabaseUploader:
             LIMIT 1
             """
             params = (ref_client,)
+            logger.debug(f"Consulta sense project_id: query={query}, params={params}")
         
         try:
             conn = self.conn.connect()
             cursor = conn.cursor()
+            
+            # Debug: Primer llistem tots els plànols per aquesta referència de client
+            debug_query = "SELECT num_planol, id_referencia_client FROM planol WHERE id_referencia_client = %s"
+            cursor.execute(debug_query, (ref_client,))
+            debug_results = cursor.fetchall()
+            logger.debug(f"Tots els plànols per ref_client '{ref_client}': {debug_results}")
+            
+            # Ara executem la consulta real
             cursor.execute(query, params)
             result = cursor.fetchone()
+            logger.debug(f"Resultat de la consulta principal: {result}")
             
             if result:
                 num_planol, imatge_json = result

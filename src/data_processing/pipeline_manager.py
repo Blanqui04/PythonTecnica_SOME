@@ -27,11 +27,10 @@ class DataProcessingPipeline:
             raw_data = reader.read_excel(excel_path)                        # Step 3: Read Excel data
             
             # Step 4: Process data
-            if client_type.lower() == 'kop' or client_type.lower() == 'autoliv':
-                processed_data = self.data_processor.process_kop_data(raw_data, client, ref_project)
-            else:
-                # Add other processing methods as needed
-                processed_data = self.data_processor.process_kop_data(raw_data, client, ref_project)
+            print(f"Processing data for client type: {client_type}")
+            # For now, all clients use the same processing method
+            # We can add specialized processing methods if needed in the future
+            processed_data = self.data_processor.process_kop_data(raw_data, client, ref_project)
             
             self._save_processed_data(processed_data, client, ref_project)  # Step 5: Save processed data as JSON
             

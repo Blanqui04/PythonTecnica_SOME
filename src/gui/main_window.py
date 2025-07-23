@@ -278,7 +278,13 @@ class MainWindow(QMainWindow):
             return
 
         orchestrator = DataProcessingOrchestrator()
-        result, msg = orchestrator.process_and_transform(client, ref_project)
+        
+        # Determinar el mode segons el client
+        mode = 'kop'  # Mode per defecte
+        if client.upper() == 'ZF':
+            mode = 'zf'  # Mode específic per ZF
+        
+        result, msg = orchestrator.process_and_transform(client, ref_project, mode)
 
         if result:
             self.center_panel.update_content("✅ Data processed and transformed!")
