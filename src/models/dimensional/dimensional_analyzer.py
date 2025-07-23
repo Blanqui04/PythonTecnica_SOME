@@ -1,4 +1,8 @@
 # src/models/dimensional/dimensional_analyzer.py
+import os
+import json
+import csv
+from typing import List
 from statistics import mean, stdev
 from .dimensional_result import DimensionalResult, DimensionalStatus
 from .gdt_interpreter import parse_gdt_flags
@@ -197,3 +201,80 @@ class DimensionalAnalyzer:
             feature_type=feature_type,
             warnings=warnings,
         )
+
+    def export_results(
+        self,
+        results: List[DimensionalResult],
+        client: str,
+        ref_project: str,
+        batch_number: str,
+        folder_path: str = "./data/reports/dim/",
+    ):
+        # Ensure output folder exists
+        os.makedirs(folder_path, exist_ok=True)
+
+        base_filename = f"{client}_{ref_project}_{batch_number}_dimensional_state"
+
+        # --- Export to JSON ---
+        json_path = os.path.join(folder_path, base_filename + ".json")
+        with open(json_path, "w", encoding="utf-8") as jf:
+            simplified = []
+            for r in results:
+                d = r.to_dict()
+                # Replace 'gdt_flags' dict with a single active flag (or None)
+                flags = d.get("gdt_flags", {})
+                active_flag = next((k for k, v in flags.items() if v), None)
+                d["gdt_flag"] = active_flag
+                d.pop("gdt_flags", None)
+                simplified.append(d)
+
+            json.dump(simplified, jf, indent=4)
+
+        # --- Export to CSV ---
+        csv_path = os.path.join(folder_path, base_filename + ".csv")
+        with open(csv_path, "w", newline="", encoding="utf-8") as cf:
+            writer = csv.writer(cf)
+
+            header = [
+                "element_id",
+                "batch",
+                "cavity",
+                "description",
+                "nominal",
+                "lower_tolerance",
+                "upper_tolerance",
+                "measurements",
+                "deviation",
+                "mean",
+                "std_dev",
+                "out_of_spec_count",
+                "status",
+                "feature_type",
+                "warnings",
+            ]
+            writer.writerow(header)
+
+            for r in results:
+                writer.writerow(
+                    [
+                        r.element_id,
+                        r.batch,
+                        r.cavity,
+                        r.description,
+                        r.nominal,
+                        r.lower_tolerance,
+                        r.upper_tolerance,
+                        "; ".join(f"{m:.4f}" for m in r.measurements)
+                        if r.measurements
+                        else "",
+                        "; ".join(f"{d:.4f}" for d in r.deviation)
+                        if r.deviation
+                        else "",
+                        r.mean,
+                        r.std_dev,
+                        r.out_of_spec_count,
+                        r.status.name,
+                        r.feature_type,
+                        "; ".join(r.warnings) if r.warnings else "",
+                    ]
+                )

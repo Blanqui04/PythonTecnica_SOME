@@ -132,6 +132,7 @@ PythonTecnica_SOME/
 │   ├── test_data_transformer.py      # Test success!
 │   ├── test_data_uploader.py         # Test success!
 │   ├── test_dimensional_analyzer.py  # Test success!
+│   ├── test_dimensional_export.py  # Test success!
 │   └── test_excel_processing.py      # Test success!
 │
 ├── docs/                        # Documentation
