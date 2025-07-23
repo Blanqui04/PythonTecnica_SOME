@@ -1,4 +1,4 @@
-# models/dimensional/dimensional_result.py
+# models/dimensional/dimensional_result.
 from dataclasses import dataclass, asdict, field
 from typing import List, Optional
 from enum import Enum

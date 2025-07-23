@@ -1,4 +1,4 @@
-# src/gui/main_window.py
+# src/gui/main_window.
 import sys
 from PyQt5.QtWidgets import (
     QApplication,
@@ -29,6 +29,8 @@ from src.gui.workers.capability_study_worker import CapabilityStudyWorker
 # from src.services.capacity_study_service import perform_capability_study
 from src.gui.widgets.element_input_widget import ElementInputWidget
 from .windows.spc_chart_window import SPCChartWindow
+from .windows.dimensional_window import DimensionalStudyWindow
+
 
 
 class MainWindow(QMainWindow):
@@ -173,13 +175,15 @@ class MainWindow(QMainWindow):
             self.center_panel.update_content(error_msg)
             self.status_bar.update_status(f"Error: {str(e)}")
 
+    
     def _run_dimensional_analysis(self):
-        """Run dimensional analysis"""
-        from src.models.dimensional.dimensional_analyzer import run_analysis
+        self.dimensional_window = DimensionalStudyWindow(
+            client = self.header.ref_client_edit.text().strip(),
+            ref_project = self.header.ref_project_edit.text().strip(),
+            batch_number = self.header.num_batch_edit.text().strip()
+        )
+        self.dimensional_window.showMaximized()
 
-        result = run_analysis()
-        self.center_panel.update_content(f"Dimensional Analysis Results:\n\n{result}")
-        self.status_bar.update_status("Dimensional analysis completed")
 
     def _run_capacity_analysis(self):
         self.element_input_widget = ElementInputWidget()
