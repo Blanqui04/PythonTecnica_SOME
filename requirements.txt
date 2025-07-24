@@ -27,6 +27,7 @@ Reportlab       # For PDF generation
 Requests        # For making HTTP requests
 scikit-learn    # For machine learning
 seaborn         # For statistical data visualization
+sip
 #
 cx-freeze
 pyinstaller

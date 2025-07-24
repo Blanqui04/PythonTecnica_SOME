@@ -24,6 +24,7 @@ import pandas as pd
 import logging
 import json
 import os
+import sip  # type: ignore
 from datetime import datetime
 from typing import List, Optional
 
@@ -54,7 +55,6 @@ class ProcessingThread(QThread):
             error_msg = f"Failed to save session: {str(e)}"
             self._log_message(error_msg, "ERROR")
             QMessageBox.critical(self, "Save Error", error_msg)
-    
 
     def _handle_gdt_input(self, description: str) -> str:
         """
@@ -427,7 +427,7 @@ class DimensionalStudyWindow(QMainWindow):
         self.logger.info(
             f"Initialized Enhanced Dimensional Study for {self.client_name} - {self.project_ref} - Batch {self.batch_number}"
         )
-    
+
     def _auto_save_session(self):
         """Auto-save current session"""
         if self.unsaved_changes:
@@ -491,7 +491,7 @@ class DimensionalStudyWindow(QMainWindow):
 
         except Exception as e:
             self._log_message(f"Failed to load last session: {str(e)}", "WARNING")
-    
+
     def _load_session(self):
         """Load session from file"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -558,35 +558,49 @@ class DimensionalStudyWindow(QMainWindow):
             self._log_message(error_msg, "ERROR")
             QMessageBox.critical(self, "Load Error", error_msg)
 
+    def _safe_clear_layout(self, layout):
+        if layout and not sip.isdeleted(layout):
+            for i in reversed(range(layout.count())):
+                widget = layout.itemAt(i).widget()
+                if widget and not sip.isdeleted(widget):
+                    widget.setParent(None)
+
     def _clear_data(self):
         """Clear all data from tables"""
-        reply = QMessageBox.question(
-            self,
-            "Clear All Data",
-            "Are you sure you want to clear all data? This action cannot be undone.",
-            QMessageBox.Yes | QMessageBox.No,
-        )
+        try:
+            reply = QMessageBox.question(
+                self,
+                "Clear All Data",
+                "Are you sure you want to clear all data? This action cannot be undone.",
+                QMessageBox.Yes | QMessageBox.No,
+            )
 
-        if reply == QMessageBox.Yes:
-            # Clear all tabs except summary
-            while self.results_tabs.count() > 1:
-                self.results_tabs.removeTab(1)
+            if reply == QMessageBox.Yes:
+                # Clear all tabs except summary
+                while self.results_tabs.count() > 1:
+                    self.results_tabs.removeTab(1)
 
-            # Reset summary
-            self.stats_label.setText("No analysis performed yet")
-            for i in reversed(range(self.cavity_layout.count())):
-                self.cavity_layout.itemAt(i).widget().setParent(None)
-            for i in reversed(range(self.feature_layout.count())):
-                self.feature_layout.itemAt(i).widget().setParent(None)
+                # 🛡️ Check if stats_label still exists and is valid
+                if self.stats_label and not sip.isdeleted(self.stats_label):
+                    self.stats_label.setText("No analysis performed yet")
 
-            self.results = []
-            self.export_button.setEnabled(False)
-            self._clear_unsaved_changes()
-            self._log_message("All data cleared")
+                # ✅ Safely clear layouts using helper
+                self._safe_clear_layout(self.cavity_layout)
+                self._safe_clear_layout(self.feature_layout)
 
-            # If in manual mode, add empty table
-            if self.manual_mode:
-                self._prepare_manual_table()
+                self.results = []
+                if self.export_button and not sip.isdeleted(self.export_button):
+                    self.export_button.setEnabled(False)
+
+                self._clear_unsaved_changes()
+                self._log_message("All data cleared")
+
+                # If in manual mode, add empty table
+                if self.manual_mode:
+                    self._prepare_manual_table()
+
+        except RuntimeError as e:
+            self._log_message(f"Clear data error: {e}", "WARNING")
 
     def _log_message(self, message: str, level: str = "INFO"):
         """Add message to log area and logger"""
