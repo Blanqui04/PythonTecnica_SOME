@@ -154,6 +154,9 @@ class MainWindow(QMainWindow):
             elif action_name == "view_drawing":
                 self._view_drawing()
 
+            elif action_name == "edit_data":
+                self._edit_data()
+
             elif action_name == "export_data":
                 self._export_data()
 
@@ -474,6 +477,27 @@ class MainWindow(QMainWindow):
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
+
+    def _edit_data(self):
+        """Obre l'editor de base de dades"""
+        try:
+            from .windows.database_editor import DatabaseEditor
+            
+            # Crear i mostrar l'editor de base de dades
+            self.database_editor = DatabaseEditor(self)
+            self.database_editor.show()
+            
+            self.center_panel.update_content("Editor de Base de Dades obert en una finestra separada")
+            self.status_bar.update_status("Editor de base de dades obert")
+            
+            logger.info("Editor de base de dades obert")
+            
+        except Exception as e:
+            error_msg = f"Error obrint l'editor de base de dades: {str(e)}"
+            logger.error(error_msg)
+            self.center_panel.update_content(error_msg)
+            self.status_bar.update_status("Error obrint editor")
+            self.show_error_message("Error", error_msg)
 
     def closeEvent(self, event):
         """Handle window close event"""

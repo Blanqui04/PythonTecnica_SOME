@@ -69,10 +69,7 @@ def main():
     backup_scheduler = None
     
     try:
-        # Sincronització inicial de dades GOMPC
-        sync_gompc_data()
-        
-        # Configurar backup automàtic cada 24 hores
+        # Configurar backup automàtic cada 24 hores (sense sincronització inicial)
         backup_scheduler = start_backup_scheduler()
         
         # Configurar entorn empresarial si estem en mode deployment
@@ -95,9 +92,11 @@ def main():
             except Exception as e:
                 print(f"Could not check for updates: {e}")
         
-        # Executar aplicació principal
+        # Executar aplicació principal directament
         print("\n" + "=" * 60)
         print("INICIANT APLICACIÓ PRINCIPAL")
+        print("=" * 60)
+        print("📅 Backup automàtic configurat per executar-se cada 24 hores")
         print("=" * 60)
         run_app()
         
