@@ -4,7 +4,11 @@ Database Schema Adapter for Quality Measurements
 Aquest mòdul s'encarrega d'adaptar l'esquema de la base de dades per guardar
 les mesures de qualitat obtingudes del network scanner.
 
-Adapta la taula mesuresqualitat per incloure totes les columnes del dataset CSV.
+Adapta la taula mesuresqualitat per incloure totes les columnes del dat            'client': 'character varying(100)',
+            'data_hora': 'timestamp without time zone',
+            'maquina': 'character varying(50) DEFAULT \'gompc\'',
+            'fase': 'character varying(100)',  # Nova columna per clients especials
+            'element': 'character varying(200)', CSV.
 """
 
 import logging
@@ -37,6 +41,9 @@ class QualityMeasurementDBAdapter:
             'REFERENCIA': 'id_referencia_client',
             'LOT': 'id_lot',
             'DATA_HORA': 'data_hora',
+            'FASE': 'fase',  # Nova columna per clients especials
+            'RIVETS_TYPE': 'rivets_type',  # Nova columna específica per PTCOVER
+            'CAVITAT': 'cavitat',  # Nova columna específica per PTCOVER
             'Element': 'element',
             'Pieza': 'pieza',
             'Datum': 'datum',
@@ -155,6 +162,9 @@ class QualityMeasurementDBAdapter:
             client character varying(100),
             data_hora timestamp without time zone,
             maquina character varying(50) DEFAULT 'gompc',
+            fase character varying(100),  -- Nova columna per clients especials (MATRIU, PLA, etc.)
+            rivets_type character varying(100),  -- Nova columna específica per PTCOVER (4 RIVETS, 5 RIVETS)
+            cavitat character varying(100),  -- Nova columna específica per PTCOVER (nom de la cavitat)
             
             -- Camps detallats de la mesura
             element character varying(200),
@@ -264,6 +274,9 @@ class QualityMeasurementDBAdapter:
             'client': 'character varying(100)',
             'data_hora': 'timestamp without time zone',
             'maquina': "character varying(50) DEFAULT 'gompc'",
+            'fase': 'character varying(100)',  # Nova columna per clients especials
+            'rivets_type': 'character varying(100)',  # Nova columna específica per PTCOVER
+            'cavitat': 'character varying(100)',  # Nova columna específica per PTCOVER
             'element': 'character varying(200)',
             'pieza': 'character varying(200)',
             'datum': 'character varying(200)',
@@ -291,12 +304,27 @@ class QualityMeasurementDBAdapter:
             "CREATE INDEX IF NOT EXISTS idx_mesuresqualitat_lot ON mesuresqualitat(id_lot);",
             "CREATE INDEX IF NOT EXISTS idx_mesuresqualitat_data_hora ON mesuresqualitat(data_hora);",
             "CREATE INDEX IF NOT EXISTS idx_mesuresqualitat_maquina ON mesuresqualitat(maquina);",
-            "CREATE INDEX IF NOT EXISTS idx_mesuresqualitat_referencia_client ON mesuresqualitat(id_referencia_client);"
+            "CREATE INDEX IF NOT EXISTS idx_mesuresqualitat_referencia_client ON mesuresqualitat(id_referencia_client);",
+            "CREATE INDEX IF NOT EXISTS idx_mesuresqualitat_fase ON mesuresqualitat(fase);"
         ]
         
         statements.extend(index_statements)
         
         return statements
+    
+    def generate_table_update_statements(self) -> List[str]:
+        """
+        Genera statements per actualitzar l'esquema de la taula si cal
+        
+        Returns:
+            list: Llista de statements SQL per actualitzar l'esquema
+        """
+        try:
+            current_structure = self.get_current_table_structure()
+            return self._generate_alter_statements(current_structure)
+        except Exception as e:
+            logger.error(f"Error generant statements d'actualització: {e}")
+            return []
     
     def prepare_dataset_for_insertion(self, df: pd.DataFrame) -> pd.DataFrame:
         """
@@ -382,10 +410,14 @@ class QualityMeasurementDBAdapter:
                 prepared_df[col] = pd.to_numeric(prepared_df[col], errors='coerce')
         
         # Convertir camps de text i limitar longitud
-        text_cols = ['client', 'element', 'pieza', 'datum', 'property', 'check_value', 'out_value', 'alignment']
+        text_cols = ['client', 'element', 'pieza', 'datum', 'property', 'check_value', 'out_value', 'alignment', 'fase']
         for col in text_cols:
             if col in prepared_df.columns:
                 prepared_df[col] = prepared_df[col].astype(str).str[:200]  # Limitar a 200 caràcters
+        
+        # Per clients regulars sense fase, afegir columna buida
+        if 'fase' not in prepared_df.columns:
+            prepared_df['fase'] = None
         
         logger.info(f"Dataset preparat: {len(prepared_df)} files, {len(prepared_df.columns)} columnes")
         return prepared_df
@@ -691,3 +723,298 @@ class QualityMeasurementDBAdapter:
             print(f"\n🏢 DISTRIBUCIÓ PER CLIENT:")
             for client_data in summary['by_client']:
                 print(f"   {client_data['client']}: {client_data['count']:,} registres")
+    
+    def execute_query(self, query: str, params: tuple = None) -> List[tuple]:
+        """
+        Executa una query SQL i retorna els resultats
+        
+        Args:
+            query: Query SQL a executar
+            params: Paràmetres de la query (opcional)
+            
+        Returns:
+            List[tuple]: Resultats de la query
+        """
+        try:
+            if not self.connection:
+                raise Exception("No hi ha connexió activa a la base de dades")
+            
+            with self.connection.cursor() as cursor:
+                if params:
+                    cursor.execute(query, params)
+                else:
+                    cursor.execute(query)
+                
+                # Si és una query SELECT, retornar resultats
+                if query.strip().upper().startswith('SELECT'):
+                    return cursor.fetchall()
+                else:
+                    # Per queries INSERT/UPDATE/DELETE, confirmar els canvis
+                    self.connection.commit()
+                    return cursor.rowcount
+                    
+        except Exception as e:
+            logger.error(f"Error executant query: {e}")
+            if self.connection:
+                self.connection.rollback()
+            raise e
+    
+    def execute_query_to_dataframe(self, query: str, params: tuple = None) -> pd.DataFrame:
+        """
+        Executa una query SQL i retorna els resultats com a DataFrame
+        
+        Args:
+            query: Query SQL a executar
+            params: Paràmetres de la query (opcional)
+            
+        Returns:
+            pd.DataFrame: Resultats de la query com a DataFrame
+        """
+        try:
+            if not self.connection:
+                raise Exception("No hi ha connexió activa a la base de dades")
+            
+            # Usar pandas per llegir directament de la BD
+            if params:
+                df = pd.read_sql_query(query, self.connection, params=params)
+            else:
+                df = pd.read_sql_query(query, self.connection)
+            
+            logger.info(f"Query executada correctament: {len(df)} files retornades")
+            return df
+            
+        except Exception as e:
+            logger.error(f"Error executant query to DataFrame: {e}")
+            raise e
+    
+    def get_table_info(self, table_name: str) -> Dict[str, Any]:
+        """
+        Obté informació detallada d'una taula
+        
+        Args:
+            table_name: Nom de la taula
+            
+        Returns:
+            Dict amb informació de la taula
+        """
+        try:
+            info = {}
+            
+            # Informació bàsica de la taula
+            query = """
+            SELECT 
+                schemaname, tablename, tableowner, 
+                hasindexes, hasrules, hastriggers
+            FROM pg_tables 
+            WHERE tablename = %s
+            """
+            
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, (table_name,))
+                result = cursor.fetchone()
+                
+                if result:
+                    info['basic'] = {
+                        'schema': result[0],
+                        'name': result[1],
+                        'owner': result[2],
+                        'has_indexes': result[3],
+                        'has_rules': result[4],
+                        'has_triggers': result[5]
+                    }
+                
+                # Columnes de la taula
+                columns_query = """
+                SELECT 
+                    column_name, data_type, character_maximum_length,
+                    is_nullable, column_default
+                FROM information_schema.columns 
+                WHERE table_name = %s 
+                ORDER BY ordinal_position
+                """
+                
+                cursor.execute(columns_query, (table_name,))
+                columns = cursor.fetchall()
+                
+                info['columns'] = []
+                for col in columns:
+                    info['columns'].append({
+                        'name': col[0],
+                        'type': col[1],
+                        'max_length': col[2],
+                        'nullable': col[3] == 'YES',
+                        'default': col[4]
+                    })
+                
+                # Contar files
+                count_query = f"SELECT COUNT(*) FROM {table_name}"
+                cursor.execute(count_query)
+                info['row_count'] = cursor.fetchone()[0]
+            
+            return info
+            
+        except Exception as e:
+            logger.error(f"Error obtenint informació de la taula {table_name}: {e}")
+            return {}
+    
+    def update_record_by_key(self, table_name: str, key_column: str, key_value: str, updates: Dict[str, Any]) -> bool:
+        """
+        Actualitza un registre utilitzant qualsevol columna com a clau
+        
+        Args:
+            table_name: Nom de la taula
+            key_column: Nom de la columna clau
+            key_value: Valor de la clau
+            updates: Diccionari amb les columnes i valors a actualitzar
+            
+        Returns:
+            bool: True si s'ha actualitzat correctament
+        """
+        try:
+            if not updates:
+                return False
+            
+            # Construir query UPDATE amb la clau personalitzada
+            set_clauses = []
+            values = []
+            
+            for column, value in updates.items():
+                set_clauses.append(f'"{column}" = %s')
+                values.append(value)
+            
+            query = f"""
+            UPDATE "{table_name}" 
+            SET {', '.join(set_clauses)}
+            WHERE "{key_column}" = %s
+            """
+            
+            values.append(key_value)
+            
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, values)
+                self.connection.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Registre amb {key_column}={key_value} actualitzat a {table_name}")
+                    return True
+                else:
+                    logger.warning(f"No s'ha trobat el registre amb {key_column}={key_value} a {table_name}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error actualitzant registre per clau: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+
+    def update_record(self, table_name: str, record_id: int, updates: Dict[str, Any]) -> bool:
+        """
+        Actualitza un registre específic
+        
+        Args:
+            table_name: Nom de la taula
+            record_id: ID del registre a actualitzar
+            updates: Diccionari amb les columnes i valors a actualitzar
+            
+        Returns:
+            bool: True si s'ha actualitzat correctament
+        """
+        try:
+            if not updates:
+                return False
+            
+            # Construir query UPDATE
+            set_clauses = []
+            values = []
+            
+            for column, value in updates.items():
+                set_clauses.append(f"{column} = %s")
+                values.append(value)
+            
+            query = f"""
+            UPDATE {table_name} 
+            SET {', '.join(set_clauses)}
+            WHERE id = %s
+            """
+            
+            values.append(record_id)
+            
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, values)
+                self.connection.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Registre {record_id} actualitzat a {table_name}")
+                    return True
+                else:
+                    logger.warning(f"No s'ha trobat el registre {record_id} a {table_name}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error actualitzant registre: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+    
+    def delete_record_by_key(self, table_name: str, key_column: str, key_value: str) -> bool:
+        """
+        Elimina un registre utilitzant qualsevol columna com a clau
+        
+        Args:
+            table_name: Nom de la taula
+            key_column: Nom de la columna clau
+            key_value: Valor de la clau
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+        """
+        try:
+            query = f'DELETE FROM "{table_name}" WHERE "{key_column}" = %s'
+            
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, (key_value,))
+                self.connection.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Registre amb {key_column}={key_value} eliminat de {table_name}")
+                    return True
+                else:
+                    logger.warning(f"No s'ha trobat el registre amb {key_column}={key_value} a {table_name}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error eliminant registre per clau: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
+
+    def delete_record(self, table_name: str, record_id: int) -> bool:
+        """
+        Elimina un registre específic
+        
+        Args:
+            table_name: Nom de la taula
+            record_id: ID del registre a eliminar
+            
+        Returns:
+            bool: True si s'ha eliminat correctament
+        """
+        try:
+            query = f"DELETE FROM {table_name} WHERE id = %s"
+            
+            with self.connection.cursor() as cursor:
+                cursor.execute(query, (record_id,))
+                self.connection.commit()
+                
+                if cursor.rowcount > 0:
+                    logger.info(f"Registre {record_id} eliminat de {table_name}")
+                    return True
+                else:
+                    logger.warning(f"No s'ha trobat el registre {record_id} a {table_name}")
+                    return False
+                    
+        except Exception as e:
+            logger.error(f"Error eliminant registre: {e}")
+            if self.connection:
+                self.connection.rollback()
+            return False
