@@ -14,8 +14,8 @@ def main():
     try:
         # Configurar entorn empresarial si estem en mode deployment
         if deployment_dir.exists():
-            from config_manager import ConfigManager    # noqa: F401
-            from auto_updater import AutoUpdater        # noqa: F401
+            from config_manager import ConfigManager
+            from auto_updater import AutoUpdater
 
             # Configurar automàticament per a l'empresa
             config_manager = ConfigManager()
