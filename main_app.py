@@ -14,6 +14,32 @@ sys.path.insert(0, str(src_dir))
 from src.gui.main_window import run_app
 from src.services.gompc_sync_service import GompcSyncService
 from src.services.gompc_backup_scheduler import GompcBackupScheduler
+from src.services.project_sync_service import ProjectSyncService
+
+def sync_project_scanner_data():
+    """Sincronitza automàticament les dades del Scanner Projectes a l'inici"""
+    print("\n" + "=" * 60)
+    print("SINCRONITZACIÓ AUTOMÀTICA SCANNER PROJECTES")
+    print("=" * 60)
+    
+    try:
+        sync_service = ProjectSyncService()
+        result = sync_service.sync_project_data()
+        
+        if result['success']:
+            print(f"✅ Scanner Projectes sincronitzat:")
+            print(f"   📋 Fitxers processats: {result.get('total_csv_processed', 0)}")
+            print(f"   💾 Registres inserits: {result.get('total_records_inserted', 0)}")
+            print(f"   ⏱️ Temps: {result.get('duration_seconds', 0):.2f}s")
+            print(f"   🖥️ Màquina: {result.get('maquina_value', 'N/A')}")
+        else:
+            print(f"❌ Error Scanner Projectes: {result.get('error', 'Unknown')}")
+        
+        return result
+        
+    except Exception as e:
+        print(f"❌ Error crític Scanner Projectes: {e}")
+        return {'success': False, 'error': str(e)}
 
 def sync_gompc_data():
     """Sincronitza automàticament les dades del GOMPC a l'inici"""
@@ -71,6 +97,9 @@ def main():
     try:
         # Configurar backup automàtic cada 24 hores (sense sincronització inicial)
         backup_scheduler = start_backup_scheduler()
+        
+        # Sincronitzar Scanner Projectes automàticament
+        sync_project_scanner_data()
         
         # Configurar entorn empresarial si estem en mode deployment
         if deployment_dir.exists():
