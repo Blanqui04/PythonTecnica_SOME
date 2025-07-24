@@ -1,4 +1,4 @@
-# src/gui/main_window.
+# src/gui/main_window.py
 import sys
 from PyQt5.QtWidgets import (
     QApplication,

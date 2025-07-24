@@ -1,4 +1,4 @@
-# models/dimensional/dimensional_result.
+# models/dimensional/dimensional_result.py
 from dataclasses import dataclass, asdict, field
 from typing import List, Optional
 from enum import Enum
@@ -15,6 +15,7 @@ class DimensionalResult:
     element_id: str
     batch: str
     cavity: str
+    classe: str
     description: str
     nominal: float
     lower_tolerance: Optional[float]
