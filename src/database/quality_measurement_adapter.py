@@ -403,11 +403,11 @@ class QualityMeasurementDBAdapter:
         prepared_df['id_referencia_some'] = prepared_df['id_referencia_some'].fillna('UNKNOWN')
         prepared_df['id_element'] = prepared_df['id_element'].fillna('UNKNOWN')
         
-        # Convertir camps numèrics
+        # Convertir camps numèrics amb gestió de formats europeus
         numeric_cols = ['nominal', 'actual', 'tolerancia_negativa', 'tolerancia_positiva', 'desviacio', 'valor']
         for col in numeric_cols:
             if col in prepared_df.columns:
-                prepared_df[col] = pd.to_numeric(prepared_df[col], errors='coerce')
+                prepared_df[col] = self._convert_to_numeric_european(prepared_df[col])
         
         # Convertir camps de text i limitar longitud
         text_cols = ['client', 'element', 'pieza', 'datum', 'property', 'check_value', 'out_value', 'alignment', 'fase']
@@ -469,6 +469,7 @@ class QualityMeasurementDBAdapter:
         cleaned_df = df.copy()
         
         # Llista de caràcters problemàtics coneguts i les seves substitucions
+        # Nota: No tocar separadors decimals (,.) ni símbols numèrics fins després de la conversió
         char_replacements = {
             'Ø': 'O',  # Caràcter danès/noruec
             'ø': 'o',
@@ -487,10 +488,11 @@ class QualityMeasurementDBAdapter:
             'ñ': 'n',
             'Ç': 'C',
             'ç': 'c',
-            '°': 'deg',  # Grau
-            'μ': 'u',    # Micro
-            'Δ': 'Delta',  # Delta grec
-            '±': '+/-',   # Més/menys
+            # Caràcters numèrics els deixem per la conversió específica
+            # '°': 'deg',  # Grau - es neteja en la conversió numèrica
+            # 'μ': 'u',    # Micro - es neteja en la conversió numèrica
+            # 'Δ': 'Delta',  # Delta grec
+            # '±': '+/-',   # Més/menys - es neteja en la conversió numèrica
             '²': '2',     # Superíndex 2
             '³': '3',     # Superíndex 3
         }
@@ -525,6 +527,76 @@ class QualityMeasurementDBAdapter:
         
         logger.info("Neteja d'encoding completada")
         return cleaned_df
+
+    def _convert_to_numeric_european(self, series: pd.Series) -> pd.Series:
+        """
+        Converteix una sèrie a valors numèrics gestionant formats europeus
+        
+        Args:
+            series: Sèrie pandas amb valors a convertir
+            
+        Returns:
+            Sèrie pandas amb valors numèrics
+        """
+        def clean_numeric_value(value):
+            """Neteja un valor per convertir-lo a numèric"""
+            if pd.isna(value):
+                return None
+            
+            # Convertir a string
+            str_val = str(value).strip()
+            
+            # Si ja és un número vàlid, retornar-lo
+            try:
+                return float(str_val)
+            except ValueError:
+                pass
+            
+            # Netejar valors comuns
+            str_val = str_val.replace(' ', '')  # Eliminar espais
+            str_val = str_val.replace('±', '')   # Eliminar símbol ±
+            str_val = str_val.replace('+/-', '') # Eliminar +/-
+            str_val = str_val.replace('°', '')   # Eliminar símbols de grau
+            str_val = str_val.replace('μ', '')   # Eliminar micro
+            
+            # Si conté comes i punts, determinar quin és el separador decimal
+            if ',' in str_val and '.' in str_val:
+                # Format: 1.234,56 (europeu) -> 1234.56
+                if str_val.rindex(',') > str_val.rindex('.'):
+                    str_val = str_val.replace('.', '').replace(',', '.')
+                # Format: 1,234.56 (americà) -> mantenir
+                else:
+                    str_val = str_val.replace(',', '')
+            elif ',' in str_val:
+                # Només comes - assumir format europeu: 1,5 -> 1.5
+                str_val = str_val.replace(',', '.')
+            
+            # Eliminar caràcters no numèrics excepte el punt decimal i el signe menys
+            import re
+            str_val = re.sub(r'[^\d\.\-]', '', str_val)
+            
+            # Assegurar que només hi ha un punt decimal
+            parts = str_val.split('.')
+            if len(parts) > 2:
+                str_val = parts[0] + '.' + ''.join(parts[1:])
+            
+            try:
+                return float(str_val) if str_val else None
+            except ValueError:
+                logger.warning(f"No s'ha pogut convertir valor: '{value}' -> '{str_val}'")
+                return None
+        
+        # Aplicar la funció de neteja
+        cleaned_series = series.apply(clean_numeric_value)
+        
+        # Informar sobre conversions
+        original_count = len(series.dropna())
+        converted_count = len(cleaned_series.dropna())
+        if original_count > 0:
+            success_rate = (converted_count / original_count) * 100
+            logger.info(f"Conversió numèrica: {converted_count}/{original_count} valors ({success_rate:.1f}%)")
+        
+        return cleaned_series
 
     def _calculate_ok_status(self, df: pd.DataFrame) -> pd.Series:
         """
@@ -745,8 +817,9 @@ class QualityMeasurementDBAdapter:
                 else:
                     cursor.execute(query)
                 
-                # Si és una query SELECT, retornar resultats
-                if query.strip().upper().startswith('SELECT'):
+                # Si és una query SELECT o WITH, retornar resultats
+                query_stripped = query.strip().upper()
+                if query_stripped.startswith('SELECT') or query_stripped.startswith('WITH'):
                     return cursor.fetchall()
                 else:
                     # Per queries INSERT/UPDATE/DELETE, confirmar els canvis
