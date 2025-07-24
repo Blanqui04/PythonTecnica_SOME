@@ -1,4 +1,4 @@
-# src/gui/windows/dimensional_window.
+# src/gui/windows/dimensional_window.py
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QLabel, QPushButton,
     QTableWidget, QTableWidgetItem, QFileDialog, QMessageBox, QHBoxLayout,
@@ -50,7 +50,7 @@ class DimensionalStudyWindow(QMainWindow):
 
         # Expected columns for dimensional analysis
         self.required_columns = [
-            "element_id", "batch", "cavity", "description", "nominal",
+            "element_id", "batch", "cavity", "class", "description", "nominal",
             "lower_tolerance", "upper_tolerance"
         ]
         

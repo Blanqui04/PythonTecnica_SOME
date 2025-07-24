@@ -22,11 +22,20 @@ matplotlib>=3.5.0      # For plotting and visualizations
 # Utility dependencies
 requests>=2.28.0       # For making HTTP requests (if needed)
 Statsmodels     # For statistical modeling
-Plotly          # For interactive visualizations
+plotly          # For interactive visualizations
 Reportlab       # For PDF generation
 Requests        # For making HTTP requests
-Scikit-learn    # For machine learning
-Seaborn         # For statistical data visualization
+scikit-learn    # For machine learning
+seaborn         # For statistical data visualization
+#
+cx-freeze
+pyinstaller
+setuptools>=65.0.0
+wheel>=0.38.0
+build>=0.10.0
+# Additional packaging tools
+auto-py-to-exe>=2.32.0  # GUI per PyInstaller (opcional)
+nuitka>=1.5.0           # Compilador alternatiu (opcional)
 # TensorFlow      # For deep learning tasks
 # Keras           # High-level neural networks API
 # ---------- Logging is part of Python stdlib, no need to list
