@@ -185,12 +185,36 @@ class MainWindow(QMainWindow):
         self.status_bar.update_status("Dimensional analysis completed")
 
     def _run_capacity_analysis(self):
-        self.element_input_widget = ElementInputWidget()
+        # Obtenir dades del client i projecte del header
+        client = self.header.ref_client_edit.text().strip()
+        ref_project = self.header.ref_project_edit.text().strip()
+        
+        # Crear widget amb dades del client i projecte per auto-carregar
+        self.element_input_widget = ElementInputWidget(
+            parent=None, 
+            client=client if client else None, 
+            project_reference=ref_project if ref_project else None
+        )
         self.element_input_widget.study_requested.connect(
             self.run_capacity_study_with_elements
         )
         self.center_panel.show_custom_widget(self.element_input_widget)
-        self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
+        
+        # Missatge d'estat
+        if client and ref_project:
+            self.status_bar.update_status(f"Carregant dades per {client} - {ref_project}...")
+        else:
+            self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
+            # Mostrar avís si falten dades
+            if not client or not ref_project:
+                from PyQt5.QtWidgets import QMessageBox
+                QMessageBox.information(
+                    self,
+                    "Auto-load Information",
+                    "Per carregar automàticament les dades des de la base de dades, "
+                    "si us plau introduïu el Client i la Referència del Projecte als camps del header.",
+                    QMessageBox.Ok
+                )
 
     def run_capacity_study_with_elements(self, elements, extrap_config):
         try:
