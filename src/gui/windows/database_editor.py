@@ -367,11 +367,19 @@ class DatabaseEditor(QDialog):
         self.modified_rows.add(row)
         self.save_btn.setEnabled(True)
         
-        # Marcar la fila com modificada (color de fons)
+        # Determinar si és una fila nova o modificada
+        is_new_row = row >= len(self.current_dataframe) if self.current_dataframe is not None else True
+        
+        # Marcar la fila com modificada amb colors diferents
         for col in range(self.table_widget.columnCount()):
             cell_item = self.table_widget.item(row, col)
             if cell_item:
-                cell_item.setBackground(Qt.yellow)
+                if is_new_row:
+                    # Files noves en verd clar
+                    cell_item.setBackground(Qt.green if hasattr(Qt, 'green') else Qt.lightGray)
+                else:
+                    # Files modificades en groc
+                    cell_item.setBackground(Qt.yellow)
     
     def on_header_clicked(self, logical_index):
         """Quan es clica en un header de columna"""
@@ -408,13 +416,28 @@ class DatabaseEditor(QDialog):
                     # Detectar la clau primària de forma intel·ligent
                     primary_key_column, primary_key_value = self._get_primary_key_for_row(row)
                     
+                    # Verificar si és una fila nova (fora del rang del DataFrame original)
+                    is_new_row = row >= len(self.current_dataframe)
+                    
                     if not primary_key_column or not primary_key_value:
-                        # Nova fila o sense clau primària - implementar inserció
-                        self.info_text.append(f"⚠️ Fila {row + 1}: Inserció de noves files o sense clau primària no implementada encara")
-                        error_count += 1
+                        if is_new_row:
+                            # Nova fila sense clau primària - necessita inserció
+                            self.info_text.append(f"➕ Fila {row + 1}: Preparant per inserció (nova fila)")
+                            # Recopilar dades per inserció
+                            new_record = self._collect_row_data(row)
+                            if self._insert_new_record(new_record):
+                                success_count += 1
+                                self.info_text.append(f"✅ Nova fila {row + 1} inserida correctament")
+                            else:
+                                error_count += 1
+                                self.info_text.append(f"❌ Error inserint nova fila {row + 1}")
+                        else:
+                            # Fila existent sense clau primària identificable
+                            self.info_text.append(f"⚠️ Fila {row + 1}: No es pot identificar la clau primària")
+                            error_count += 1
                         continue
                     
-                    # Recopilar canvis
+                    # Recopilar canvis per files existents
                     updates = {}
                     for col in range(self.table_widget.columnCount()):
                         header_item = self.table_widget.horizontalHeaderItem(col)
@@ -423,12 +446,19 @@ class DatabaseEditor(QDialog):
                             cell_item = self.table_widget.item(row, col)
                             if cell_item:
                                 new_value = cell_item.text()
-                                # Només afegir si el valor ha canviat
-                                original_value = str(self.current_dataframe.iloc[row, col]) if pd.notna(self.current_dataframe.iloc[row, col]) else ""
-                                if new_value != original_value:
-                                    # Convertir el tipus de dada de forma intel·ligent
-                                    converted_value = self._smart_type_conversion(new_value, column_name)
-                                    updates[column_name] = converted_value
+                                
+                                # Comparar amb valor original només si no és una fila nova
+                                if is_new_row:
+                                    # Per files noves, afegir tots els valors no buits
+                                    if new_value.strip():
+                                        converted_value = self._smart_type_conversion(new_value, column_name)
+                                        updates[column_name] = converted_value
+                                else:
+                                    # Per files existents, comparar amb l'original
+                                    original_value = str(self.current_dataframe.iloc[row, col]) if pd.notna(self.current_dataframe.iloc[row, col]) else ""
+                                    if new_value != original_value:
+                                        converted_value = self._smart_type_conversion(new_value, column_name)
+                                        updates[column_name] = converted_value
                     
                     # Actualitzar registre si hi ha canvis
                     if updates:
@@ -518,6 +548,81 @@ class DatabaseEditor(QDialog):
         # Per defecte, retornar com a string
         return value_str
     
+    def _collect_row_data(self, row):
+        """
+        Recopila totes les dades d'una fila per inserció
+        
+        Args:
+            row: Número de fila
+            
+        Returns:
+            dict: Diccionari amb dades de la fila
+        """
+        row_data = {}
+        
+        for col in range(self.table_widget.columnCount()):
+            header_item = self.table_widget.horizontalHeaderItem(col)
+            if header_item:
+                column_name = header_item.text()
+                cell_item = self.table_widget.item(row, col)
+                if cell_item and cell_item.text().strip():
+                    value = cell_item.text().strip()
+                    converted_value = self._smart_type_conversion(value, column_name)
+                    row_data[column_name] = converted_value
+                else:
+                    row_data[column_name] = None
+        
+        return row_data
+    
+    def _insert_new_record(self, record_data):
+        """
+        Insereix un nou registre a la base de dades
+        
+        Args:
+            record_data: Diccionari amb les dades del registre
+            
+        Returns:
+            bool: True si s'ha inserit correctament
+        """
+        try:
+            if not record_data or not self.current_table:
+                return False
+            
+            # Filtrar valors None i buits
+            filtered_data = {k: v for k, v in record_data.items() if v is not None}
+            
+            if not filtered_data:
+                self.info_text.append("⚠️ No hi ha dades per inserir")
+                return False
+            
+            # Construir query INSERT
+            columns = list(filtered_data.keys())
+            placeholders = ['%s'] * len(columns)
+            values = list(filtered_data.values())
+            
+            # Posar cometes als noms de columnes per evitar conflictes amb paraules reservades
+            quoted_columns = [f'"{col}"' for col in columns]
+            
+            query = f"""
+            INSERT INTO "{self.current_table}" ({', '.join(quoted_columns)})
+            VALUES ({', '.join(placeholders)})
+            """
+            
+            # Executar la inserció
+            result = self.db_adapter.execute_query(query, tuple(values))
+            
+            if isinstance(result, int) and result > 0:
+                self.info_text.append(f"✅ Nou registre inserit amb {len(filtered_data)} columnes")
+                return True
+            else:
+                self.info_text.append(f"❌ Error en la inserció: resultat {result}")
+                return False
+                
+        except Exception as e:
+            self.info_text.append(f"❌ Error inserint registre: {str(e)}")
+            logger.error(f"Error inserint registre: {e}")
+            return False
+    
     def _get_primary_key_for_row(self, row):
         """
         Detecta la clau primària per una fila específica
@@ -571,20 +676,24 @@ class DatabaseEditor(QDialog):
     def add_new_row(self):
         """Afegeix una nova fila buida"""
         if self.current_dataframe is None:
+            QMessageBox.information(self, "No hi ha dades", "Primer carrega una taula per afegir files")
             return
         
         row_count = self.table_widget.rowCount()
         self.table_widget.insertRow(row_count)
         
-        # Afegir elements buits
+        # Afegir elements buits amb color distintiu per files noves
         for col in range(self.table_widget.columnCount()):
             item = QTableWidgetItem("")
+            # Marcar visualmente com a fila nova (color verd clar)
+            item.setBackground(Qt.green if hasattr(Qt, 'green') else Qt.lightGray)
             self.table_widget.setItem(row_count, col, item)
         
         self.modified_rows.add(row_count)
         self.save_btn.setEnabled(True)
         
-        self.info_text.append(f"➕ Nova fila afegida a la posició {row_count + 1}")
+        self.info_text.append(f"➕ Nova fila afegida a la posició {row_count + 1} (marcada en verd)")
+        self.info_text.append(f"💡 Consell: Omple almenys una clau primària abans de guardar")
     
     def delete_selected_rows(self):
         """Elimina les files seleccionades de la base de dades"""
