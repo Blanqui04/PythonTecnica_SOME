@@ -34,7 +34,7 @@ from .windows.spc_chart_window import SPCChartWindow
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Database Management System")
+        self.setWindowTitle("Gestió de Projectes SOME")
         self.last_analysis_action = None  # Track the last analysis action performed
         self.setup_window()
         self.init_ui()

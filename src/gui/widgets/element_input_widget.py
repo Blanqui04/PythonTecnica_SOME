@@ -704,9 +704,14 @@ class ElementInputWidget(QWidget):
                 # Worker ja ha estat eliminat
                 pass
             
-        if self.elements_thread and self.elements_thread.isRunning():
-            self.elements_thread.quit()
-            self.elements_thread.wait()
+        if self.elements_thread:
+            try:
+                if self.elements_thread.isRunning():
+                    self.elements_thread.quit()
+                    self.elements_thread.wait()
+            except RuntimeError:
+                # Thread ja ha estat eliminat
+                pass
             
         # Crear nous workers per elements
         self.elements_thread = QThread()
@@ -754,9 +759,14 @@ class ElementInputWidget(QWidget):
                 # Worker ja ha estat eliminat
                 pass
             
-        if self.data_thread and self.data_thread.isRunning():
-            self.data_thread.quit()
-            self.data_thread.wait()
+        if self.data_thread:
+            try:
+                if self.data_thread.isRunning():
+                    self.data_thread.quit()
+                    self.data_thread.wait()
+            except RuntimeError:
+                # Thread ja ha estat eliminat
+                pass
             
         # Crear nous workers per dades
         self.data_thread = QThread()
@@ -990,10 +1000,11 @@ class ElementInputWidget(QWidget):
             # Opcional: Crear un element amb totes les mesures i afegir-lo a la taula
             element_data = {
                 'element_id': element_id,
+                'class': 'CC',  # Valor per defecte quan es carrega des de BBDD
                 'nominal': latest_measurement['nominal'],
-                'tolerance_minus': latest_measurement['tol_neg'],
-                'tolerance_plus': latest_measurement['tol_pos'],
-                'measurements': [m['actual'] for m in measurements],  # Tots els valors actuals
+                'tol_minus': latest_measurement['tol_neg'],  # Usar noms que espera la taula
+                'tol_plus': latest_measurement['tol_pos'],   # Usar noms que espera la taula
+                'values': [m['actual'] for m in measurements],  # Canviat de 'measurements' a 'values'
                 'cavity': latest_measurement.get('cavitat', ''),
                 'batch': latest_measurement.get('id_lot', ''),
                 'last_measured': latest_measurement['data_hora']
@@ -1009,12 +1020,14 @@ class ElementInputWidget(QWidget):
                 self.elements.append(element_data)
             
             # Refrescar la taula
-            self._update_elements_table()
+            self._update_table()
             
             logger.info(f"Dades carregades per element {element_id}: {len(measurements)} mesures")
             
         except Exception as e:
             logger.error(f"Error processant dades de l'element: {e}")
+            import traceback
+            logger.error(f"Traceback complet: {traceback.format_exc()}")
             self._show_error("Data Processing Error", f"Error processing element data: {e}")
 
     def _reset_load_button(self):
