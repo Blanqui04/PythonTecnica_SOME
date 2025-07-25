@@ -56,6 +56,7 @@ class DimensionalStudyWindow(QMainWindow):
             "cavity",
             "class",
             "description",
+            "measurement_instrument",
             "nominal",
             "lower_tolerance",
             "upper_tolerance",
@@ -69,6 +70,7 @@ class DimensionalStudyWindow(QMainWindow):
             "mean",
             "std_deviation",
             "status",
+            "force_status"
         ]
 
         # Column headers for display
@@ -78,6 +80,7 @@ class DimensionalStudyWindow(QMainWindow):
             "Cavity",
             "Class",
             "Description",
+            "Measurement inst.",
             "Nominal",
             "Lower Tol",
             "Upper Tol",
@@ -91,6 +94,7 @@ class DimensionalStudyWindow(QMainWindow):
             "Mean",
             "Std Dev",
             "Status",
+            "Force status"
         ]
 
         # Expected columns for dimensional analysis (original structure)
@@ -100,6 +104,7 @@ class DimensionalStudyWindow(QMainWindow):
             "cavity",
             "class",
             "description",
+            "measurement_instruments"
             "nominal",
             "lower_tolerance",
             "upper_tolerance",
@@ -495,16 +500,16 @@ class DimensionalStudyWindow(QMainWindow):
 
         # Set specific column widths
         column_widths = {
-            0: 80,  # element_id
-            1: 60,  # batch
-            2: 60,  # cavity
-            3: 60,  # class
+            0: 80,   # element_id
+            1: 60,   # batch
+            2: 60,   # cavity
+            3: 60,   # class
             4: 200,  # description
-            5: 80,  # nominal
-            6: 80,  # lower_tolerance
-            7: 80,  # upper_tolerance
-            8: 80,  # measurement_1
-            9: 80,  # measurement_2
+            5: 80,   # nominal
+            6: 80,   # lower_tolerance
+            7: 80,   # upper_tolerance
+            8: 80,   # measurement_1
+            9: 80,   # measurement_2
             10: 80,  # measurement_3
             11: 80,  # measurement_4
             12: 80,  # measurement_5

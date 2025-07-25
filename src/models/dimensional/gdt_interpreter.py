@@ -14,7 +14,7 @@ class GDTInterpreter:
         self.gdt_symbols = {
             # Form tolerances
             "straightness": "⏤",
-            "flatness": "⏤",
+            "flatness": "⏥",
             "circularity": "○",
             "cylindricity": "⌭",
             # Orientation tolerances

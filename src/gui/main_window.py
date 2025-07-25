@@ -29,7 +29,7 @@ from src.gui.workers.capability_study_worker import CapabilityStudyWorker
 # from src.services.capacity_study_service import perform_capability_study
 from src.gui.widgets.element_input_widget import ElementInputWidget
 from .windows.spc_chart_window import SPCChartWindow
-from .windows.dimensional_window import DimensionalStudyWindow
+from .windows.dimensional_study_window import DimensionalStudyWindow
 
 
 
