@@ -197,11 +197,50 @@ PythonTecnica_SOME/
 - **🔄 Data Processing Pipeline**: Automated Excel processing with KOP client support
 - **📊 Statistical Analysis**: Capability studies, SPC charts, and normality analysis
 - **🖥️ Modern GUI**: PyQt5 interface with PDF viewer toggle functionality
-- **📁 Smart Export**: Data export directly to user's Downloads folder with cross-platform support
+- **�️ Database Editor**: Visual database table editor with real-time editing, querying, and data management
+- **�📁 Smart Export**: Data export directly to user's Downloads folder with cross-platform support
 - **🗄️ Database Integration**: PostgreSQL connection with automatic data upload
 - **📈 SPC Charts**: Individual charts, moving range charts, capability charts, and extrapolation plots
 - **🌍 Internationalization**: Multi-language support (Catalan, English, Polish)
 - **🧪 Comprehensive Testing**: Full test coverage for all major components
+- **📅 Automatic Backup**: Scheduled 24-hour data synchronization from GOMPC network to database
+
+### 🗃️ Database Editor Features
+
+The integrated Database Editor provides comprehensive database management capabilities:
+
+#### **Visual Table Management**
+- **Table Selection**: Dropdown selector for all available database tables
+- **Real-time Data Loading**: Background loading with progress indicators
+- **Column Sorting**: Click headers to sort data by any column
+- **Row Limits**: Configurable row limits (10-10,000) or show all records
+
+#### **Data Editing**
+- **In-place Editing**: Click any cell to edit data directly
+- **Visual Change Tracking**: Modified rows highlighted in yellow
+- **Batch Save**: Save multiple changes in a single transaction
+- **Add/Delete Rows**: Insert new records or remove selected rows
+- **Undo Support**: Track and revert unsaved changes
+
+#### **Advanced Operations**
+- **Custom SQL Queries**: Execute SELECT, UPDATE, INSERT, DELETE queries
+- **Data Export**: Export table data to CSV format
+- **Table Statistics**: Real-time row and column counts
+- **Error Handling**: Comprehensive error reporting and recovery
+
+#### **Professional Interface**
+- **Responsive Design**: Resizable panels and columns
+- **Progress Tracking**: Visual feedback for long-running operations
+- **Information Panel**: Detailed operation logs and table information
+- **Keyboard Shortcuts**: Standard editing shortcuts supported
+
+#### **Safety Features**
+- **Confirmation Dialogs**: Confirm destructive operations
+- **Transaction Safety**: Automatic rollback on errors
+- **Connection Management**: Automatic connection handling
+- **Unsaved Changes Warning**: Prompt before closing with unsaved data
+
+To access the Database Editor, click the **"Edit Data"** button in the main application's right panel.
 
 ---
 

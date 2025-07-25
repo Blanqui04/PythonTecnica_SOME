@@ -34,7 +34,7 @@ from .windows.spc_chart_window import SPCChartWindow
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Database Management System")
+        self.setWindowTitle("Gestió de Projectes SOME")
         self.last_analysis_action = None  # Track the last analysis action performed
         self.setup_window()
         self.init_ui()
@@ -154,6 +154,9 @@ class MainWindow(QMainWindow):
             elif action_name == "view_drawing":
                 self._view_drawing()
 
+            elif action_name == "edit_data":
+                self._edit_data()
+
             elif action_name == "export_data":
                 self._export_data()
 
@@ -182,12 +185,36 @@ class MainWindow(QMainWindow):
         self.status_bar.update_status("Dimensional analysis completed")
 
     def _run_capacity_analysis(self):
-        self.element_input_widget = ElementInputWidget()
+        # Obtenir dades del client i projecte del header
+        client = self.header.ref_client_edit.text().strip()
+        ref_project = self.header.ref_project_edit.text().strip()
+        
+        # Crear widget amb dades del client i projecte per auto-carregar
+        self.element_input_widget = ElementInputWidget(
+            parent=None, 
+            client=client if client else None, 
+            project_reference=ref_project if ref_project else None
+        )
         self.element_input_widget.study_requested.connect(
             self.run_capacity_study_with_elements
         )
         self.center_panel.show_custom_widget(self.element_input_widget)
-        self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
+        
+        # Missatge d'estat
+        if client and ref_project:
+            self.status_bar.update_status(f"Carregant dades per {client} - {ref_project}...")
+        else:
+            self.status_bar.update_status("Introduïu dades per l'estudi de capacitat")
+            # Mostrar avís si falten dades
+            if not client or not ref_project:
+                from PyQt5.QtWidgets import QMessageBox
+                QMessageBox.information(
+                    self,
+                    "Auto-load Information",
+                    "Per carregar automàticament les dades des de la base de dades, "
+                    "si us plau introduïu el Client i la Referència del Projecte als camps del header.",
+                    QMessageBox.Ok
+                )
 
     def run_capacity_study_with_elements(self, elements, extrap_config):
         try:
@@ -474,6 +501,27 @@ class MainWindow(QMainWindow):
         msg_box.setText(message)
         msg_box.setStandardButtons(QMessageBox.Ok)
         msg_box.exec_()
+
+    def _edit_data(self):
+        """Obre l'editor de base de dades"""
+        try:
+            from .windows.database_editor import DatabaseEditor
+            
+            # Crear i mostrar l'editor de base de dades
+            self.database_editor = DatabaseEditor(self)
+            self.database_editor.show()
+            
+            self.center_panel.update_content("Editor de Base de Dades obert en una finestra separada")
+            self.status_bar.update_status("Editor de base de dades obert")
+            
+            logger.info("Editor de base de dades obert")
+            
+        except Exception as e:
+            error_msg = f"Error obrint l'editor de base de dades: {str(e)}"
+            logger.error(error_msg)
+            self.center_panel.update_content(error_msg)
+            self.status_bar.update_status("Error obrint editor")
+            self.show_error_message("Error", error_msg)
 
     def closeEvent(self, event):
         """Handle window close event"""
