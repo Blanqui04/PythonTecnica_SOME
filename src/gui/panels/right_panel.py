@@ -63,16 +63,15 @@ class RightPanel(QGroupBox):
         file_layout.setSpacing(10)
         
         o_drawing_icon = self.load_icon("drawing.svg")
-        folder_icon = self.load_icon("open_folder.svg")
+        
         
         self.view_drawing_btn = ActionButton("View Drawing", o_drawing_icon)
-        self.open_folder_btn = ActionButton("Open Folder", folder_icon)
+
         
         self.view_drawing_btn.clicked.connect(lambda: self.emit_action("view_drawing"))
-        self.open_folder_btn.clicked.connect(lambda: self.emit_action("open_folder"))
+
         
         file_layout.addWidget(self.view_drawing_btn)
-        file_layout.addWidget(self.open_folder_btn)
         file_group.setLayout(file_layout)
         
         # Data transfer section
