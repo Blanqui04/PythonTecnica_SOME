@@ -1,21 +1,11 @@
 # src/gui/windows/dimensional_study_window.py
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QLabel,
-    QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
-    QFileDialog,
-    QMessageBox,
-    QHBoxLayout,
-    QProgressBar,
-    QTextEdit,
-    QComboBox,
-    QTabWidget,
+    QWidget, QVBoxLayout, QLabel, QPushButton, QTableWidget, QTableWidgetItem,
+    QFileDialog, QMessageBox, QHBoxLayout, QProgressBar, QTextEdit, QComboBox,
+    QTabWidget, QFrame, QSplitter, QGroupBox, QGridLayout
 )
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QPixmap
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QColor, QPixmap, QFont, QPalette, QIcon
 import pandas as pd
 import os
 from typing import List
@@ -23,231 +13,350 @@ from typing import List
 from .base_dimensional_window import BaseDimensionalWindow
 from .components.dimensional_table_manager import DimensionalTableManager
 from .components.dimensional_session_manager import SessionManager
+from .components.dimensional_summary_widget import SummaryWidget
 from src.models.dimensional.dimensional_result import DimensionalResult
 from ..workers.dimensional_processing_thread import ProcessingThread
+from ..utils.styles import global_style, get_color_palette
 
 
 class DimensionalStudyWindow(BaseDimensionalWindow):
+    """Enhanced dimensional study window with professional automotive styling"""
+    
     def __init__(self, client: str, ref_project: str, batch_number: str):
         super().__init__(client, ref_project, batch_number)
-
+        
         self.unsaved_changes = False
-        # Initialize managers
+        self.manual_mode = False
+        self.results = []
+        self.processing_thread = None
+        self._apply_professional_styling = global_style
+        # Enhanced color scheme for automotive industry
+        self.colors = {
+            'primary': '#2c3e50',      # Dark blue-gray
+            'secondary': '#34495e',    # Medium blue-gray
+            'accent': '#3498db',       # Bright blue
+            'success': '#27ae60',      # Green
+            'warning': '#f39c12',      # Orange
+            'danger': '#e74c3c',       # Red
+            'light': '#ecf0f1',        # Light gray
+            'white': '#ffffff',        # White
+            'background': '#f8f9fa'    # Very light gray
+        }
+        
+        # Initialize enhanced managers
+        self._init_table_manager()
+        self._init_session_manager()
+        
+        # Setup enhanced UI
+        self.setWindowTitle("🔧 Dimensional Study - Professional Analysis Suite")
+        self.setMinimumSize(1600, 1000)
+        self._init_ui()
+        self._apply_professional_styling()
+        
+        # Load last session
+        QTimer.singleShot(100, self.session_manager._load_last_session)
+
+    def _init_table_manager(self):
+        """Initialize enhanced table manager"""
         self.table_manager = DimensionalTableManager(
             display_columns=[
-                "element_id",
-                "batch",
-                "cavity",
-                "class",
-                "description",
-                "measuring_instrument",  # Added missing comma
-                "nominal",
-                "lower_tolerance",
-                "upper_tolerance",
-                "measurement_1",
-                "measurement_2",
-                "measurement_3",
-                "measurement_4",
-                "measurement_5",
-                "minimum",
-                "maximum",
-                "mean",
-                "std_deviation",
-                "status",
-                "force_status",
+                "element_id", "batch", "cavity", "class", "description",
+                "measuring_instrument", "nominal", "lower_tolerance", "upper_tolerance",
+                "measurement_1", "measurement_2", "measurement_3", "measurement_4", "measurement_5",
+                "minimum", "maximum", "mean", "std_deviation", "status", "force_status"
             ],
             column_headers=[
-                "Element ID",
-                "Batch",
-                "Cavity",
-                "Class",
-                "Description",
-                "Measuring Inst.",
-                "Nominal",
-                "Lower Tol",
-                "Upper Tol",
-                "Meas 1",
-                "Meas 2",
-                "Meas 3",
-                "Meas 4",
-                "Meas 5",
-                "Min",
-                "Max",
-                "Mean",
-                "Std Dev",
-                "Status",
-                "Force Status",
+                "Element ID", "Batch", "Cavity", "Class", "Description", "Measuring Inst.",
+                "Nominal", "Lower Tol", "Upper Tol", "Meas 1", "Meas 2", "Meas 3", 
+                "Meas 4", "Meas 5", "Min", "Max", "Mean", "Std Dev", "Status", "Force Status"
             ],
             required_columns=[
-                "element_id",
-                "batch",
-                "cavity",
-                "class",
-                "description",
-                "measuring_instrument",  # Added missing comma
-                "nominal",
-                "lower_tolerance",
-                "upper_tolerance",
+                "element_id", "batch", "cavity", "class", "description",
+                "measuring_instrument", "nominal", "lower_tolerance", "upper_tolerance"
             ],
             measurement_columns=[
-                "measurement_1",
-                "measurement_2",
-                "measurement_3",
-                "measurement_4",
-                "measurement_5",
+                "measurement_1", "measurement_2", "measurement_3", "measurement_4", "measurement_5"
             ],
-            batch_number=batch_number,
+            batch_number=self.batch_number
         )
         self.table_manager.set_parent_window(self)
-        self.session_manager = SessionManager(
-            client,
-            ref_project,
-            batch_number,
-            log_callback=self._log_message,
-            parent=self,
-        )
-        self.processing_thread = None
-        self.results = []
-        self.manual_mode = False
 
-        # Setup UI
-        self.setWindowTitle("Dimensional Study")
-        self.setMinimumSize(1400, 900)
-        self._init_ui()
-        self.session_manager._load_last_session()
+    def _init_session_manager(self):
+        """Initialize session manager"""
+        self.session_manager = SessionManager(
+            self.client_name, self.project_ref, self.batch_number,
+            log_callback=self._log_message, parent=self
+        )
 
     def _init_ui(self):
-        self.setWindowTitle("Dimensional Study")
-        self.resize(1400, 900)
-
+        """Initialize enhanced professional UI"""
         main_layout = QVBoxLayout()
-
-        # ───── TOP HEADER ─────
-        header_layout = QHBoxLayout()
-
-        # LEFT INFO BLOCK (client, project, batch)
-        info_layout = QVBoxLayout()
-        info_layout.addWidget(QLabel(f"<b>Client:</b> {self.client_name}"))
-        info_layout.addWidget(QLabel(f"<b>Project Ref:</b> {self.project_ref}"))
-        info_layout.addWidget(QLabel(f"<b>Batch:</b> {self.batch_number}"))
-
-        # CENTER CONTROLS
-        control_layout = QVBoxLayout()
-        type_label = QLabel("Report Type:")
-        self.report_type_combo = QComboBox()
-        self.report_type_combo.addItems(
-            ["PPAP", "FOT", "Intern audit", "Process validation"]
-        )
-        control_layout.addWidget(type_label)
-        control_layout.addWidget(self.report_type_combo)
-
-        # Mode selector buttons
-        mode_layout = QHBoxLayout()
-        control_layout.addLayout(mode_layout)
-
-        # RIGHT LOGO
-        logo_label = QLabel()
-        logo_path = (
-            "assets/images/gui/logo_some.png"  # Adjust if your logo is elsewhere
-        )
-        if os.path.exists(logo_path):
-            logo_label.setPixmap(
-                QPixmap(logo_path).scaled(
-                    160, 60, Qt.KeepAspectRatio, Qt.SmoothTransformation
-                )
-            )
-        logo_label.setAlignment(Qt.AlignRight | Qt.AlignTop)
-
-        header_layout.addLayout(info_layout)
-        header_layout.addStretch(1)
-        header_layout.addLayout(control_layout)
-        header_layout.addStretch(1)
-        header_layout.addWidget(logo_label)
-
-        main_layout.addLayout(header_layout)
-
-        # ───── ACTION BUTTONS ─────
-        # Mode toggle and controls
-        mode_layout = QHBoxLayout()
-        self.mode_toggle = QPushButton("Switch to Manual Entry")
-        self.load_file_button = QPushButton("📁 Load File")
-        mode_layout.addWidget(self.mode_toggle)
-        mode_layout.addWidget(self.load_file_button)
-
-        # Manual mode buttons (initially hidden)
-        self.add_row_button = QPushButton("➕ Add Row")
-        self.duplicate_row_button = QPushButton("📋 Duplicate Row")
-        self.delete_row_button = QPushButton("🗑️ Delete Row")
-        self.add_row_button.setVisible(False)
-        self.duplicate_row_button.setVisible(False)
-        self.delete_row_button.setVisible(False)
-
-        mode_layout.addWidget(self.add_row_button)
-        mode_layout.addWidget(self.duplicate_row_button)
-        mode_layout.addWidget(self.delete_row_button)
-        control_layout.addLayout(mode_layout)
-
-        buttons_layout = QHBoxLayout()
-        # Add Run Study button
-        self.run_study_button = QPushButton("🔬 Run Dimensional Study")
-        self.run_study_button.setEnabled(False)  # Initially disabled
-        buttons_layout.addWidget(self.run_study_button)
-        self.save_session_button = QPushButton("💾 Save Session")
-        self.load_session_button = QPushButton("📂 Load Session")
-        self.export_data_button = QPushButton("📤 Export Data")
-        self.clear_button = QPushButton("🧹 Clear All")
-
-        buttons_layout.addWidget(self.save_session_button)
-        buttons_layout.addWidget(self.load_session_button)
-        buttons_layout.addWidget(self.export_data_button)
-        buttons_layout.addWidget(self.clear_button)
-        buttons_layout.addStretch()
-
-        self.progress_bar = QProgressBar()
-        self.progress_bar.setVisible(False)
-        self.progress_bar.setMaximumHeight(18)
-        self.progress_bar.setTextVisible(True)
-        self.progress_bar.setFormat("Processing...")
-
-        buttons_layout.addWidget(self.progress_bar)
-        main_layout.addLayout(buttons_layout)
-
-        # ───── RESULTS AREA ─────
-        self.results_tabs = QTabWidget()
-        self.results_tabs.setTabsClosable(True)
-        self.results_tabs.tabCloseRequested.connect(self._remove_tab)
-        main_layout.addWidget(self.results_tabs)
-
-        # ───── LOG OUTPUT ─────
-        self.log_area = QTextEdit()
-        self.log_area.setReadOnly(True)
-        self.log_area.setMaximumHeight(120)
-        self.log_area.setStyleSheet("background-color: #f9f9f9;")
-        main_layout.addWidget(self.log_area)
-
-        # Finalize
+        main_layout.setSpacing(12)
+        main_layout.setContentsMargins(16, 16, 16, 16)
+        
+        # Enhanced header section
+        header_frame = self._create_header_section()
+        main_layout.addWidget(header_frame)
+        
+        # Enhanced control panel
+        control_panel = self._create_control_panel()
+        main_layout.addWidget(control_panel)
+        
+        # Enhanced main content area with splitter
+        content_splitter = self._create_content_area()
+        main_layout.addWidget(content_splitter)
+        
+        # Enhanced status bar
+        status_frame = self._create_status_section()
+        main_layout.addWidget(status_frame)
+        
+        # Set main widget
         container = QWidget()
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
-        # Mode and file operations
-        self.mode_toggle.clicked.connect(self._toggle_mode)
-        self.load_file_button.clicked.connect(self.session_manager._load_file)
+    def _create_header_section(self) -> QFrame:
+        """Create professional header section"""
+        header_frame = QFrame()
+        header_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        header_frame.setFixedHeight(120)
+        
+        layout = QHBoxLayout()
+        layout.setContentsMargins(20, 15, 20, 15)
+        
+        # Left: Project information
+        info_group = QGroupBox("📋 Project Information")
+        info_layout = QGridLayout()
+        
+        # Enhanced labels with icons
+        client_label = QLabel(f"🏢 <b>Client:</b> {self.client_name}")
+        client_label.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        
+        project_label = QLabel(f"📁 <b>Project:</b> {self.project_ref}")
+        project_label.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        
+        batch_label = QLabel(f"📦 <b>Batch:</b> {self.batch_number}")
+        batch_label.setFont(QFont("Segoe UI", 11, QFont.Medium))
+        
+        info_layout.addWidget(client_label, 0, 0)
+        info_layout.addWidget(project_label, 1, 0)
+        info_layout.addWidget(batch_label, 2, 0)
+        info_group.setLayout(info_layout)
+        
+        # Center: Report configuration
+        config_group = QGroupBox("⚙️ Configuration")
+        config_layout = QVBoxLayout()
+        
+        report_layout = QHBoxLayout()
+        report_layout.addWidget(QLabel("📊 Report Type:"))
+        self.report_type_combo = QComboBox()
+        self.report_type_combo.addItems(["PPAP", "FOT", "Intern audit", "Process validation"])
+        self.report_type_combo.setMinimumWidth(150)
+        report_layout.addWidget(self.report_type_combo)
+        report_layout.addStretch()
+        
+        config_layout.addLayout(report_layout)
+        config_group.setLayout(config_layout)
+        
+        # Right: Company logo
+        logo_frame = QFrame()
+        logo_layout = QVBoxLayout()
+        logo_label = QLabel()
+        
+        logo_path = "assets/images/gui/logo_some.png"
+        if os.path.exists(logo_path):
+            pixmap = QPixmap(logo_path).scaled(180, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            logo_label.setPixmap(pixmap)
+        else:
+            # Fallback professional logo placeholder
+            logo_label.setText("🏭\nAUTOMOTIVE\nQUALITY")
+            logo_label.setAlignment(Qt.AlignCenter)
+            logo_label.setStyleSheet("""
+                QLabel {
+                    background-color: #34495e;
+                    color: white;
+                    border-radius: 8px;
+                    padding: 10px;
+                    font-weight: bold;
+                    font-size: 12px;
+                }
+            """)
+        
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_layout.addWidget(logo_label)
+        logo_frame.setLayout(logo_layout)
+        
+        layout.addWidget(info_group, 2)
+        layout.addWidget(config_group, 2)
+        layout.addWidget(logo_frame, 1)
+        
+        header_frame.setLayout(layout)
+        return header_frame
 
-        # Manual mode buttons
+    def _create_control_panel(self) -> QFrame:
+        """Create enhanced control panel"""
+        control_frame = QFrame()
+        control_frame.setFrameStyle(QFrame.StyledPanel)
+        control_frame.setFixedHeight(80)
+        
+        layout = QHBoxLayout()
+        layout.setContentsMargins(20, 10, 20, 10)
+        
+        # Mode control group
+        mode_group = QGroupBox("📝 Input Mode")
+        mode_layout = QHBoxLayout()
+        
+        self.mode_toggle = QPushButton("🔄 Switch to Manual Entry")
+        self.mode_toggle.setMinimumSize(180, 40)
+        self.mode_toggle.clicked.connect(self._toggle_mode)
+        
+        self.load_file_button = QPushButton("📁 Load Data File")
+        self.load_file_button.setMinimumSize(140, 40)
+        self.load_file_button.clicked.connect(self.session_manager._load_file)
+        
+        mode_layout.addWidget(self.mode_toggle)
+        mode_layout.addWidget(self.load_file_button)
+        mode_group.setLayout(mode_layout)
+        
+        # Manual mode controls (initially hidden)
+        manual_group = QGroupBox("✏️ Manual Controls")
+        manual_layout = QHBoxLayout()
+        
+        self.add_row_button = QPushButton("➕ Add Row")
+        self.duplicate_row_button = QPushButton("📋 Duplicate") 
+        self.delete_row_button = QPushButton("🗑️ Delete")
+        
+        for btn in [self.add_row_button, self.duplicate_row_button, self.delete_row_button]:
+            btn.setMinimumSize(100, 40)
+            btn.setVisible(False)
+        
         self.add_row_button.clicked.connect(self._add_manual_row)
         self.duplicate_row_button.clicked.connect(self._duplicate_row)
         self.delete_row_button.clicked.connect(self._delete_row)
-
-        # Run study button
+        
+        manual_layout.addWidget(self.add_row_button)
+        manual_layout.addWidget(self.duplicate_row_button)
+        manual_layout.addWidget(self.delete_row_button)
+        manual_group.setLayout(manual_layout)
+        
+        # Analysis controls
+        analysis_group = QGroupBox("🔬 Analysis")
+        analysis_layout = QHBoxLayout()
+        
+        self.run_study_button = QPushButton("🚀 Run Dimensional Study")
+        self.run_study_button.setMinimumSize(200, 40)
+        self.run_study_button.setEnabled(False)
         self.run_study_button.clicked.connect(self._run_study)
+        
+        # Progress bar (hidden initially)
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setMaximumHeight(25)
+        self.progress_bar.setTextVisible(True)
+        self.progress_bar.setFormat("🔄 Processing...")
+        
+        analysis_layout.addWidget(self.run_study_button)
+        analysis_layout.addWidget(self.progress_bar)
+        analysis_group.setLayout(analysis_layout)
+        
+        # Session controls
+        session_group = QGroupBox("💾 Session")
+        session_layout = QHBoxLayout()
+        
+        self.save_button = QPushButton("💾 Save")
+        self.save_button.setMinimumSize(80, 40)
+        self.save_button.clicked.connect(self.session_manager._save_session)
+        session_layout.addWidget(self.save_button)
 
-        # Session buttons stay the same
-        self.save_session_button.clicked.connect(self.session_manager._save_session)
-        self.load_session_button.clicked.connect(self.session_manager._load_session)
-        self.export_data_button.clicked.connect(self.session_manager._export_data)
+        self.load_button = QPushButton("📂 Load")
+        self.load_button.setMinimumSize(80, 40)
+        self.load_button.clicked.connect(self.session_manager._load_session)
+        session_layout.addWidget(self.load_button)
+
+        self.export_button = QPushButton("📤 Export")
+        self.export_button.setMinimumSize(80, 40)
+        self.export_button.clicked.connect(self.session_manager._export_data)
+        session_layout.addWidget(self.export_button)
+
+        self.clear_button = QPushButton("🧹 Clear")
+        self.clear_button.setMinimumSize(80, 40)
         self.clear_button.clicked.connect(self._clear_all)
+        session_layout.addWidget(self.clear_button)
 
+        
+        session_group.setLayout(session_layout)
+        
+        layout.addWidget(mode_group)
+        layout.addWidget(manual_group)
+        layout.addWidget(analysis_group)
+        layout.addWidget(session_group)
+        layout.addStretch()
+        
+        control_frame.setLayout(layout)
+        return control_frame
+
+    def _create_content_area(self) -> QSplitter:
+        """Create enhanced content area with splitter"""
+        splitter = QSplitter(Qt.Vertical)
+        
+        # Enhanced results tabs
+        self.results_tabs = QTabWidget()
+        self.results_tabs.setTabsClosable(True)
+        self.results_tabs.tabCloseRequested.connect(self._remove_tab)
+        self.results_tabs.setMinimumHeight(400)
+        
+        # Add summary tab by default
+        summary_widget = self.table_manager._create_summary_widget()
+        self.results_tabs.addTab(summary_widget, "📊 Summary")
+        
+        splitter.addWidget(self.results_tabs)
+        
+        # Enhanced log area
+        log_frame = QFrame()
+        log_frame.setFrameStyle(QFrame.StyledPanel)
+        log_layout = QVBoxLayout()
+        log_layout.setContentsMargins(10, 5, 10, 10)
+        
+        log_header = QLabel("📋 Activity Log")
+        log_header.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        log_header.setStyleSheet("color: #2c3e50; margin-bottom: 5px;")
+        
+        self.log_area = QTextEdit()
+        self.log_area.setReadOnly(True)
+        self.log_area.setMaximumHeight(150)
+        self.log_area.setFont(QFont("Consolas", 9))
+        
+        log_layout.addWidget(log_header)
+        log_layout.addWidget(self.log_area)
+        log_frame.setLayout(log_layout)
+        
+        splitter.addWidget(log_frame)
+        splitter.setSizes([700, 150])
+        
+        return splitter
+
+    def _create_status_section(self) -> QFrame:
+        """Create enhanced status section"""
+        status_frame = QFrame()
+        status_frame.setFrameStyle(QFrame.StyledPanel)
+        status_frame.setFixedHeight(40)
+        
+        layout = QHBoxLayout()
+        layout.setContentsMargins(15, 5, 15, 5)
+        
+        self.status_label = QLabel("✅ Ready")
+        self.status_label.setFont(QFont("Segoe UI", 9))
+        
+        self.stats_label = QLabel("📊 No data loaded")
+        self.stats_label.setFont(QFont("Segoe UI", 9))
+        
+        layout.addWidget(self.status_label)
+        layout.addStretch()
+        layout.addWidget(self.stats_label)
+        
+        status_frame.setLayout(layout)
+        return status_frame
+    
     def _remove_tab(self, index: int):
         """Removes the tab at the given index from the results tab widget."""
         if 0 <= index < self.results_tabs.count():
@@ -317,7 +426,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             f"Analysis completed successfully. Generated {len(results)} results"
         )
         self.table_manager._update_tables_with_results(results)
-        self.export_data_button.setEnabled(True)
+        self.export_button.setEnabled(True)
         self.session_manager._auto_save_session()
 
     def _handle_error(self, context: str, error: Exception):
@@ -437,28 +546,29 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             return
 
         current_row = current_table.currentRow()
-        if current_row < 0:
-            QMessageBox.information(
-                self, "No Selection", "Please select a row to duplicate."
-            )
+        if current_row == -1:
+            QMessageBox.information(self, "No Selection", "Please select a row to duplicate.")
             return
 
-        # Insert new row
-        current_table.insertRow(current_row + 1)
+        # Copy data from the selected row
+        row_data = [
+            current_table.item(current_row, col).text() if current_table.item(current_row, col) else ""
+            for col in range(current_table.columnCount())
+        ]
 
-        # Copy data from current row
-        for col in range(current_table.columnCount()):
-            item = current_table.item(current_row, col)
-            if item and col < 13:  # Don't copy calculated columns
-                new_item = QTableWidgetItem(item.text())
-                current_table.setItem(current_row + 1, col, new_item)
-            elif col >= 13:  # Set up calculated columns
-                calc_item = QTableWidgetItem("")
-                calc_item.setFlags(calc_item.flags() ^ Qt.ItemIsEditable)
-                calc_item.setBackground(QColor(240, 240, 240))
-                current_table.setItem(current_row + 1, col, calc_item)
+        # Insert new row
+        new_row = current_table.rowCount()
+        current_table.insertRow(new_row)
+
+        for col, text in enumerate(row_data):
+            item = QTableWidgetItem(text)
+            current_table.setItem(new_row, col, item)
+
+        # Generate a new Element ID
+        current_table.setItem(new_row, 0, QTableWidgetItem(self.table_manager._get_next_element_id(current_table)))
 
         self._mark_unsaved_changes()
+
 
     def _delete_row(self):
         """Delete the currently selected row"""
@@ -575,5 +685,5 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.duplicate_row_button.setEnabled(enabled)
         self.delete_row_button.setEnabled(enabled)
         self.run_study_button.setEnabled(enabled)
-        self.save_session_button.setEnabled(enabled)
-        self.load_session_button.setEnabled(enabled)
+        #self.save_session_button.setEnabled(enabled)
+        #self.load_session_button.setEnabled(enabled)
