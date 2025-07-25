@@ -7,6 +7,7 @@ import pandas as pd
 import logging
 
 from src.services.dimensional_service import DimensionalService
+from src.models.dimensional.gdt_interpreter import GDTInterpreter
 
 class ProcessingThread(QThread):
     """Thread for processing dimensional analysis to prevent UI freezing"""
@@ -20,16 +21,16 @@ class ProcessingThread(QThread):
         self.df = df
 
     def run(self):
-        try:
+        try:            
             service = DimensionalService()
             results = service.process_dataframe(
                 self.df, progress_callback=self.progress_updated.emit
             )
             self.processing_finished.emit(results)
         except Exception as e:
-            error_msg = f"Failed to save session: {str(e)}"
-            self._log_message(error_msg, "ERROR")
-            QMessageBox.critical(self, "Save Error", error_msg)
+            error_msg = f"Processing failed: {str(e)}"
+            logging.error(error_msg)
+            self.error_occurred.emit(error_msg)
 
     def _handle_gdt_input(self, description: str) -> str:
         """
@@ -54,7 +55,7 @@ class ProcessingThread(QThread):
             "profile surface": "⌓",
             "circularity": "○",
             "cylindricity": "⌭",
-            "flatness": "⏤",
+            "flatness": "⏥",
             "straightness": "⏤",
             "runout": "↗",
             "total runout": "↗↗",
