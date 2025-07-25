@@ -17,6 +17,7 @@ from datetime import datetime
 
 from .special_clients_processor import SpecialClientsProcessor
 from .ptcover_processor import PTCOVERProcessor
+from .value_cleaner import ValueCleaner
 
 logger = logging.getLogger(__name__)
 
@@ -678,6 +679,48 @@ class NetworkScanner:
             
             # Eliminar columnes duplicades si existeixen
             df = df.loc[:, ~df.columns.duplicated()]
+            
+            # NETEJAT DE VALORS PROBLEMÀTICS
+            # Detectar columnes que poden contenir valors problemàtics
+            possible_columns = {
+                'element': ['Element', 'element', 'ELEMENT', 'Feature', 'feature', 'FEATURE', 'Mesura', 'mesura'],
+                'actual': ['Actual', 'actual', 'ACTUAL', 'Value', 'value', 'VALUE', 'Valor', 'valor'],
+                'nominal': ['Nominal', 'nominal', 'NOMINAL', 'Target', 'target', 'TARGET'],
+                'tolerance': ['Tolerance', 'tolerance', 'TOLERANCE', 'Tol', 'tol', 'TOL']
+            }
+            
+            # Trobar les columnes corresponents
+            detected_columns = {}
+            for col_type, possible_names in possible_columns.items():
+                for possible_name in possible_names:
+                    if possible_name in df.columns:
+                        detected_columns[col_type] = possible_name
+                        break
+            
+            # Aplicar netejat si trobem columnes
+            if detected_columns:
+                logger.info(f"Netejant valors problemàtics en: {detected_columns}")
+                
+                # Detectar problemes abans
+                problems_before = ValueCleaner.detect_problematic_values(df)
+                
+                # Netejar DataFrame
+                df = ValueCleaner.clean_dataframe_columns(
+                    df,
+                    element_col=detected_columns.get('element'),
+                    actual_col=detected_columns.get('actual'),
+                    nominal_col=detected_columns.get('nominal'),
+                    tolerance_col=detected_columns.get('tolerance')
+                )
+                
+                # Detectar problemes després
+                problems_after = ValueCleaner.detect_problematic_values(df)
+                
+                # Log del resultat
+                logger.info(f"Netejat completat per {os.path.basename(file_path)}:")
+                logger.info(f"  Patrons plantilla: {problems_before['template_patterns']} -> {problems_after['template_patterns']}")
+                logger.info(f"  Patrons invàlids: {problems_before['invalid_patterns']} -> {problems_after['invalid_patterns']}")
+                logger.info(f"  Problemes decimals: {problems_before['decimal_issues']} -> {problems_after['decimal_issues']}")
             
             # Afegir les columnes identificadores
             df['CLIENT'] = client
