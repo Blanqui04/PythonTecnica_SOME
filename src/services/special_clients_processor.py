@@ -11,6 +11,7 @@ import pandas as pd
 import logging
 from pathlib import Path
 from typing import List, Dict, Optional
+from .value_cleaner import ValueCleaner
 
 logger = logging.getLogger(__name__)
 
@@ -155,8 +156,52 @@ class SpecialClientsProcessor:
             if df.empty:
                 return pd.DataFrame()
             
-            # Extreure LOT i DATA_HORA del nom del fitxer
+            # Extreure nom del fitxer primer
             filename = os.path.basename(csv_file)
+            
+            # NETEJAT DE VALORS PROBLEMÀTICS
+            # Detectar columnes que poden contenir valors problemàtics
+            possible_columns = {
+                'element': ['Element', 'element', 'ELEMENT', 'Feature', 'feature', 'FEATURE', 'Mesura', 'mesura'],
+                'actual': ['Actual', 'actual', 'ACTUAL', 'Value', 'value', 'VALUE', 'Valor', 'valor'],
+                'nominal': ['Nominal', 'nominal', 'NOMINAL', 'Target', 'target', 'TARGET'],
+                'tolerance': ['Tolerance', 'tolerance', 'TOLERANCE', 'Tol', 'tol', 'TOL']
+            }
+            
+            # Trobar les columnes corresponents
+            detected_columns = {}
+            for col_type, possible_names in possible_columns.items():
+                for possible_name in possible_names:
+                    if possible_name in df.columns:
+                        detected_columns[col_type] = possible_name
+                        break
+            
+            # Aplicar netejat si trobem columnes
+            if detected_columns:
+                logger.info(f"Netejant valors problemàtics en {filename}: {detected_columns}")
+                
+                # Detectar problemes abans
+                problems_before = ValueCleaner.detect_problematic_values(df)
+                
+                # Netejar DataFrame
+                df = ValueCleaner.clean_dataframe_columns(
+                    df,
+                    element_col=detected_columns.get('element'),
+                    actual_col=detected_columns.get('actual'),
+                    nominal_col=detected_columns.get('nominal'),
+                    tolerance_col=detected_columns.get('tolerance')
+                )
+                
+                # Detectar problemes després
+                problems_after = ValueCleaner.detect_problematic_values(df)
+                
+                # Log del resultat
+                logger.info(f"Netejat completat per {filename}:")
+                logger.info(f"  Patrons plantilla: {problems_before['template_patterns']} -> {problems_after['template_patterns']}")
+                logger.info(f"  Patrons invàlids: {problems_before['invalid_patterns']} -> {problems_after['invalid_patterns']}")
+                logger.info(f"  Problemes decimals: {problems_before['decimal_issues']} -> {problems_after['decimal_issues']}")
+            
+            # Extreure LOT i DATA_HORA del nom del fitxer
             lot_data_hora = self._extract_lot_and_datetime_from_filename(filename)
             
             # Afegir metadades especials
@@ -183,29 +228,38 @@ class SpecialClientsProcessor:
         # Eliminar extensió
         name_without_ext = filename.replace('.csv', '')
         
-        # Pattern per extreure LOT_YYYY_MM_DD_HH_MM_SS
-        pattern = r'^(.+?)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
-        match = re.match(pattern, name_without_ext)
+        # Pattern flexible per trobar data i hora al final
+        # Buscar YYYY_MM_DD_HH_MM_SS al final del nom
+        date_pattern = r'(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
+        date_match = re.search(date_pattern, name_without_ext)
         
-        if match:
-            lot = match.group(1)
-            year = match.group(2)
-            month = match.group(3)
-            day = match.group(4)
-            hour = match.group(5)
-            minute = match.group(6)
-            second = match.group(7)
+        if date_match:
+            # Extreure data i hora
+            year = date_match.group(1)
+            month = date_match.group(2)
+            day = date_match.group(3)
+            hour = date_match.group(4)
+            minute = date_match.group(5)
+            second = date_match.group(6)
             
             data_hora = f"{year}-{month}-{day} {hour}:{minute}:{second}"
             
+            # Extreure LOT com tot el que va abans de la data
+            lot_part = name_without_ext[:date_match.start()].rstrip('_')
+            if not lot_part:
+                lot_part = "UNKNOWN"
+            
+            logger.debug(f"SpecialClient extracció: {filename} -> LOT='{lot_part}', DATA={data_hora}")
+            
             return {
-                'lot': lot,
+                'lot': lot_part,
                 'data_hora': data_hora
             }
         else:
-            logger.warning(f"No s'ha pogut extreure LOT i DATA_HORA de {filename}")
+            logger.warning(f"SpecialClient: No s'ha pogut extreure LOT i DATA_HORA de {filename}")
+            logger.debug(f"SpecialClient: Nom processat: '{name_without_ext}'")
             return {
-                'lot': 'UNKNOWN',
+                'lot': name_without_ext,  # Usar tot el nom com LOT si no troba el patró
                 'data_hora': '1900-01-01 00:00:00'
             }
     

@@ -14,32 +14,29 @@ sys.path.insert(0, str(src_dir))
 from src.gui.main_window import run_app
 from src.services.gompc_sync_service import GompcSyncService
 from src.services.gompc_backup_scheduler import GompcBackupScheduler
-from src.services.project_sync_service import ProjectSyncService
+from src.services.project_backup_scheduler import ProjectBackupScheduler
 
-def sync_project_scanner_data():
-    """Sincronitza automàticament les dades del Scanner Projectes a l'inici"""
-    print("\n" + "=" * 60)
-    print("SINCRONITZACIÓ AUTOMÀTICA SCANNER PROJECTES")
-    print("=" * 60)
-    
+def start_project_backup_scheduler():
+    """Inicia el programador de backup automàtic Scanner Projectes cada 24h"""
     try:
-        sync_service = ProjectSyncService()
-        result = sync_service.sync_project_data()
+        print("\n" + "=" * 60)
+        print("CONFIGURANT BACKUP AUTOMÀTIC SCANNER PROJECTES CADA 24 HORES")
+        print("=" * 60)
         
-        if result['success']:
-            print(f"✅ Scanner Projectes sincronitzat:")
-            print(f"   📋 Fitxers processats: {result.get('total_csv_processed', 0)}")
-            print(f"   💾 Registres inserits: {result.get('total_records_inserted', 0)}")
-            print(f"   ⏱️ Temps: {result.get('duration_seconds', 0):.2f}s")
-            print(f"   🖥️ Màquina: {result.get('maquina_value', 'N/A')}")
-        else:
-            print(f"❌ Error Scanner Projectes: {result.get('error', 'Unknown')}")
+        scheduler = ProjectBackupScheduler()
+        scheduler.start_scheduler()
         
-        return result
+        next_backup = scheduler.get_next_backup_time()
+        if next_backup:
+            print(f"✅ Backup Scanner Projectes configurat")
+            print(f"   🕐 Propera execució: {next_backup}")
+            print(f"   🔄 Freqüència: Cada 24 hores")
+        
+        return scheduler
         
     except Exception as e:
-        print(f"❌ Error crític Scanner Projectes: {e}")
-        return {'success': False, 'error': str(e)}
+        print(f"❌ Error configurant backup Scanner Projectes: {e}")
+        return None
 
 def sync_gompc_data():
     """Sincronitza automàticament les dades del GOMPC a l'inici"""
@@ -93,13 +90,14 @@ def start_backup_scheduler():
 def main():
     """Punt d'entrada principal de l'aplicació"""
     backup_scheduler = None
+    project_scheduler = None
     
     try:
-        # Configurar backup automàtic cada 24 hores (sense sincronització inicial)
+        # Configurar backup automàtic GOMPC cada 24 hores (sense sincronització inicial)
         backup_scheduler = start_backup_scheduler()
         
-        # Sincronitzar Scanner Projectes automàticament
-        sync_project_scanner_data()
+        # Configurar backup automàtic Scanner Projectes cada 24 hores
+        project_scheduler = start_project_backup_scheduler()
         
         # Configurar entorn empresarial si estem en mode deployment
         if deployment_dir.exists():
@@ -125,7 +123,9 @@ def main():
         print("\n" + "=" * 60)
         print("INICIANT APLICACIÓ PRINCIPAL")
         print("=" * 60)
-        print("📅 Backup automàtic configurat per executar-se cada 24 hores")
+        print("📅 Backup GOMPC automàtic configurat per executar-se cada 24 hores")
+        print("📅 Backup Scanner Projectes configurat per executar-se cada 24 hores")
+        print("🚀 Aplicació iniciada immediatament - backups en segon pla")
         print("=" * 60)
         run_app()
         
@@ -134,11 +134,18 @@ def main():
         sys.exit(1)
         
     finally:
-        # Aturar backup scheduler en sortir
+        # Aturar schedulers en sortir
         if backup_scheduler:
             try:
                 backup_scheduler.stop_scheduler()
-                print("Backup scheduler aturat.")
+                print("Backup GOMPC scheduler aturat.")
+            except:
+                pass
+        
+        if project_scheduler:
+            try:
+                project_scheduler.stop_scheduler()
+                print("Backup Scanner Projectes scheduler aturat.")
             except:
                 pass
 

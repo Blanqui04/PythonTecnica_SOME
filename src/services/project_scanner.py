@@ -162,7 +162,11 @@ class ProjectScanner:
     def extract_lot_and_datetime_from_filename(self, filename: str) -> Tuple[Optional[str], Optional[datetime]]:
         r"""
         Extreu LOT i DATA_HORA del nom del fitxer CSV
-        Adaptat per fitxers de format: [LOT_]YYYY_MM_DD_HH_MM_SS.csv
+        Suporta múltiples formats de Scanner Projectes:
+        - LOT_info_extra_2024_01_01_12_30_45.csv
+        - CAV 1.1_2021_11_05_09_47_26.csv  
+        - PRJ1234_blabla_2024_01_01_12_30_45.csv
+        - 00000_2020_05_12_18_15_01.csv
         
         Args:
             filename (str): Nom del fitxer CSV
@@ -174,52 +178,88 @@ class ProjectScanner:
             # Eliminar extensió .csv
             base_name = filename.replace('.csv', '')
             
-            # Diversos patrons possibles per Scanner Projectes
-            patterns = [
-                # Format principal: LOT_YYYY_MM_DD_HH_MM_SS.csv
-                r'^(.+)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$',
-                # Format sense LOT: YYYY_MM_DD_HH_MM_SS.csv
-                r'^(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$',
-                # Format amb espais: "LOT YYYY_MM_DD_HH_MM_SS.csv"
-                r'^(.+\s+.+)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
+            # Buscar patró de data/hora al final: YYYY_MM_DD_HH_MM_SS
+            date_pattern = r'(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
+            date_match = re.search(date_pattern, base_name)
+            
+            if date_match:
+                # Extraure data/hora
+                year, month, day, hour, minute, second = date_match.groups()
+                
+                try:
+                    data_hora = datetime(
+                        year=int(year),
+                        month=int(month), 
+                        day=int(day),
+                        hour=int(hour),
+                        minute=int(minute),
+                        second=int(second)
+                    )
+                    
+                    # Extraure LOT: tot el que està abans de la data/hora
+                    lot_part = base_name[:date_match.start()].rstrip('_')
+                    
+                    # Si LOT està buit, usar nom complet sense data
+                    if not lot_part:
+                        lot_part = base_name.split('_')[0] if '_' in base_name else base_name
+                    
+                    # Netejar LOT: eliminar espais múltiples i guions baixos finals
+                    lot = lot_part.strip().replace('  ', ' ').rstrip('_')
+                    
+                    # Si LOT segueix sent buit o massa curt, usar part del nom del fitxer
+                    if not lot or len(lot) < 2:
+                        # Usar primera part més significativa del nom
+                        parts = base_name.split('_')
+                        lot = parts[0] if parts else base_name[:10]
+                    
+                    logger.debug(f"Extret de {filename}: LOT='{lot}', DATA_HORA={data_hora}")
+                    return lot, data_hora
+                    
+                except ValueError as e:
+                    logger.debug(f"Error convertint data de {filename}: {e}")
+            
+            # Si no trobem patró de data vàlid, intentar patrons alternatives
+            alternative_patterns = [
+                # Format curt: MM_DD_HH_MM_SS (any implícit)
+                r'_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$',
+                # Format amb any de 2 dígits: YY_MM_DD_HH_MM_SS
+                r'_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
             ]
             
-            for i, pattern in enumerate(patterns):
-                match = re.match(pattern, base_name)
+            for pattern in alternative_patterns:
+                match = re.search(pattern, base_name)
                 if match:
-                    groups = match.groups()
-                    
-                    if i == 1:  # Pattern sense LOT
-                        lot = "UNKNOWN"
-                        year, month, day, hour, minute, second = groups
-                    else:  # Patterns amb LOT
-                        lot = groups[0]
-                        year, month, day, hour, minute, second = groups[1:7]
-                    
-                    # Convertir a datetime
                     try:
-                        data_hora = datetime(
-                            year=int(year),
-                            month=int(month),
-                            day=int(day),
-                            hour=int(hour),
-                            minute=int(minute),
-                            second=int(second)
-                        )
+                        if len(match.groups()) == 5:  # MM_DD_HH_MM_SS
+                            month, day, hour, minute, second = match.groups()
+                            year = datetime.now().year  # Any actual
+                        else:  # YY_MM_DD_HH_MM_SS
+                            yy, month, day, hour, minute, second = match.groups()
+                            year = 2000 + int(yy) if int(yy) < 50 else 1900 + int(yy)
                         
-                        # Si LOT està buit o només números (pot ser un ID), usar nom de fitxer
-                        if not lot or lot == "UNKNOWN" or lot.isdigit():
-                            lot = base_name.split('_')[0] if '_' in base_name else base_name
+                        data_hora = datetime(year, int(month), int(day), int(hour), int(minute), int(second))
+                        lot_part = base_name[:match.start()].rstrip('_')
+                        lot = lot_part if lot_part else base_name.split('_')[0]
                         
+                        logger.debug(f"Extret (patró alternatiu) de {filename}: LOT='{lot}', DATA_HORA={data_hora}")
                         return lot, data_hora
                         
-                    except ValueError as e:
-                        logger.debug(f"Error convertint data de {filename}: {e}")
+                    except (ValueError, IndexError):
                         continue
             
-            # Si cap patró funciona, generar valors per defecte
-            logger.debug(f"No es pot extreure LOT/DATA_HORA de {filename}, utilitzant valors per defecte")
-            return base_name.split('_')[0] if '_' in base_name else base_name, datetime.now()
+            # Si cap patró funciona, usar valors per defecte basats en nom de fitxer
+            logger.debug(f"No es pot extreure data de {filename}, utilitzant valors per defecte")
+            
+            # Intentar usar primera part del nom com LOT
+            parts = base_name.split('_')
+            lot = parts[0] if parts else base_name
+            
+            # Si LOT té només números, afegir prefix
+            if lot.isdigit():
+                lot = f"LOT_{lot}"
+            
+            # Usar data actual com fallback
+            return lot, datetime.now()
             
         except Exception as e:
             logger.error(f"Error extraient LOT/DATA_HORA de {filename}: {e}")
@@ -324,29 +364,65 @@ class ProjectScanner:
                     else:
                         element_full = element
                     
-                    # Saltar files buides o amb valors no vàlids
-                    if not element or element.lower() in ['nan', 'none', ''] or \
-                       not actual_str or actual_str.lower() in ['nan', 'none', '']:
-                        continue
+                    # Netejar element (eliminar espais extres)
+                    element_full = ' '.join(element_full.split())
                     
-                    # Convertir valor a numèric (format europeu amb comes)
-                    try:
-                        # Reemplaçar comes per punts per format europeu
-                        if ',' in actual_str and '.' not in actual_str:
-                            actual_str = actual_str.replace(',', '.')
-                        elif ',' in actual_str and '.' in actual_str:
-                            # Format com "1.234,56" -> "1234.56"
-                            parts = actual_str.split(',')
-                            if len(parts) == 2:
-                                integer_part = parts[0].replace('.', '')
-                                decimal_part = parts[1]
-                                actual_str = f"{integer_part}.{decimal_part}"
-                        
-                        valor = float(actual_str)
-                    except ValueError:
-                        logger.debug(f"Valor no numèric saltat: {actual_str} per element {element_full}")
-                        continue
+                    # PROCESSAR ELEMENT: convertir valors problemàtics a "NULL"
+                    element_invalid_patterns = ['nan', 'none', '', 'null', '#N/A', '#ERROR']
                     
+                    if not element or element.lower() in element_invalid_patterns:
+                        element_full = "NULL"
+                    elif any(pattern in element.lower() for pattern in ['¿¿¿', '???', 'unknown', 'error']):
+                        # Netejar element de patrons problemàtics però mantenir-lo
+                        element_full = element.replace('¿¿¿???', '').replace('¿¿¿', '').replace('???', '').strip()
+                        if not element_full:
+                            element_full = "NULL"
+                    
+                    # PROCESSAR VALOR ACTUAL: convertir valors problemàtics a 0.000
+                    valor = 0.000  # Valor per defecte
+                    
+                    # Verificar si el valor és vàlid
+                    actual_invalid_patterns = ['nan', 'none', '', 'null', '#N/A', '#ERROR']
+                    
+                    if not actual_str or actual_str.lower() in actual_invalid_patterns:
+                        # Usar valor per defecte
+                        valor = 0.000
+                    elif any(pattern in actual_str for pattern in ['¿¿¿???', '¿¿¿', '???']):
+                        # Valor de plantilla -> 0.000
+                        valor = 0.000
+                    else:
+                        # Intentar convertir valor real
+                        try:
+                            # Eliminar espais en blanc
+                            actual_str = actual_str.replace(' ', '')
+                            
+                            # Gestió de format numèric europeu
+                            if ',' in actual_str and '.' not in actual_str:
+                                # Format: "123,45" -> "123.45"
+                                actual_str = actual_str.replace(',', '.')
+                            elif ',' in actual_str and '.' in actual_str:
+                                # Format: "1.234,56" -> "1234.56"
+                                parts = actual_str.split(',')
+                                if len(parts) == 2 and len(parts[1]) <= 3:  # Decimal part <= 3 digits
+                                    integer_part = parts[0].replace('.', '')
+                                    decimal_part = parts[1]
+                                    actual_str = f"{integer_part}.{decimal_part}"
+                                else:
+                                    # Si no és format estàndard, intentar només eliminar comes
+                                    actual_str = actual_str.replace(',', '')
+                            
+                            valor = float(actual_str)
+                            
+                            # Verificar que el valor és raonable (no infinit o NaN)
+                            if not (float('-inf') < valor < float('inf')):
+                                valor = 0.000
+                                
+                        except (ValueError, OverflowError):
+                            # Si no es pot convertir, usar 0.000
+                            valor = 0.000
+                            logger.debug(f"Valor '{actual_str}' convertit a 0.000 per element '{element_full}' a {file_path}")
+                    
+                    # Crear registre sempre (fins i tot amb valors per defecte)
                     processed_rows.append({
                         'client': project_name,
                         'referencia_client': referencia_name,
@@ -363,13 +439,22 @@ class ProjectScanner:
                     continue
             
             if not processed_rows:
-                logger.warning(f"Cap fila vàlida trobada a {file_path}")
+                logger.warning(f"Cap fila processable trobada a {file_path}")
                 logger.debug(f"Columnes utilitzades: element='{element_col}', actual='{actual_col}'")
                 logger.debug(f"Primera fila d'exemple: {df.iloc[0].to_dict() if len(df) > 0 else 'N/A'}")
                 return None
             
             result_df = pd.DataFrame(processed_rows)
-            logger.info(f"Fitxer processat correctament: {os.path.basename(file_path)} -> {len(result_df)} files")
+            
+            # Comptar quants valors eren originals vs convertits
+            original_values = sum(1 for row in processed_rows if row['valor'] != 0.000)
+            converted_values = len(processed_rows) - original_values
+            
+            log_msg = f"Fitxer processat: {os.path.basename(file_path)} -> {len(result_df)} files"
+            if converted_values > 0:
+                log_msg += f" ({original_values} valors originals, {converted_values} convertits a 0.000)"
+                
+            logger.info(log_msg)
             
             return result_df
             
@@ -480,7 +565,10 @@ class ProjectScanner:
                         stats['processing_errors'].append(error_msg)
                         logger.error(error_msg)
             
-            # Resultat final
+            # Resultat final amb normalització de columnes
+            if not self.global_dataset.empty:
+                self.global_dataset = self._normalize_column_names(self.global_dataset)
+            
             result = {
                 'success': True,
                 'message': f'Processament completat: {stats["csv_files_processed"]} CSV processats',
@@ -669,6 +757,39 @@ class ProjectScanner:
                 'process_result': None,
                 'db_result': None
             }
+    
+    def _normalize_column_names(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Normalitza els noms de les columnes per fer-los compatibles amb la base de dades.
+        Converteix columnes de ProjectScanner al format esperat per la BBDD.
+        """
+        try:
+            # Crear còpia per no modificar l'original
+            normalized_df = df.copy()
+            
+            # Mapejat de columnes del ProjectScanner al format BBDD
+            column_mapping = {
+                'client': 'CLIENT',
+                'referencia_client': 'REFERENCIA', 
+                'lot': 'LOT',
+                'data_hora': 'DATA_HORA',
+                'element': 'Element',
+                'valor': 'Actual',
+                'maquina': 'MAQUINA',
+                'nom_fitxer': 'NOM_FITXER'
+            }
+            
+            # Aplicar el mapejat
+            for old_name, new_name in column_mapping.items():
+                if old_name in normalized_df.columns:
+                    normalized_df = normalized_df.rename(columns={old_name: new_name})
+            
+            logger.info(f"Columnes normalitzades: {list(normalized_df.columns)}")
+            return normalized_df
+            
+        except Exception as e:
+            logger.error(f"Error normalitzant noms de columnes: {e}")
+            return df
 
 
 def main():

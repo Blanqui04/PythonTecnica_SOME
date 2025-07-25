@@ -5,90 +5,90 @@
     ],
     [
       "1 - Nº Matriu:",
-      "AL-244018"
+      "ZF-244030"
     ],
     [
       "2 - SOP projecte",
-      "2024-12-01 00:00:00"
+      "2025-10-01 00:00:00"
     ],
     [
       "3 - EOP projecte",
-      "2030-12-01 00:00:00"
+      "2031-10-01 00:00:00"
     ],
     [
       "4 - Tool Lifetime",
-      "10000000"
+      "2500000"
     ],
     [
       "5 - Quantitat Anual:",
-      "600000"
+      "75000"
     ],
     [
       "6 - Quantitat Total Projecte:",
-      "3600000"
+      "450000"
     ],
     [
       "7 - Referència/es peça:",
-      "666429400A"
+      "4938000152  / 4938000151"
     ],
     [
       "8 - Cavitats:",
-      "2 ( 1 + 1 )"
+      "2 ( LH + RH )"
     ],
     [
       "9 - Matricer:",
-      "GST"
+      "DOP"
     ],
     [
       "10 - Data entrega matriu:",
-      "TBD"
+      "to agree with Tool Outsourcing Department"
     ],
     [
       "11 - Projecte:",
-      "TESLA OPAL"
+      "C_SUBARU_CDC"
     ],
     [
       "12 - Jerarquía:",
-      "Brackets"
+      "Anclatges"
     ],
     [
       "13 - Nº Expedient:",
-      "440/23"
+      "094/24"
     ],
     [
       "14 - Responsable Projecte:",
-      "Enric Torner / Iwona Krol"
+      "Marc Esteras"
     ],
     [
       "Dades necessàries per estructurar una Matèria prima"
     ],
     [
-      "1 - Descripció material:",
-      "AHSS800"
+      "15 - Descripció material:",
+      "DC01 + C440"
     ],
     [
-      "2 - Mides (BANDA x PAS x GRUIX):",
-      "162  x  45  x  2,7"
+      "16 - Mides (BANDA x PAS x GRUIX):",
+      "145  x  45  x  1,2"
     ],
     [
-      "3 - Proveïdor:",
-      "BECKET + POOL"
+      "17 - Proveïdor:",
+      "LAMINCER"
     ],
     [
-      "4 - Preu actualitzat:",
-      "1.362"
+      "18 - Preu actualitzat:",
+      "1.32"
     ],
     [
-      "5 - Volum Anual:",
-      "600000"
+      "19 - Volum Anual:",
+      "75000"
     ],
     [
-      "6 - Temps estimat Canvi de Rull:",
-      "20 '"
+      "20 - Temps estimat Canvi de Rull:",
+      "0"
     ],
     [
-      "7 - Pes estimat del Rull:",
-      "2000 Kgr"
+      "21 - Pes estimat del Rull:",
+      "0"
     ],
     [
       "Dades necessàries per estructurar un Component / Material Aux."
@@ -116,7 +116,7 @@
     ],
     [
       "7 - SOP:",
-      "2024-12-01 00:00:00"
+      "2025-10-01 00:00:00"
     ],
     [
       "COMPONENT 2 COMPRA"
@@ -141,7 +141,7 @@
     ],
     [
       "7 - SOP:",
-      "2024-12-01 00:00:00"
+      "2025-10-01 00:00:00"
     ],
     [
       "COMPONENT 3 COMPRA"
@@ -166,72 +166,56 @@
     ],
     [
       "7 - SOP:",
-      "2024-12-01 00:00:00"
+      "2025-10-01 00:00:00"
     ],
     [
       "Dades necessàries per estructurar una peça / conjunt"
     ],
     [
-      "1 - Client:",
-      "ALV"
+      "22 - Client:",
+      "ZF"
     ],
     [
-      "2 - Tipus:  SQB / KSW / MIXTE:",
-      "FULL SOME KSW"
+      "23 - Tipus:  SQB / KSW / MIXTE:",
+      "FULL SOME SA"
     ],
     [
-      "3 - Tipus Facturació: A / B / C:",
+      "24 - Tipus Facturació: A / B / C:",
+      "C"
+    ],
+    [
+      "25 - Categoria Peça (Bàscula):",
       "B"
     ],
     [
-      "4 - Categoria Peça (Bàscula):",
-      "B"
+      "26 - Descripció actualitzada:",
+      "SENSOR BRACKET  RH / LH"
     ],
     [
-      "5 - Quantiat Anual:",
-      "600000"
-    ],
-    [
-      "6 - Descripció actualitzada:",
-      "STRAP BRACKET BUCKLE LH"
-    ],
-    [
-      "7 - Referència client:",
-      "666429400A"
-    ],
-    [
-      "8 - Responsables tècnics i de qualitat:",
-      "Enric Torner / Iwona Krol / Frederic Gonzalez"
-    ],
-    [
-      "9 - Projecte:",
-      "TESLA OPAL"
-    ],
-    [
-      "10 - Tractaments:"
+      "27 - Tractaments:"
     ],
     [
       "* Descripció complerta del tractament 1:",
-      "KTL 15-30 micres"
+      "Zn/Fe"
     ],
     [
-      "* proveïdor KSW:",
-      "DEFACTO"
+      "* proveïdor SQB:",
+      "Inelca (1,2 eur/kg)"
     ],
     [
-      "* preu KSW:                   (Ull preu en Euros)",
-      "0.055"
+      "* preu SQB:",
+      "0.022896"
     ],
     [
       "* Descripció complerta del tractament 2:",
       "0"
     ],
     [
-      "* proveïdor KSW:",
+      "* proveïdor SQB:",
       "0"
     ],
     [
-      "* preu KSW:                   (Ull preu en Euros)",
+      "* preu SQB:",
       "0"
     ],
     [
@@ -239,26 +223,25 @@
       "0"
     ],
     [
-      "* proveïdor KSW:",
+      "* proveïdor SQB:",
       "0"
     ],
     [
-      "* preu KSW:                   (Ull preu en Euros)",
+      "* preu SQB:",
       "0"
     ],
     [
-      "11 - Embalatge:"
+      "28 - Embalatge:"
     ],
     [
-      "Es necessàri un nou embalatge?",
-      "NO"
+      "Es necessàri un nou embalatge?"
     ],
     [
-      "11.1 - EUROPA"
+      "28.1 - EUROPA"
     ],
     [
       "Caixa:",
-      "3413 - Caixa Cartró 385x285x150 + LID (4118)"
+      "2263 - Caixa Cartó 385x285x150"
     ],
     [
       "Tapa / Altres:",
@@ -270,14 +253,14 @@
     ],
     [
       "Peces / Caixa:",
-      "235"
+      "500"
     ],
     [
       "Caixes / Pallet:",
-      "40"
+      "8"
     ],
     [
-      "11.2 - OVERSEAS"
+      "28.2 - OVERSEAS"
     ],
     [
       "Peces / Caixa:",
@@ -288,19 +271,19 @@
       "0"
     ],
     [
-      "12 - Pes Brut:",
-      "0.077255775"
+      "29 - Pes Brut:",
+      "0.03073275"
     ],
     [
-      "13 - Pes Net:",
-      "0.04138"
+      "30 - Pes Net:",
+      "0.01908"
     ],
     [
-      "14 - Ruta:"
+      "31 - Ruta:"
     ],
     [
       "* Centre Treball",
-      "CT- Premsa 400 Tn"
+      "CT- Premsa 125 Tn"
     ],
     [
       "* Descripció CT",
@@ -308,19 +291,19 @@
     ],
     [
       "* cpm o (peces/hora) per CT",
-      "45     / OEE:  44,54%"
+      "50     / OEE:  33,40%"
     ],
     [
       "* Centre Treball",
-      "CT- 0620"
+      "CT- 9970"
     ],
     [
       "* Descripció CT",
-      "Deburring"
+      "Checking 100 % + Packing"
     ],
     [
       "* cpm o (peces/hora) per CT",
-      "10870"
+      "500"
     ],
     [
       "* Centre Treball"
@@ -350,35 +333,20 @@
       "* cpm o (peces/hora) per CT"
     ],
     [
-      "* Matriu",
-      "AL-244018"
+      "32 - Co-producte ( si / no )",
+      "Co-Producte"
     ],
     [
-      "* Cavitats",
-      "2 ( 1+1 )"
-    ],
-    [
-      "* Co-producte ( si / no )",
-      "Producte Únic"
-    ],
-    [
-      "* Si hi ha subcontractació ( oferta )"
-    ],
-    [
-      "15 - Plànol actualitzat",
-      "6664294 001"
-    ],
-    [
-      "16 - Cost Peça (Intern SOME)",
-      "0.2109423027077346"
+      "33 - Cost Peça (Intern SOME)",
+      "0.1412588655737472"
     ],
     [
       "17 - Preu Peça (Oferta a Client)",
-      "0.2965"
+      "0.3523"
     ],
     [
-      "18 - Planta Producció Client",
-      "RRS"
+      "34 - Planta Producció Client",
+      "ZF Germany"
     ],
     [
       "PD. La resta d'informació que s'entra ja l'aconseguèix la persona que estructura."
@@ -391,7 +359,7 @@
     },
     {
       "Key": "UBICACIÓ CARPETA PROJECTES EN CURS",
-      "Value": "\\\\Server\\some\\Projectes en curs\\AUTOLIV\\666429400_666429500 - BRACKET ( ET i IK )"
+      "Value": "\\\\server\\SOME\\Projectes en curs\\ZF\\004938000151_004938000152 - SENSOR BRACKET LH+RH (...)"
     },
     {
       "Key": "TIPUS PROJECTE",
@@ -399,95 +367,95 @@
     },
     {
       "Key": "FLOW CHART",
-      "Value": "FULL SOME KSW"
+      "Value": "FULL SOME SA"
     },
     {
       "Key": "DATA KOP",
-      "Value": "2024-04-11T00:00:00"
+      "Value": NaN
     },
     {
       "Key": "DATA ENVIAMENT PSA",
-      "Value": "2024-03-26T00:00:00"
+      "Value": "2024-07-26T00:00:00"
     },
     {
       "Key": "RESPONSABLE COMERCIAL",
-      "Value": "David Bernal"
+      "Value": "Dietmar Enrich"
     },
     {
       "Key": "RESPONSABLE DE PROJECTE",
-      "Value": "Enric Torner / Iwona Krol"
+      "Value": "Marc Esteras"
     },
     {
       "Key": "JERARQUIA",
-      "Value": "Brackets"
+      "Value": "Anclatges"
     },
     {
       "Key": "Nº MATRIU SOME",
-      "Value": "AL-244018"
+      "Value": "ZF-244030"
     },
     {
       "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
-      "Value": "A040724"
+      "Value": NaN
     },
     {
       "Key": "Nº COMANDA CLIENT ",
-      "Value": 4201197407
+      "Value": NaN
     },
     {
       "Key": "PRESSUPOST MATRICER",
-      "Value": "20231128 SM RFQ for 44023 ( AUTOLIV PROJECT ) Updated on Dec 19"
+      "Value": "#RFQ240726001"
     },
     {
       "Key": "DATA ENTREGA PLANNING MATRIU",
-      "Value": "W12/24"
+      "Value": "2024-07-29T00:00:00"
     },
     {
       "Key": "DATA ENTREGA LAYOUT MATRIU",
-      "Value": "W14/24"
+      "Value": "2024-08-01T00:00:00"
     },
     {
       "Key": "DATA FOTs MATRICER",
-      "Value": "TBD"
+      "Value": "to agree with Tool Outsourcing Department"
     },
     {
       "Key": "DATA PROBA A SOME MATRICER (PPAP)",
-      "Value": "TBD"
+      "Value": "to agree with Tool Outsourcing Department"
     },
     {
       "Key": "CONDICIONS PAGAMENT A MATRICER",
-      "Value": "Habituals"
+      "Value": "tbd by Aitor"
     },
     {
       "Key": "INCOTERMS MATRIU",
-      "Value": "DAP SOME"
+      "Value": "EXW"
     },
     {
       "Key": "TOOL LIFETIME (Unitats)",
-      "Value": 10000000
+      "Value": 2500000
     },
     {
       "Key": "IMPORT COMANDA CLIENT",
-      "Value": 80700
+      "Value": 57100
     },
     {
       "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
-      "Value": "30 % - 30 % - 40 %"
+      "Value": "100% after PPAP approval"
     },
     {
       "Key": "PLANTA/ES DE DESTÍ",
-      "Value": "RRS"
+      "Value": "ZF Germany"
     },
     {
       "Key": "CONDICIONS ENVIAMENT A CLIENT",
-      "Value": "FCA Some Ksw"
+      "Value": "FCA + TTOP (Title Transfer Our Premises)"
     },
     {
       "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
-      "Value": 30000
+      "Value": 5000
     },
     {
       "Key": "TIPUS DE PREMSA",
-      "Value": "400 Tn"
+      "Value": "125 Tn"
     },
     {
       "Key": "REFERÈNCIA SOME 1",
@@ -1075,51 +1043,51 @@
     },
     {
       "Key": "DATA PRIMERES MOSTRES  F.O.T A CLIENT",
-      "Value": "W34/24"
+      "Value": "CW 47 2024"
     },
     {
       "Key": "QUANTITAT PECES F.O.T. A CLIENT",
-      "Value": 50
+      "Value": "tbd"
     },
     {
       "Key": "DATA ENTREGA PECES PPAP A CLIENT",
-      "Value": "W46"
+      "Value": "CW11 2025"
     },
     {
       "Key": "QUANTITAT PECES PPAP A CLIENT",
-      "Value": 450
+      "Value": "tbd"
     },
     {
       "Key": "S.O.P. CLIENT",
-      "Value": "2024-12-01T00:00:00"
+      "Value": "2025-10-01T00:00:00"
     },
     {
       "Key": "E.O.P. CLIENT",
-      "Value": "2030-12-01T00:00:00"
+      "Value": "2031-10-01T00:00:00"
     },
     {
       "Key": "M.O.Q - INFORMAT A CLIENT",
-      "Value": 9400
+      "Value": 4000
     },
     {
       "Key": "TEMPS ESTIMAT CANVI DE RULL",
-      "Value": "20 '"
+      "Value": NaN
     },
     {
       "Key": "PES ESTIMAT DE RULL",
-      "Value": "2000 Kgr"
+      "Value": NaN
     },
     {
       "Key": "RESPONSABLE PROJECTE - SOMEKSW",
-      "Value": "Iwona Krol"
+      "Value": NaN
     },
     {
       "Key": "RESPONSABLE QUALITAT - SOME SA",
-      "Value": "Frederic Gonzalez"
+      "Value": "David Moreno"
     },
     {
       "Key": "RESPONSABLE QUALITAT - SOMEKSW",
-      "Value": "Adrian Deka"
+      "Value": NaN
     },
     {
       "Key": "RESPONSABLE DE PROCESSOS - SOME SA",
@@ -1135,62 +1103,66 @@
     },
     {
       "Key": "RESPONSABLE DE MATRICERIA - SOMEKSW",
-      "Value": "Arkadiusz Wisniewski "
+      "Value": NaN
     },
     {
       "Key": "RESPONSABLE PRODUCCIÓ SOME - SOME SA",
-      "Value": "Eva Bertran "
+      "Value": "Anna Puig"
     },
     {
       "Key": "RESPONSABLE PRODUCCIÓ - SOMEKSW",
-      "Value": "Ewelina Cygan"
+      "Value": NaN
     },
     {
       "Key": "RESPONSABLE COMPRES CLIENT",
-      "Value": "Eduard Dragoi"
+      "Value": "Dineshkumar"
     },
     {
       "Key": "RESPONSABLE DISSENY CLIENT",
-      "Value": "Tudor Gogescu"
+      "Value": "Tobias Wahler"
     },
     {
       "Key": "RESPONSABLE QUALITAT CLIENT (SQA)",
-      "Value": "Alexandru Dranga"
+      "Value": NaN
     },
     {
       "Key": "RESPONSABLE QUALITAT CLIENT (SDE)",
       "Value": NaN
     },
     {
+      "Key": "FACTIBLITAT INTERNA REALITZADA",
+      "Value": "YES"
+    },
+    {
       "Key": "DRAWINGS RELEASED",
-      "Value": "YES"
-    },
-    {
-      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
-      "Value": "YES"
-    },
-    {
-      "Key": "NORMES I ESTÀNDARDS UPDATED",
-      "Value": "YES"
-    },
-    {
-      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
-      "Value": "YES"
-    },
-    {
-      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
-      "Value": "YES"
-    },
-    {
-      "Key": "CONTRACT REVIEW (Si aplica)",
-      "Value": "YES"
-    },
-    {
-      "Key": "Es necessàri un nou embalatge?",
       "Value": "NO"
     },
     {
-      "Key": "\\\\Server\\some\\Projectes en curs\\AUTOLIV\\666429400_666429500 - BRACKET ( ET i IK )",
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": "YES"
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": "YES"
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": "YES"
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": "YES"
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "Es necessàri un nou embalatge?",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT INTERNA REALITZADA",
       "Value": NaN
     },
     {
@@ -1226,35 +1198,7 @@
       "Value": NaN
     },
     {
-      "Key": "DRAWINGS RELEASED",
-      "Value": NaN
-    },
-    {
-      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
-      "Value": NaN
-    },
-    {
-      "Key": "NORMES I ESTÀNDARDS UPDATED",
-      "Value": NaN
-    },
-    {
-      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
-      "Value": NaN
-    },
-    {
-      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
-      "Value": NaN
-    },
-    {
-      "Key": "CONTRACT REVIEW (Si aplica)",
-      "Value": NaN
-    },
-    {
-      "Key": "TEMPS ESTIMAT CANVI DE RULL",
-      "Value": NaN
-    },
-    {
-      "Key": "PES ESTIMAT DE RULL",
+      "Key": "FACTIBLITAT INTERNA REALITZADA",
       "Value": NaN
     },
     {
@@ -1290,6 +1234,10 @@
       "Value": NaN
     },
     {
+      "Key": "FACTIBLITAT INTERNA REALITZADA",
+      "Value": NaN
+    },
+    {
       "Key": "DRAWINGS RELEASED",
       "Value": NaN
     },
@@ -1319,6 +1267,46 @@
     },
     {
       "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT INTERNA REALITZADA",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT INTERNA REALITZADA",
       "Value": NaN
     },
     {
@@ -1597,7 +1585,12 @@
       "238": NaN,
       "239": NaN,
       "240": NaN,
-      "241": NaN
+      "241": NaN,
+      "242": NaN,
+      "243": NaN,
+      "244": NaN,
+      "245": NaN,
+      "246": NaN
     },
     {
       "0": NaN,
@@ -1841,10 +1834,15 @@
       "238": NaN,
       "239": NaN,
       "240": NaN,
-      "241": NaN
+      "241": NaN,
+      "242": NaN,
+      "243": NaN,
+      "244": NaN,
+      "245": NaN,
+      "246": NaN
     }
   ],
-  "client": "AUTOLIV",
-  "ref_project": "666429400",
-  "processed_at": "2025-07-25T09:38:58.781483"
+  "client": "ZF",
+  "ref_project": "004938000151",
+  "processed_at": "2025-07-25T09:37:13.970340"
 }
