@@ -58,7 +58,7 @@ class DimensionalTableManager:
         self.force_status_options = ["AUTO", "GOOD", "BAD"]
         
         # NEW: Add unit options
-        self.unit_options = ["mm", "°", "μm", "inch", "mil"]
+        self.unit_options = ["","mm", "°", "μm", "inch", "mil"]
         
         # NEW: Add datum options
         self.datum_options = ["", "A", "B", "C", "D", "E", "F", "G", "H"]
@@ -148,7 +148,7 @@ class DimensionalTableManager:
 
         # Updated column widths for new columns
         column_widths = {
-            0: 70,   # element_id
+            0: 80,   # element_id
             1: 80,   # batch
             2: 50,   # cavity
             3: 60,   # class
@@ -578,17 +578,36 @@ class DimensionalTableManager:
                 self.parent_window._log_message(f"Deleted {element_id}")
 
     def _update_tables_with_results(self, results: List[DimensionalResult]):
-        """Enhanced results update with tolerance violation highlighting"""
+        """Enhanced results update with comprehensive logging - FIXED VERSION"""
+        self._log_message("🔄 STARTING TABLE UPDATE WITH RESULTS", "INFO")
+        self._log_message("="*50, "INFO")
+        
         if not self.parent_window or not hasattr(self.parent_window, "results_tabs"):
+            self._log_message("❌ No parent window or results tabs available", "ERROR")
             return
 
-        results_dict = {(r.element_id, str(r.batch), str(r.cavity)): r for r in results}
+        # Create results lookup dictionary
+        results_dict = {}
+        for r in results:
+            key = (r.element_id, str(r.batch), str(r.cavity))
+            results_dict[key] = r
+            self._log_message(f"  📋 Result key: {key} -> Status: {r.status.value}", "DEBUG")
 
+        self._log_message(f"📊 Total results to apply: {len(results)}", "INFO")
+        
+        updated_count = 0
+        not_found_count = 0
+
+        # Process each tab
         for tab_idx in range(self.parent_window.results_tabs.count()):
             table = self.parent_window.results_tabs.widget(tab_idx)
             if not isinstance(table, QTableWidget):
                 continue
 
+            tab_name = self.parent_window.results_tabs.tabText(tab_idx)
+            self._log_message(f"🔧 Updating Tab: {tab_name}", "INFO")
+
+            # Process each row in the table
             for row in range(table.rowCount()):
                 # Get row identifiers
                 element_id_item = table.item(row, 0)
@@ -596,126 +615,170 @@ class DimensionalTableManager:
                 cavity_item = table.item(row, 2)
 
                 if not all([element_id_item, batch_item, cavity_item]):
+                    self._log_message(f"    ⚠️ Row {row + 1}: Missing identifier items", "WARNING")
                     continue
 
-                key = (element_id_item.text(), batch_item.text(), cavity_item.text())
+                element_id = element_id_item.text()
+                batch = batch_item.text()
+                cavity = cavity_item.text()
+                
+                key = (element_id, batch, cavity)
                 result = results_dict.get(key)
 
                 if result:
+                    self._log_message(f"    ✅ Row {row + 1}: Found result for {element_id}", "DEBUG")
                     self._update_row_with_result(table, row, result)
+                    updated_count += 1
+                else:
+                    self._log_message(f"    ❌ Row {row + 1}: No result found for key {key}", "WARNING")
+                    not_found_count += 1
 
-        if self.parent_window:
-            self.parent_window._log_message(
-                f"✅ Updated tables with {len(results)} results"
-            )
+        # Final summary
+        self._log_message("="*50, "INFO")
+        self._log_message("📊 TABLE UPDATE SUMMARY:", "INFO")
+        self._log_message(f"  Rows updated: {updated_count}", "INFO")
+        self._log_message(f"  Rows not found: {not_found_count}", "INFO")
+        self._log_message("="*50, "INFO")
+
+        if updated_count > 0:
+            self._log_message(f"✅ Successfully updated {updated_count} rows with results", "INFO")
+        else:
+            self._log_message("❌ No rows were updated - check data matching", "ERROR")
+
 
     def _update_row_with_result(self, table: QTableWidget, row: int, result: DimensionalResult):
-        """Update single row with result and handle force status"""
+        """Update single row with result - FIXED VERSION with comprehensive logging"""
+        element_id = result.element_id
+        self._log_message(f"      🔧 Updating {element_id} with result:", "DEBUG")
+        self._log_message(f"        Status: {result.status.value}", "DEBUG")
+        self._log_message(f"        Measurements: {result.measurements}", "DEBUG")
+        self._log_message(f"        Mean: {result.mean:.4f}", "DEBUG")
+        self._log_message(f"        Std Dev: {result.std_dev:.4f}", "DEBUG")
         
         # Get force status from dropdown
-        force_combo = table.cellWidget(row, 22)  # Updated column index
+        force_combo = table.cellWidget(row, 22)  # force_status column
         force_status = force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO"
+        self._log_message(f"        Force Status: {force_status}", "DEBUG")
         
-        # Get tolerance values for violation checking
-        lower_tol_item = table.item(row, 10)  # Updated column index
-        upper_tol_item = table.item(row, 11)  # Updated column index
-        nominal_item = table.item(row, 9)     # Updated column index
-
-        lower_tol = None
-        upper_tol = None
-        nominal = None
-
-        try:
-            if lower_tol_item and lower_tol_item.text():
-                lower_tol = float(lower_tol_item.text())
-            if upper_tol_item and upper_tol_item.text():
-                upper_tol = float(upper_tol_item.text())
-            if nominal_item and nominal_item.text():
-                nominal = float(nominal_item.text())
-        except ValueError:
-            pass
-
-        # FIX: Handle GD&T case where nominal = 0
-        if nominal == 0.0 and upper_tol is not None:
-            # For GD&T, treat as 0 ± upper_tolerance
-            lower_tol = 0.0
-            # upper_tol remains as is
-
-        # Determine final status based on force status
+        # FIXED: Determine final status based on force status FIRST
         if force_status == "GOOD":
             final_status = "GOOD"
+            self._log_message("-> Final Status: GOOD (forced)", "DEBUG")
         elif force_status == "BAD":
             final_status = "BAD"
+            self._log_message("-> Final Status: BAD (forced)", "DEBUG")
         else:  # AUTO
-            final_status = result.status.value
+            # Check if this is a Note entry
+            eval_combo = table.cellWidget(row, 8)  # evaluation_type column
+            evaluation_type = eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal"
+            
+            if evaluation_type == "Note":
+                final_status = "GOOD"  # Notes default to GOOD when AUTO
+                self._log_message("-> Final Status: GOOD (Note default)", "DEBUG")
+            else:
+                final_status = result.status.value
+                self._log_message(f"-> Final Status: {final_status} (calculated)", "DEBUG")
 
-        # Update calculated columns with enhanced formatting (updated column indices)
-        calc_data = [
-            (17, f"{min(result.measurements):.4f}" if result.measurements else "", min(result.measurements) if result.measurements else None),
-            (18, f"{max(result.measurements):.4f}" if result.measurements else "", max(result.measurements) if result.measurements else None),
-            (19, f"{result.mean:.4f}" if result.mean else "", result.mean),
-            (20, f"{result.std_dev:.4f}" if result.std_dev else "", result.std_dev),
-            (21, final_status, None),  # Use final_status instead of result.status.value
+        # Update calculated columns (updated column indices)
+        updates = [
+            (17, f"{min(result.measurements):.4f}" if result.measurements else ""),  # minimum
+            (18, f"{max(result.measurements):.4f}" if result.measurements else ""),  # maximum
+            (19, f"{result.mean:.4f}" if result.mean else ""),                       # mean
+            (20, f"{result.std_dev:.4f}" if result.std_dev else ""),               # std_deviation
+            (21, final_status),                                                      # status
         ]
 
-        for col_idx, display_value, numeric_value in calc_data:
+        for col_idx, value in updates:
             item = table.item(row, col_idx)
             if not item:
                 item = QTableWidgetItem()
-                if col_idx != 21:  # Don't make status read-only for manual override
+                if col_idx != 21:  # Don't make status read-only
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 table.setItem(row, col_idx, item)
 
-            item.setText(str(display_value))
+            item.setText(str(value))
             item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
 
-            # Enhanced status coloring (column 21)
+            # Enhanced status coloring (column 21) - BACKGROUND ONLY
             if col_idx == 21:  # status column
-                if display_value == "GOOD":
+                if value == "GOOD":
                     item.setBackground(QColor(144, 238, 144))  # Light green
-                    item.setForeground(QColor(39, 174, 96))    # Dark green text
-                elif display_value == "BAD":
+                    item.setForeground(QColor(0, 0, 0))        # BLACK text
+                elif value == "BAD":
                     item.setBackground(QColor(255, 182, 193))  # Light red
-                    item.setForeground(QColor(231, 76, 60))    # Dark red text
-                elif display_value == "NO_DATA":
-                    item.setBackground(QColor(173, 216, 230))  # Light blue
-                    item.setForeground(QColor(52, 152, 219))   # Blue text
-                else:  # WARNING or other
+                    item.setForeground(QColor(0, 0, 0))        # BLACK text
+                else:
                     item.setBackground(QColor(255, 255, 224))  # Light yellow
-                    item.setForeground(QColor(243, 156, 18))   # Dark orange text
-            
-            # DON'T highlight measurement statistics (min, max, mean, std_dev)
-            elif col_idx in [17, 18, 19, 20]:
+                    item.setForeground(QColor(0, 0, 0))        # BLACK text
+            else:
+                # Statistics columns - gray background, black text
                 item.setBackground(self.colors["readonly"])
-                item.setForeground(QColor(52, 73, 94))  # Standard text color
+                item.setForeground(QColor(0, 0, 0))
 
-        # Highlight individual measurement violations (updated column indices)
-        self._highlight_measurement_violations(table, row, result, lower_tol, upper_tol, nominal)
+        # Highlight measurement violations
+        self._highlight_measurement_violations_with_logging(table, row, result, element_id)
 
-    def _highlight_measurement_violations(self, table: QTableWidget, row: int, result: DimensionalResult, lower_tol, upper_tol, nominal):
-        """Highlight individual measurement cells that violate tolerance"""
-        measurement_cols = [12, 13, 14, 15, 16]  # Updated measurement columns
+
+    def _highlight_measurement_violations_with_logging(self, table: QTableWidget, row: int, 
+                                                       result: DimensionalResult, element_id: str):
+        """Highlight measurement violations with logging"""
+        measurement_cols = [12, 13, 14, 15, 16]  # measurement columns
+        violations_found = 0
+        
+        # Get tolerance information
+        lower_limit = None
+        upper_limit = None
+        
+        if result.lower_tolerance is not None and result.upper_tolerance is not None:
+            if result.nominal == 0.0 and result.lower_tolerance == 0.0:
+                # GD&T case with nominal=0
+                upper_limit = result.upper_tolerance
+                self._log_message(f"        GD&T tolerance check: |value| <= {upper_limit}", "DEBUG")
+            else:
+                # Standard bilateral tolerance
+                lower_limit = result.nominal + result.lower_tolerance
+                upper_limit = result.nominal + result.upper_tolerance
+                self._log_message(f"        Standard tolerance: {lower_limit} <= value <= {upper_limit}", "DEBUG")
 
         for i, col in enumerate(measurement_cols):
             item = table.item(row, col)
             if item and item.text():
                 try:
                     value = float(item.text())
-                    if self._is_outside_tolerance(value, lower_tol, upper_tol, nominal):
-                        item.setBackground(self.colors["bad"])
-                        item.setForeground(QColor(255, 255, 255))
+                    is_violation = False
+                    
+                    if result.nominal == 0.0 and result.lower_tolerance == 0.0 and upper_limit is not None:
+                        # GD&T case
+                        is_violation = abs(value) > upper_limit
+                    elif lower_limit is not None and upper_limit is not None:
+                        # Standard case
+                        is_violation = not (lower_limit <= value <= upper_limit)
+                    
+                    if is_violation:
+                        item.setBackground(self.colors["bad"])    # Red background
+                        item.setForeground(QColor(0, 0, 0))       # BLACK text
                         item.setToolTip(f"⚠️ Measurement {value:.4f} violates tolerance!")
-                        # Add bold font for emphasis
                         font = item.font()
                         font.setBold(True)
                         item.setFont(font)
+                        violations_found += 1
+                        self._log_message(f"❌ Measurement {i+1}: {value:.4f} VIOLATES tolerance", "DEBUG")
                     else:
-                        # Reset to normal styling for good values
-                        item.setBackground(self.colors["white"])
-                        item.setForeground(QColor(52, 73, 94))
+                        item.setBackground(self.colors["white"])  # White background
+                        item.setForeground(QColor(0, 0, 0))       # BLACK text
                         item.setToolTip("")
+                        font = item.font()
+                        font.setBold(False)
+                        item.setFont(font)
+                        self._log_message(f"✅ Measurement {i+1}: {value:.4f} OK", "DEBUG")
+                        
                 except ValueError:
-                    pass
+                    self._log_message(f"⚠️ Invalid measurement value in column {i+1}", "WARNING")
+        
+        if violations_found > 0:
+            self._log_message(f"🚨 {violations_found} measurement violations found for {element_id}", "WARNING")
+        else:
+            self._log_message(f"✅ All measurements OK for {element_id}", "DEBUG")
 
     def _is_outside_tolerance(self, value: float, lower_tol, upper_tol, nominal=None) -> bool:
         """Check if value is outside tolerance range, handling GD&T cases"""
@@ -734,21 +797,37 @@ class DimensionalTableManager:
         return False
 
     def _get_dataframe_from_tables(self) -> pd.DataFrame:
-        """Enhanced dataframe extraction with dropdown value handling"""
+        """Enhanced dataframe extraction with comprehensive logging - FIXED VERSION"""
+        self._log_message("🔍 STARTING DATA EXTRACTION FROM TABLES", "INFO")
+        self._log_message("="*50, "INFO")
+        
         all_data = []
+        total_rows_processed = 0
+        valid_rows = 0
+        skipped_rows = 0
 
         if not self.parent_window or not hasattr(self.parent_window, "results_tabs"):
+            self._log_message("❌ No parent window or results tabs found", "ERROR")
             return pd.DataFrame()
 
+        # Process each tab
         for tab_idx in range(self.parent_window.results_tabs.count()):
             table = self.parent_window.results_tabs.widget(tab_idx)
             if not isinstance(table, QTableWidget):
+                self._log_message(f"⚠️ Tab {tab_idx} is not a QTableWidget, skipping", "WARNING")
                 continue
 
-            for row in range(table.rowCount()):
-                row_data = {}
-                valid_row = False
+            tab_name = self.parent_window.results_tabs.tabText(tab_idx)
+            self._log_message(f"📋 Processing Tab: {tab_name} ({table.rowCount()} rows)", "INFO")
 
+            # Process each row in the table
+            for row in range(table.rowCount()):
+                total_rows_processed += 1
+                row_data = {}
+                
+                self._log_message(f"  🔍 Processing Row {row + 1}:", "DEBUG")
+
+                # Extract data from each column
                 for col, col_name in enumerate(self.display_columns):
                     if col >= len(self.display_columns):
                         break
@@ -759,97 +838,135 @@ class DimensionalTableManager:
                         value = cell_widget.currentText().strip()
                         if not value or value == "":
                             value = None
+                        self._log_message(f"    📝 {col_name} (dropdown): '{value}'", "DEBUG")
                     else:
                         # Handle regular table items
                         item = table.item(row, col)
                         value = item.text().strip() if item and item.text() else None
+                        if value == "":
+                            value = None
+                        self._log_message(f"    📝 {col_name}: '{value}'", "DEBUG")
 
-                    if not value:
-                        value = None
+                    # Process the value
+                    if value is None:
+                        row_data[col_name] = None
                     else:
-                        # Enhanced numeric validation for updated columns
+                        # Enhanced numeric validation
                         numeric_columns = ["nominal", "lower_tolerance", "upper_tolerance"] + self.measurement_columns
                         if col_name in numeric_columns:
                             try:
                                 numeric_value = float(value)
                                 row_data[col_name] = numeric_value
-                                if col_name == "nominal" or any(col_name == f"measurement_{i}" for i in range(1, 6)):
-                                    valid_row = True
+                                self._log_message(f"      ✅ Converted to numeric: {numeric_value}", "DEBUG")
                             except (ValueError, TypeError):
-                                if self.parent_window:
-                                    self.parent_window._log_message(
-                                        f"⚠️ Invalid numeric value in row {row + 1}, column {col_name}: {value}",
-                                        "WARNING",
-                                    )
+                                self._log_message(f"      ❌ Invalid numeric value: {value}", "WARNING")
                                 row_data[col_name] = None
                         else:
                             row_data[col_name] = value
-                            if col_name in ["element_id", "description"] and value:
-                                valid_row = True
-
-                # Check for Note entries (evaluation_type = "Note")
-                if row_data.get("evaluation_type") == "Note":
-                    # For notes, we don't need measurements, just description
-                    if row_data.get("element_id") and row_data.get("description"):
-                        valid_row = True
-                        # Force status for notes if not set
-                        if not row_data.get("force_status") or row_data.get("force_status") == "AUTO":
-                            row_data["force_status"] = "GOOD"  # Default notes to GOOD
 
                 # Auto-fill batch if empty
                 if not row_data.get("batch"):
                     row_data["batch"] = self.batch_number
+                    self._log_message(f"    🔧 Auto-filled batch: {self.batch_number}", "DEBUG")
 
-                # Enhanced validation
-                has_element_id = row_data.get("element_id") is not None
-                has_description = row_data.get("description") is not None
-                is_note = row_data.get("evaluation_type") == "Note"
+                # FIXED: Enhanced validation logic
+                is_valid_row = self._validate_row_data(row_data, row + 1)
                 
-                # For notes, we don't need measurements or nominal
-                if is_note:
-                    if has_element_id and has_description:
-                        all_data.append(row_data)
+                if is_valid_row:
+                    all_data.append(row_data)
+                    valid_rows += 1
+                    self._log_message(f"    ✅ Row {row + 1} added to dataset", "INFO")
                 else:
-                    # Normal validation for measurement entries
-                    has_nominal_or_tolerance = (
-                        row_data.get("nominal") is not None or 
-                        row_data.get("upper_tolerance") is not None or
-                        row_data.get("lower_tolerance") is not None
-                    )
-                    has_measurements = any(
-                        row_data.get(f"measurement_{i}") is not None for i in range(1, 6)
-                    )
+                    skipped_rows += 1
+                    self._log_message(f"    ❌ Row {row + 1} skipped (validation failed)", "WARNING")
 
-                    if has_element_id and has_description and has_nominal_or_tolerance and has_measurements:
-                        all_data.append(row_data)
-                    elif valid_row:
-                        missing = []
-                        if not has_element_id:
-                            missing.append("element_id")
-                        if not has_description:
-                            missing.append("description")
-                        if not has_nominal_or_tolerance:
-                            missing.append("nominal/tolerance")
-                        if not has_measurements:
-                            missing.append("measurements")
-
-                        if self.parent_window:
-                            self.parent_window._log_message(
-                                f"⚠️ Skipping row {row + 1}: missing {', '.join(missing)}",
-                                "WARNING",
-                            )
+        # Final logging
+        self._log_message("="*50, "INFO")
+        self._log_message("📊 DATA EXTRACTION SUMMARY:", "INFO")
+        self._log_message(f"  Total rows processed: {total_rows_processed}", "INFO")
+        self._log_message(f"  Valid rows: {valid_rows}", "INFO")
+        self._log_message(f"  Skipped rows: {skipped_rows}", "INFO")
+        self._log_message("="*50, "INFO")
 
         if not all_data:
+            self._log_message("❌ No valid data extracted", "ERROR")
             return pd.DataFrame()
 
         df = pd.DataFrame(all_data)
-
-        if self.parent_window:
-            self.parent_window._log_message(
-                f"📊 Extracted {len(df)} valid records for processing"
-            )
+        self._log_message(f"✅ DataFrame created with {len(df)} records", "INFO")
+        
+        # Log column information
+        self._log_message("📋 DataFrame columns:", "INFO")
+        for col in df.columns:
+            non_null_count = df[col].notna().sum()
+            self._log_message(f"  {col}: {non_null_count}/{len(df)} non-null values", "INFO")
 
         return df
+    
+    def _validate_row_data(self, row_data: dict, row_number: int) -> bool:
+        """Validate row data with comprehensive logging - FIXED VERSION"""
+        self._log_message(f"    🔍 Validating Row {row_number}:", "DEBUG")
+        
+        # Basic required fields
+        element_id = row_data.get("element_id")
+        description = row_data.get("description")
+        evaluation_type = row_data.get("evaluation_type", "Normal")
+        
+        self._log_message(f"element_id: '{element_id}'", "DEBUG")
+        self._log_message(f"description: '{description}'", "DEBUG")
+        self._log_message(f"evaluation_type: '{evaluation_type}'", "DEBUG")
+        
+        # Check basic requirements
+        if not element_id:
+            self._log_message("❌ Missing element_id", "WARNING")
+            return False
+            
+        if not description:
+            self._log_message("❌ Missing description", "WARNING")
+            return False
+
+        # FIXED: Handle different evaluation types
+        if evaluation_type == "Note":
+            # For Notes, we only need element_id and description
+            self._log_message("✅ Note entry - basic validation passed", "DEBUG")
+            return True
+        
+        # For Normal/Basic/Informative entries, check nominal and measurements
+        nominal = row_data.get("nominal")
+        
+        # FIXED: Allow nominal = 0 (it's valid for GD&T)
+        if nominal is None:
+            self._log_message("❌ Missing nominal value", "WARNING")
+            return False
+
+        self._log_message(f"nominal: {nominal} (✅ Valid, including zero)", "DEBUG")
+
+        # Check for at least one measurement
+        has_measurements = False
+        measurement_count = 0
+        for i in range(1, 6):
+            meas_val = row_data.get(f"measurement_{i}")
+            if meas_val is not None:
+                has_measurements = True
+                measurement_count += 1
+
+        self._log_message(f"      measurements: {measurement_count}/5 provided", "DEBUG")
+
+        if not has_measurements:
+            self._log_message("❌ No measurements provided", "WARNING")
+            return False
+
+        # Check tolerances (optional but log if missing)
+        lower_tol = row_data.get("lower_tolerance")
+        upper_tol = row_data.get("upper_tolerance")
+        
+        if lower_tol is None and upper_tol is None:
+            self._log_message("⚠️ No tolerances provided - will use force_status or default evaluation", "WARNING")
+        else:
+            self._log_message(f"tolerances: {lower_tol} / {upper_tol}", "DEBUG")
+
+        self._log_message("✅ Validation passed", "DEBUG")
+        return True
 
     def _on_cell_changed(self, row: int, col: int):
         """Enhanced cell change handler"""
@@ -1216,11 +1333,7 @@ class DimensionalTableManager:
 
         return stats
 
-
-# ADDITIONAL METHODS NEEDED FOR dimensional_table_manager.py
-
 # Add method to filter dimensions based on evaluation type:
-
     def _filter_dimensions_for_evaluation(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter dataframe to only include dimensions that should be evaluated"""
         if 'evaluation_type' not in df.columns:
@@ -1236,8 +1349,6 @@ class DimensionalTableManager:
         )
         
         return evaluation_df
-
-    # Add method to handle Note entries:
 
     def _handle_note_entries(self, results):
         """Handle note entries and create appropriate DimensionalResult objects"""

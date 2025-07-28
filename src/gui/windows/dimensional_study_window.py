@@ -1,4 +1,5 @@
 # src/gui/windows/dimensional_study_window.py
+from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
@@ -21,8 +22,9 @@ from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QPixmap, QFont
 import pandas as pd
 import os
+import logging
 from typing import List
-
+import datetime
 from .base_dimensional_window import BaseDimensionalWindow
 from .components.dimensional_table_manager import DimensionalTableManager
 from .components.dimensional_session_manager import SessionManager
@@ -38,13 +40,15 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
     def __init__(self, client: str, ref_project: str, batch_number: str):
         super().__init__(client, ref_project, batch_number)
-
+        
+        # Initialize enhanced logging
+        self._init_logging()
+        
         self.unsaved_changes = False
         self.manual_mode = False
         self.results = []
         self.processing_thread = None
         self._apply_professional_styling = global_style
-        # Enhanced color scheme for automotive industry
         self.colors = get_color_palette
 
         # Initialize enhanced managers
@@ -60,93 +64,117 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         # Load last session
         QTimer.singleShot(100, self.session_manager._load_last_session)
 
+    def _init_logging(self):
+        """Initialize enhanced logging configuration"""
+        # Create logs directory if it doesn't exist
+        logs_dir = Path("logs")
+        logs_dir.mkdir(exist_ok=True)
+        
+        # Configure the root logger for the application
+        self.logger = logging.getLogger(f"DimensionalStudy.{self.client_name}.{self.project_ref}")
+        self.logger.setLevel(logging.DEBUG)
+        
+        # Only add handlers if they haven't been added before
+        if not self.logger.handlers:
+            # File handler for dimensional.log
+            file_handler = logging.FileHandler(
+                logs_dir / "dimensional.log",
+                mode='a',
+                encoding='utf-8'
+            )
+            file_handler.setLevel(logging.DEBUG)
+            
+            # Console handler
+            console_handler = logging.StreamHandler()
+            console_handler.setLevel(logging.INFO)
+            
+            # Formatter
+            formatter = logging.Formatter(
+                "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                datefmt="%Y-%m-%d %H:%M:%S"
+            )
+            file_handler.setFormatter(formatter)
+            console_handler.setFormatter(formatter)
+            
+            self.logger.addHandler(file_handler)
+            self.logger.addHandler(console_handler)
+            
+            self.logger.info("Initialized logging for DimensionalStudyWindow")
+            self.logger.debug(f"Client: {self.client_name}, Project: {self.project_ref}, Batch: {self.batch_number}")
+
+    def _log_message(self, message: str, level: str = "INFO"):
+        """
+        Enhanced logging with both GUI and file logging
+        Levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+        """
+        try:
+            # Log to file using the standard logger
+            log_method = getattr(self.logger, level.lower(), self.logger.info)
+            log_method(message)
+            
+            # Also log to GUI if available
+            if hasattr(self, 'log_area'):
+                timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                self.log_area.append(f"[{timestamp}] [{level}] {message}")
+                self.log_area.verticalScrollBar().setValue(
+                    self.log_area.verticalScrollBar().maximum()
+                )
+                
+        except Exception as e:
+            print(f"Logging failed: {str(e)}")
+
     def _init_table_manager(self):
-        """Initialize enhanced table manager"""
-        self.table_manager = DimensionalTableManager(
-            display_columns=[
-                "element_id",
-                "batch", 
-                "cavity",
-                "class",
-                "description",
-                "measuring_instrument",
-                "unit",                    # NEW
-                "datum",                   # NEW
-                "evaluation_type",         # NEW
-                "nominal",
-                "lower_tolerance",
-                "upper_tolerance",
-                "measurement_1",
-                "measurement_2", 
-                "measurement_3",
-                "measurement_4",
-                "measurement_5",
-                "minimum",
-                "maximum",
-                "mean",
-                "std_deviation",
-                "status",
-                "force_status",
-            ],
-            column_headers=[
-                "Element ID",
-                "Batch",
-                "Cavity", 
-                "Class",
-                "Description",
-                "Measuring Inst.",
-                "Unit",                    # NEW
-                "Datum",                   # NEW  
-                "Eval Type",               # NEW
-                "Nominal",
-                "Lower Tol",
-                "Upper Tol",
-                "Meas 1",
-                "Meas 2",
-                "Meas 3", 
-                "Meas 4",
-                "Meas 5",
-                "Min",
-                "Max",
-                "Mean",
-                "Std Dev",
-                "Status",
-                "Force Status",
-            ],
-            required_columns=[
-                "element_id",
-                "batch",
-                "cavity", 
-                "class",
-                "description",
-                "measuring_instrument",
-                "unit",                    # NEW
-                "datum",                   # NEW
-                "evaluation_type",         # NEW
-                "nominal",
-                "lower_tolerance",
-                "upper_tolerance",
-            ],
-            measurement_columns=[
-                "measurement_1",
-                "measurement_2",
-                "measurement_3", 
-                "measurement_4",
-                "measurement_5",
-            ],
-            batch_number=self.batch_number,
-        )
-        self.table_manager.set_parent_window(self)
+        """Initialize enhanced table manager with logging"""
+        self.logger.debug("Initializing Table Manager")
+        try:
+            self.table_manager = DimensionalTableManager(
+                display_columns=[
+                    "element_id", "batch", "cavity", "class", "description",
+                    "measuring_instrument", "unit", "datum", "evaluation_type",
+                    "nominal", "lower_tolerance", "upper_tolerance",
+                    "measurement_1", "measurement_2", "measurement_3",
+                    "measurement_4", "measurement_5", "minimum", "maximum",
+                    "mean", "std_deviation", "status", "force_status",
+                ],
+                column_headers=[
+                    "Element ID", "Batch", "Cavity", "Class", "Description",
+                    "Measuring Inst.", "Unit", "Datum", "Eval Type",
+                    "Nominal", "Lower Tol", "Upper Tol",
+                    "Meas 1", "Meas 2", "Meas 3", "Meas 4", "Meas 5",
+                    "Min", "Max", "Mean", "Std Dev", "Status", "Force Status",
+                ],
+                required_columns=[
+                    "element_id", "batch", "cavity", "class", "description",
+                    "measuring_instrument", "unit", "datum", "evaluation_type",
+                    "nominal", "lower_tolerance", "upper_tolerance",
+                ],
+                measurement_columns=[
+                    "measurement_1", "measurement_2", "measurement_3",
+                    "measurement_4", "measurement_5",
+                ],
+                batch_number=self.batch_number,
+            )
+            self.table_manager.set_parent_window(self)
+            self.logger.info("Table manager initialized successfully")
+        except Exception as e:
+            self._log_message(f"Failed to initialize table manager: {str(e)}", "ERROR")
+            raise
 
     def _init_session_manager(self):
-        """Initialize session manager"""
-        self.session_manager = SessionManager(
-            self.client_name,
-            self.project_ref,
-            self.batch_number,
-            log_callback=self._log_message,
-            parent=self,
-        )
+        """Initialize session manager with logging"""
+        self.logger.debug("Initializing Session Manager")
+        try:
+            self.session_manager = SessionManager(
+                self.client_name,
+                self.project_ref,
+                self.batch_number,
+                log_callback=self._log_message,
+                parent=self,
+            )
+            self.logger.info("Session manager initialized successfully")
+        except Exception as e:
+            self._log_message(f"Failed to initialize session manager: {str(e)}", "ERROR")
+            raise
 
     def _init_ui(self):
         """Initialize enhanced professional UI"""
@@ -464,55 +492,148 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self._log_message(f"Closed results tab #{index}")
 
     def _run_study(self):
-        """Execute the dimensional study with proper filtering"""
+        """Execute the dimensional study with comprehensive logging - FIXED VERSION"""
+        self.logger.info("="*60)
+        self.logger.info("STARTING DIMENSIONAL STUDY ANALYSIS")
+        self.logger.info("="*60)
+        
         try:
-            # Get filtered dataframe for processing
-            df = self.table_manager._get_processed_dataframe()
+            # Step 1: Get all data from tables (including Notes)
+            all_df = self.table_manager._get_dataframe_from_tables()
+            self.logger.info(f"📊 Total records extracted from tables: {len(all_df)}")
             
-            if df.empty:
-                # Check if there are only notes
-                all_df = self.table_manager._get_dataframe_from_tables()
-                if not all_df.empty and all(all_df['evaluation_type'] == 'Note'):
-                    # Handle notes only
-                    self._log_message("Processing note entries only")
-                    note_results = self.table_manager._handle_note_entries([])
-                    self._on_processing_finished(note_results)
-                    return
-                else:
-                    QMessageBox.warning(self, "No Data", "No valid data found to process.")
-                    return
+            if all_df.empty:
+                msg = "No data found in tables"
+                self.logger.error(f"❌ {msg}")
+                QMessageBox.warning(self, "No Data", msg)
+                return
 
-            self._log_message(f"Starting dimensional analysis on {len(df)} records")
+            # Step 2: Log data composition
+            self._log_data_composition(all_df)
+            
+            # Step 3: Process ALL data (including Notes)
+            self.logger.info(f"🚀 Starting analysis on {len(all_df)} total records")
 
             # Disable UI during processing
             self._set_ui_enabled(False)
             self.progress_bar.setVisible(True)
             self.progress_bar.setValue(0)
 
-            # Start processing in thread
-            self.processing_thread = ProcessingThread(df)
+            # Start processing in thread with ALL data
+            self.processing_thread = ProcessingThread(all_df)
             self.processing_thread.progress_updated.connect(self.progress_bar.setValue)
-            self.processing_thread.processing_finished.connect(
-                self._on_processing_finished_with_notes
-            )
+            self.processing_thread.processing_finished.connect(self._on_processing_finished)
             self.processing_thread.error_occurred.connect(self._on_processing_error)
             self.processing_thread.start()
 
         except Exception as e:
             error_msg = f"Error starting dimensional study: {str(e)}"
-            self._log_message(error_msg, "ERROR")
+            self.logger.error(f"❌ {error_msg}", exc_info=True)
             QMessageBox.critical(self, "Processing Error", error_msg)
             self._set_ui_enabled(True)
 
-
-    def _on_processing_finished_with_notes(self, results: List[DimensionalResult]):
-        """Handle completion of processing including notes"""
-        # Add note entries to results
-        all_results = self.table_manager._handle_note_entries(results)
+    def _log_data_composition(self, df):
+        """Log detailed data composition for debugging"""
+        self.logger.info("📋 DATA COMPOSITION ANALYSIS:")
+        self.logger.info("-" * 40)
         
-        # Call original method with combined results
-        self._on_processing_finished(all_results)
+        # Log evaluation types
+        if 'evaluation_type' in df.columns:
+            eval_counts = df['evaluation_type'].value_counts()
+            for eval_type, count in eval_counts.items():
+                self.logger.info(f"  📌 {eval_type}: {count} records")
+        else:
+            self.logger.warning("  ⚠️ No evaluation_type column found!")
+        
+        # Log force status distribution
+        if 'force_status' in df.columns:
+            force_counts = df['force_status'].value_counts()
+            self.logger.info("  🔧 Force Status Distribution:")
+            for status, count in force_counts.items():
+                self.logger.info(f"    - {status}: {count} records")
+        
+        # Log records with nominal = 0
+        if 'nominal' in df.columns:
+            zero_nominal = df[df['nominal'] == 0.0]
+            self.logger.info(f"  🎯 Records with nominal = 0: {len(zero_nominal)}")
+            if len(zero_nominal) > 0:
+                for idx, row in zero_nominal.iterrows():
+                    self.logger.info(f"    - {row.get('element_id', 'Unknown')}: {row.get('description', 'No description')}")
+        
+        # Log measurement availability
+        measurement_cols = [f'measurement_{i}' for i in range(1, 6)]
+        records_with_measurements = 0
+        for idx, row in df.iterrows():
+            has_measurements = any(pd.notna(row.get(col)) and str(row.get(col)).strip() != '' 
+                                 for col in measurement_cols)
+            if has_measurements:
+                records_with_measurements += 1
+        
+        self.logger.info(f"  📏 Records with measurements: {records_with_measurements}/{len(df)}")
+        self.logger.info("-" * 40)
 
+
+    def _on_processing_finished(self, results: List[DimensionalResult]):
+        """Handle completion of processing with enhanced logging - FIXED VERSION"""
+        self.logger.info("="*60)
+        self.logger.info("PROCESSING COMPLETED - ANALYZING RESULTS")
+        self.logger.info("="*60)
+        
+        self.results = results
+        self.progress_bar.setVisible(False)
+        self._set_ui_enabled(True)
+
+        if not results:
+            self.logger.error("❌ No valid results generated")
+            QMessageBox.information(
+                self,
+                "No Results",
+                "No valid results were generated from the input data.",
+            )
+            return
+
+        # Log detailed results analysis
+        self._log_results_analysis(results)
+        
+        # Update tables with results
+        self.logger.info("🔄 Updating tables with results...")
+        self.table_manager._update_tables_with_results(results)
+        
+        self.export_button.setEnabled(True)
+        self.session_manager._auto_save_session()
+        
+        self.logger.info("✅ Processing completed successfully")
+
+    def _log_results_analysis(self, results):
+        """Log detailed analysis of results"""
+        self.logger.info("📊 RESULTS ANALYSIS:")
+        self.logger.info("-" * 40)
+        self.logger.info(f"  Total results: {len(results)}")
+        
+        # Status distribution
+        status_counts = {}
+        for result in results:
+            status = result.status.value
+            status_counts[status] = status_counts.get(status, 0) + 1
+        
+        for status, count in status_counts.items():
+            self.logger.info(f"  {status}: {count} records")
+        
+        # Log individual results for debugging
+        self.logger.info("🔍 INDIVIDUAL RESULT DETAILS:")
+        for i, result in enumerate(results[:10]):  # Log first 10 for debugging
+            self.logger.info(f"  [{i+1}] {result.element_id} - {result.status.value}")
+            self.logger.info(f"      Description: {result.description}")
+            self.logger.info(f"      Nominal: {result.nominal}")
+            self.logger.info(f"      Measurements: {result.measurements}")
+            self.logger.info(f"      Tolerances: {result.lower_tolerance} / {result.upper_tolerance}")
+            if result.warnings:
+                self.logger.info(f"      Warnings: {'; '.join(result.warnings)}")
+        
+        if len(results) > 10:
+            self.logger.info(f"  ... and {len(results) - 10} more results")
+        
+        self.logger.info("-" * 40)
 
     def _start_processing_thread(self, df: pd.DataFrame):
         """Start the processing thread with the given dataframe"""
@@ -525,36 +646,23 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.processing_thread.error_occurred.connect(self._on_processing_error)
         self.processing_thread.start()
 
-    def _on_processing_finished(self, results: List[DimensionalResult]):
-        """Handle completion of processing"""
-        self.results = results
-        self.progress_bar.setVisible(False)
-        self._set_ui_enabled(True)
-
-        if not results:
-            self._log_message("No valid results generated", "WARNING")
-            QMessageBox.information(
-                self,
-                "No Results",
-                "No valid results were generated from the input data.",
-            )
-            return
-
-        self._log_message(
-            f"Analysis completed successfully. Generated {len(results)} results"
-        )
-        self.table_manager._update_tables_with_results(results)
-        self.export_button.setEnabled(True)
-        self.session_manager._auto_save_session()
 
     def _handle_error(self, context: str, error: Exception):
-        """Centralized error handling"""
+        """Centralized error handling with logging"""
         error_msg = f"{context}: {str(error)}"
-        self._log_message(error_msg, "ERROR")
+        self.logger.error(error_msg, exc_info=True)
         QMessageBox.critical(self, "Error", error_msg)
 
+    def _on_processing_error(self, error_msg: str):
+        """Handle processing thread errors with logging"""
+        self.logger.error(f"Processing error: {error_msg}")
+        self.progress_bar.setVisible(False)
+        self._set_ui_enabled(True)
+        QMessageBox.critical(self, "Processing Error", f"Analysis failed:\n{error_msg}")
+
     def _clear_all(self):
-        """Clear all UI elements, tabs, logs, and internal states."""
+        """Clear all UI elements with confirmation and logging"""
+        self.logger.debug("Clear all requested")
         reply = QMessageBox.question(
             self,
             "Clear All?",
@@ -565,6 +673,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
         if reply == QMessageBox.Yes:
             try:
+                self.logger.info("Clearing all data")
                 # Clear result tabs
                 while self.results_tabs.count():
                     widget = self.results_tabs.widget(0)
@@ -577,13 +686,14 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                 # Reset any data structures
                 self.results = []
 
-                # Call your (placeholder) table manager reset
+                # Call table manager reset
                 self.table_manager.clear_all_tables()
 
                 self._clear_unsaved_changes()
-                self._log_message("All data cleared.")
+                self.logger.info("All data cleared successfully")
             except Exception as e:
                 self._handle_error("Clear All", e)
+
 
     def _toggle_mode(self):
         """Toggle between file and manual entry modes"""
@@ -623,13 +733,6 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
         except Exception as e:
             self._handle_error("Clear Current Data", e)
-
-    def _on_processing_error(self, error_msg: str):
-        """Handle processing thread errors"""
-        self.progress_bar.setVisible(False)
-        self._set_ui_enabled(True)
-        self._log_message(f"Processing error: {error_msg}", "ERROR")
-        QMessageBox.critical(self, "Processing Error", f"Analysis failed:\n{error_msg}")
 
     def _prepare_manual_table(self):
         """Prepare table for manual data entry"""
