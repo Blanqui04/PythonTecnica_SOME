@@ -26,7 +26,7 @@ from typing import List
 from .base_dimensional_window import BaseDimensionalWindow
 from .components.dimensional_table_manager import DimensionalTableManager
 from .components.dimensional_session_manager import SessionManager
-from .components.dimensional_summary_widget import SummaryWidget
+#from .components.dimensional_summary_widget import SummaryWidget
 from src.models.dimensional.dimensional_result import DimensionalResult
 from ..workers.dimensional_processing_thread import ProcessingThread
 from ..utils.styles import global_style, get_color_palette
@@ -65,16 +65,19 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.table_manager = DimensionalTableManager(
             display_columns=[
                 "element_id",
-                "batch",
+                "batch", 
                 "cavity",
                 "class",
                 "description",
                 "measuring_instrument",
+                "unit",                    # NEW
+                "datum",                   # NEW
+                "evaluation_type",         # NEW
                 "nominal",
                 "lower_tolerance",
                 "upper_tolerance",
                 "measurement_1",
-                "measurement_2",
+                "measurement_2", 
                 "measurement_3",
                 "measurement_4",
                 "measurement_5",
@@ -88,16 +91,19 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             column_headers=[
                 "Element ID",
                 "Batch",
-                "Cavity",
+                "Cavity", 
                 "Class",
                 "Description",
                 "Measuring Inst.",
+                "Unit",                    # NEW
+                "Datum",                   # NEW  
+                "Eval Type",               # NEW
                 "Nominal",
                 "Lower Tol",
                 "Upper Tol",
                 "Meas 1",
                 "Meas 2",
-                "Meas 3",
+                "Meas 3", 
                 "Meas 4",
                 "Meas 5",
                 "Min",
@@ -110,10 +116,13 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             required_columns=[
                 "element_id",
                 "batch",
-                "cavity",
+                "cavity", 
                 "class",
                 "description",
                 "measuring_instrument",
+                "unit",                    # NEW
+                "datum",                   # NEW
+                "evaluation_type",         # NEW
                 "nominal",
                 "lower_tolerance",
                 "upper_tolerance",
@@ -121,7 +130,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             measurement_columns=[
                 "measurement_1",
                 "measurement_2",
-                "measurement_3",
+                "measurement_3", 
                 "measurement_4",
                 "measurement_5",
             ],
@@ -455,13 +464,23 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self._log_message(f"Closed results tab #{index}")
 
     def _run_study(self):
-        """Execute the dimensional study"""
+        """Execute the dimensional study with proper filtering"""
         try:
-            # Get dataframe from current table data
-            df = self.table_manager._get_dataframe_from_tables()
+            # Get filtered dataframe for processing
+            df = self.table_manager._get_processed_dataframe()
+            
             if df.empty:
-                QMessageBox.warning(self, "No Data", "No valid data found to process.")
-                return
+                # Check if there are only notes
+                all_df = self.table_manager._get_dataframe_from_tables()
+                if not all_df.empty and all(all_df['evaluation_type'] == 'Note'):
+                    # Handle notes only
+                    self._log_message("Processing note entries only")
+                    note_results = self.table_manager._handle_note_entries([])
+                    self._on_processing_finished(note_results)
+                    return
+                else:
+                    QMessageBox.warning(self, "No Data", "No valid data found to process.")
+                    return
 
             self._log_message(f"Starting dimensional analysis on {len(df)} records")
 
@@ -474,7 +493,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.processing_thread = ProcessingThread(df)
             self.processing_thread.progress_updated.connect(self.progress_bar.setValue)
             self.processing_thread.processing_finished.connect(
-                self._on_processing_finished
+                self._on_processing_finished_with_notes
             )
             self.processing_thread.error_occurred.connect(self._on_processing_error)
             self.processing_thread.start()
@@ -484,6 +503,16 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self._log_message(error_msg, "ERROR")
             QMessageBox.critical(self, "Processing Error", error_msg)
             self._set_ui_enabled(True)
+
+
+    def _on_processing_finished_with_notes(self, results: List[DimensionalResult]):
+        """Handle completion of processing including notes"""
+        # Add note entries to results
+        all_results = self.table_manager._handle_note_entries(results)
+        
+        # Call original method with combined results
+        self._on_processing_finished(all_results)
+
 
     def _start_processing_thread(self, df: pd.DataFrame):
         """Start the processing thread with the given dataframe"""
@@ -641,30 +670,8 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             )
             return
 
-        # Copy data from the selected row
-        row_data = [
-            current_table.item(current_row, col).text()
-            if current_table.item(current_row, col)
-            else ""
-            for col in range(current_table.columnCount())
-        ]
-
-        # Insert new row
-        new_row = current_table.rowCount()
-        current_table.insertRow(new_row)
-
-        for col, text in enumerate(row_data):
-            item = QTableWidgetItem(text)
-            current_table.setItem(new_row, col, item)
-
-        # Generate a new Element ID
-        current_table.setItem(
-            new_row,
-            0,
-            QTableWidgetItem(self.table_manager._get_next_element_id(current_table)),
-        )
-
-        self._mark_unsaved_changes()
+        # Use table manager's enhanced duplicate method
+        self.table_manager._duplicate_row(current_table)
 
     def _delete_row(self):
         """Delete the currently selected row"""
@@ -751,20 +758,54 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
             # Populate table
             for row_idx, (_, row) in enumerate(cavity_df.iterrows()):
+                # Handle dropdown columns first
+                dropdown_columns = {
+                    3: ("class", self.table_manager.class_options),
+                    5: ("measuring_instrument", self.table_manager.instrument_options), 
+                    6: ("unit", self.table_manager.unit_options),
+                    7: ("datum", self.table_manager.datum_options),
+                    8: ("evaluation_type", self.table_manager.evaluation_options),
+                    22: ("force_status", self.table_manager.force_status_options),
+                }
+                
                 for col_idx, col_name in enumerate(self.table_manager.display_columns):
-                    if col_name in row.index and pd.notna(row[col_name]):
-                        value = str(row[col_name])
+                    if col_idx in dropdown_columns:
+                        # Create dropdown for these columns
+                        dropdown_info = dropdown_columns[col_idx]
+                        combo = QComboBox()
+                        combo.addItems(dropdown_info[1])
+                        
+                        # Set value from dataframe if exists
+                        if col_name in row.index and pd.notna(row[col_name]):
+                            combo.setCurrentText(str(row[col_name]))
+                        else:
+                            # Set defaults
+                            if col_name == "unit":
+                                combo.setCurrentText("mm")
+                            elif col_name == "evaluation_type":
+                                combo.setCurrentText("Normal")
+                            elif col_name == "force_status":
+                                combo.setCurrentText("AUTO")
+                        
+                        combo.setStyleSheet(self.table_manager._get_combo_style())
+                        combo.setMaximumHeight(30)
+                        table.setCellWidget(row_idx, col_idx, combo)
+                        
                     else:
-                        value = ""
+                        # Handle regular columns
+                        if col_name in row.index and pd.notna(row[col_name]):
+                            value = str(row[col_name])
+                        else:
+                            value = ""
 
-                    item = QTableWidgetItem(value)
+                        item = QTableWidgetItem(value)
 
-                    # Make calculated columns read-only
-                    if col_idx >= 13:  # calculated columns
-                        item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                        item.setBackground(QColor(240, 240, 240))
+                        # Make calculated columns read-only (updated indices)
+                        if col_idx >= 17 and col_idx != 22:  # calculated columns except force_status
+                            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                            item.setBackground(QColor(240, 240, 240))
 
-                    table.setItem(row_idx, col_idx, item)
+                        table.setItem(row_idx, col_idx, item)
 
             # Add tab for this cavity
             if len(cavities) > 1:
@@ -772,6 +813,14 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             else:
                 tab_name = f"📋 All Data ({len(cavity_df)} items)"
             self.results_tabs.addTab(table, tab_name)
+
+    def _should_evaluate_dimension(self, table: QTableWidget, row: int) -> bool:
+        """Check if dimension should be evaluated based on evaluation type"""
+        eval_combo = table.cellWidget(row, 8)  # evaluation_type column
+        if isinstance(eval_combo, QComboBox):
+            eval_type = eval_combo.currentText()
+            return eval_type in ["Normal"]  # Only evaluate Normal dimensions
+        return True  # Default to evaluate if no dropdown
 
     def _set_ui_enabled(self, enabled: bool):
         """Enable/disable UI during processing"""

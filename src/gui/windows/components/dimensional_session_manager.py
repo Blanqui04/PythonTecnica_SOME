@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QTableWidgetItem,
     QFileDialog,
     QMessageBox,
+    QComboBox
 )
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor
@@ -57,24 +58,22 @@ class SessionManager:
             self._save_session_to_file(file_path)
 
     def _save_session_to_file(self, file_path: str):
-        """Save session data to file"""
+        """Save session data to file with dropdown support"""
         try:
             session_data = {
                 "metadata": {
                     "client_name": self.client_name,
                     "project_ref": self.project_ref,
                     "batch_number": self.batch_number,
-                    "report_type": self._parent.report_type_combo.currentText(),  # Fix: access via parent
-                    "manual_mode": self._parent.manual_mode,  # Fix: access via parent
+                    "report_type": self._parent.report_type_combo.currentText(),
+                    "manual_mode": self._parent.manual_mode,
                     "save_timestamp": datetime.now().isoformat(),
                 },
                 "table_data": [],
             }
 
             # Save data from all tables
-            for tab_idx in range(
-                self._parent.results_tabs.count()
-            ):  # Fix: access via parent
+            for tab_idx in range(self._parent.results_tabs.count()):
                 table = self._parent.results_tabs.widget(tab_idx)
                 if isinstance(table, QTableWidget):
                     tab_data = {
@@ -84,21 +83,31 @@ class SessionManager:
 
                     for row in range(table.rowCount()):
                         row_data = []
+                        dropdown_data = {}  # Store dropdown values separately
+                        
                         for col in range(table.columnCount()):
-                            item = table.item(row, col)
-                            row_data.append(item.text() if item else "")
-                        tab_data["rows"].append(row_data)
+                            # Check if this is a dropdown column
+                            cell_widget = table.cellWidget(row, col)
+                            if isinstance(cell_widget, QComboBox):
+                                dropdown_data[col] = cell_widget.currentText()
+                                row_data.append("")  # Placeholder for table item
+                            else:
+                                item = table.item(row, col)
+                                row_data.append(item.text() if item else "")
+                        
+                        tab_data["rows"].append({
+                            "cells": row_data,
+                            "dropdowns": dropdown_data
+                        })
 
                     session_data["table_data"].append(tab_data)
 
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(session_data, f, indent=2, ensure_ascii=False)
 
-            # Fix: access session_file via parent if it exists
             if hasattr(self._parent, "session_file"):
                 self._parent.session_file = file_path
 
-            # Fix: call parent's method if it exists
             if hasattr(self._parent, "_clear_unsaved_changes"):
                 self._parent._clear_unsaved_changes()
 
@@ -200,7 +209,7 @@ class SessionManager:
             )  # Use self._parent
 
     def _load_session_from_file(self, file_path: str):
-        """Load session data from file"""
+        """Load session data from file with dropdown support"""
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 session_data = json.load(f)
@@ -211,13 +220,13 @@ class SessionManager:
 
             metadata = session_data["metadata"]
 
-            # Update UI with metadata - access via parent
+            # Update UI with metadata
             if "report_type" in metadata and hasattr(self._parent, "report_type_combo"):
                 index = self._parent.report_type_combo.findText(metadata["report_type"])
                 if index >= 0:
                     self._parent.report_type_combo.setCurrentIndex(index)
 
-            # Set mode - access via parent
+            # Set mode
             if metadata.get("manual_mode", False):
                 if not self._parent.manual_mode:
                     self._parent._toggle_mode()
@@ -230,26 +239,82 @@ class SessionManager:
 
             # Load table data
             for tab_data in session_data["table_data"]:
-                table = (
-                    self._parent.table_manager._create_results_table()
-                )  # Access via parent's table_manager
+                table = self._parent.table_manager._create_results_table()
                 table.setRowCount(len(tab_data["rows"]))
 
-                for row_idx, row_data in enumerate(tab_data["rows"]):
+                for row_idx, row_info in enumerate(tab_data["rows"]):
+                    # Handle both old format (just arrays) and new format (dict with cells/dropdowns)
+                    if isinstance(row_info, dict):
+                        row_data = row_info.get("cells", [])
+                        dropdown_data = row_info.get("dropdowns", {})
+                    else:
+                        # Old format compatibility
+                        row_data = row_info
+                        dropdown_data = {}
+
+                    # Set regular cell data
                     for col_idx, cell_value in enumerate(row_data):
                         if col_idx < table.columnCount():
                             item = QTableWidgetItem(str(cell_value))
-
-                            # Make calculated columns read-only (columns 14-19)
-                            if col_idx >= 14:
+                            
+                            # Make calculated columns read-only (updated column indices)
+                            if col_idx >= 17 and col_idx != 22:  # calculated columns except force_status
                                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                                 item.setBackground(QColor(240, 240, 240))
 
                             table.setItem(row_idx, col_idx, item)
 
+                    # Set dropdown data
+                    for col_idx, dropdown_value in dropdown_data.items():
+                        col_idx = int(col_idx)  # JSON keys are strings
+                        if col_idx < table.columnCount():
+                            # Create appropriate dropdown based on column
+                            if col_idx == 3:  # class
+                                combo = QComboBox()
+                                combo.addItems(self._parent.table_manager.class_options)
+                                combo.setCurrentText(dropdown_value)
+                                combo.setStyleSheet(self._parent.table_manager._get_combo_style())
+                                combo.setMaximumHeight(30)
+                                table.setCellWidget(row_idx, col_idx, combo)
+                            elif col_idx == 5:  # measuring_instrument
+                                combo = QComboBox()
+                                combo.addItems(self._parent.table_manager.instrument_options)
+                                combo.setCurrentText(dropdown_value)
+                                combo.setStyleSheet(self._parent.table_manager._get_combo_style())
+                                combo.setMaximumHeight(30)
+                                table.setCellWidget(row_idx, col_idx, combo)
+                            elif col_idx == 6:  # unit
+                                combo = QComboBox()
+                                combo.addItems(self._parent.table_manager.unit_options)
+                                combo.setCurrentText(dropdown_value)
+                                combo.setStyleSheet(self._parent.table_manager._get_combo_style())
+                                combo.setMaximumHeight(30)
+                                table.setCellWidget(row_idx, col_idx, combo)
+                            elif col_idx == 7:  # datum
+                                combo = QComboBox()
+                                combo.addItems(self._parent.table_manager.datum_options)
+                                combo.setCurrentText(dropdown_value)
+                                combo.setStyleSheet(self._parent.table_manager._get_combo_style())
+                                combo.setMaximumHeight(30)
+                                table.setCellWidget(row_idx, col_idx, combo)
+                            elif col_idx == 8:  # evaluation_type
+                                combo = QComboBox()
+                                combo.addItems(self._parent.table_manager.evaluation_options)
+                                combo.setCurrentText(dropdown_value)
+                                combo.setStyleSheet(self._parent.table_manager._get_combo_style())
+                                combo.setMaximumHeight(30)
+                                table.setCellWidget(row_idx, col_idx, combo)
+                            elif col_idx == 22:  # force_status
+                                combo = QComboBox()
+                                combo.addItems(self._parent.table_manager.force_status_options)
+                                combo.setCurrentText(dropdown_value)
+                                combo.setStyleSheet(self._parent.table_manager._get_combo_style())
+                                combo.setMaximumHeight(30)
+                                table.setCellWidget(row_idx, col_idx, combo)
+
                 self._parent.results_tabs.addTab(table, tab_data["tab_name"])
 
-            # Set session file and clear unsaved changes via parent
+            # Set session file and clear unsaved changes
             if hasattr(self._parent, "session_file"):
                 self._parent.session_file = file_path
             if hasattr(self._parent, "_clear_unsaved_changes"):
@@ -260,9 +325,7 @@ class SessionManager:
         except Exception as e:
             error_msg = f"Failed to load session: {str(e)}"
             self._log_message(error_msg, "ERROR")
-            QMessageBox.critical(
-                self._parent, "Load Error", error_msg
-            )  # Use self._parent instead of self
+            QMessageBox.critical(self._parent, "Load Error", error_msg)
 
     def _auto_save_session(self):
         """Auto-save current session"""

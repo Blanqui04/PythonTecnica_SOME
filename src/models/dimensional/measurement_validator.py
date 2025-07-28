@@ -16,56 +16,67 @@ def validate_measurements(record: Dict[str, Any]) -> bool:
     logger = logging.getLogger(__name__)
 
     try:
-        # Check required fields
-        required_fields = ["element_id", "description", "nominal"]
+        # FIX: Check if this is a Note entry
+        evaluation_type = record.get("evaluation_type", "Normal")
+        is_note = evaluation_type == "Note"
+
+        # Check required fields - different for Notes
+        if is_note:
+            required_fields = ["element_id", "description"]  # Notes don't need nominal or measurements
+        else:
+            required_fields = ["element_id", "description", "nominal"]
+            
         for field in required_fields:
             if not record.get(field):
                 logger.warning(f"Missing required field '{field}' in record")
                 return False
 
-        # Validate nominal value
-        try:
-            nominal = float(record["nominal"])
-            if not (-1e6 <= nominal <= 1e6):  # Reasonable range check
-                logger.warning(f"Nominal value {nominal} is outside reasonable range")
-                return False
-        except (ValueError, TypeError):
-            logger.warning(f"Invalid nominal value: {record.get('nominal')}")
-            return False
-
-        # Validate measurements
-        measurements = record.get("measurements", [])
-        if not measurements:
-            logger.warning("No measurements provided")
-            return False
-
-        if not isinstance(measurements, list):
-            logger.warning("Measurements must be a list")
-            return False
-
-        # Check measurement values
-        valid_measurements = []
-        for i, measurement in enumerate(measurements):
+        # FIX: Validate nominal value only for non-Note entries
+        if not is_note:
             try:
-                value = float(measurement)
-                if not (-1e6 <= value <= 1e6):  # Reasonable range check
+                nominal = float(record["nominal"])
+                if not (-1e6 <= nominal <= 1e6):  # Reasonable range check
+                    logger.warning(f"Nominal value {nominal} is outside reasonable range")
+                    return False
+            except (ValueError, TypeError):
+                logger.warning(f"Invalid nominal value: {record.get('nominal')}")
+                return False
+
+        # FIX: Validate measurements - optional for Notes
+        measurements = record.get("measurements", [])
+        if not is_note and not measurements:
+            logger.warning("No measurements provided for non-Note entry")
+            return False
+
+        if measurements:  # Only validate if measurements exist
+            if not isinstance(measurements, list):
+                logger.warning("Measurements must be a list")
+                return False
+
+            # Check measurement values
+            valid_measurements = []
+            for i, measurement in enumerate(measurements):
+                try:
+                    value = float(measurement)
+                    if not (-1e6 <= value <= 1e6):  # Reasonable range check
+                        logger.warning(
+                            f"Measurement {i + 1} value {value} is outside reasonable range"
+                        )
+                        continue
+                    valid_measurements.append(value)
+                except (ValueError, TypeError):
                     logger.warning(
-                        f"Measurement {i + 1} value {value} is outside reasonable range"
+                        f"Invalid measurement value at position {i + 1}: {measurement}"
                     )
                     continue
-                valid_measurements.append(value)
-            except (ValueError, TypeError):
-                logger.warning(
-                    f"Invalid measurement value at position {i + 1}: {measurement}"
-                )
-                continue
 
-        if not valid_measurements:
-            logger.warning("No valid measurements found")
-            return False
+            # FIX: For non-Note entries, require at least one valid measurement
+            if not is_note and not valid_measurements:
+                logger.warning("No valid measurements found for non-Note entry")
+                return False
 
-        # Update record with valid measurements only
-        record["measurements"] = valid_measurements
+            # Update record with valid measurements only
+            record["measurements"] = valid_measurements
 
         # Validate tolerance if provided
         tolerance = record.get("tolerance")
@@ -209,15 +220,17 @@ def validate_batch_consistency(records: List[Dict[str, Any]]) -> List[str]:
                 f"Multiple batch numbers found: {', '.join(map(str, batches))}"
             )
 
-        # Check measurement count consistency
-        measurement_counts = [len(record.get("measurements", [])) for record in records]
-        min_measurements = min(measurement_counts) if measurement_counts else 0
-        max_measurements = max(measurement_counts) if measurement_counts else 0
+        # FIX: Check measurement count consistency - exclude Notes
+        non_note_records = [r for r in records if r.get("evaluation_type") != "Note"]
+        if non_note_records:
+            measurement_counts = [len(record.get("measurements", [])) for record in non_note_records]
+            min_measurements = min(measurement_counts) if measurement_counts else 0
+            max_measurements = max(measurement_counts) if measurement_counts else 0
 
-        if max_measurements - min_measurements > 2:
-            warnings.append(
-                f"Inconsistent measurement counts: {min_measurements} to {max_measurements}"
-            )
+            if max_measurements - min_measurements > 2:
+                warnings.append(
+                    f"Inconsistent measurement counts: {min_measurements} to {max_measurements}"
+                )
 
         # Check nominal value consistency for same element IDs
         element_nominals = {}
@@ -251,44 +264,56 @@ def validate_batch_consistency(records: List[Dict[str, Any]]) -> List[str]:
                 else:
                     element_tolerances[eid] = tolerance
 
-        # Check for missing critical fields across all records
-        critical_fields = ["element_id", "description", "nominal", "measurements"]
-        for field in critical_fields:
-            missing_count = sum(1 for record in records if not record.get(field))
-            if missing_count > 0:
-                warnings.append(
-                    f"{missing_count} records missing required field '{field}'"
-                )
+        # FIX: Check for missing critical fields across all records - different for Notes
+        for record in records:
+            is_note = record.get("evaluation_type") == "Note"
+            if is_note:
+                critical_fields = ["element_id", "description"]
+            else:
+                critical_fields = ["element_id", "description", "nominal", "measurements"]
+                
+            for field in critical_fields:
+                if not record.get(field):
+                    warnings.append(f"Record {record.get('element_id', 'Unknown')} missing required field '{field}'")
 
-        # Check for empty measurement lists
+        # FIX: Check for empty measurement lists - exclude Notes
         empty_measurements = sum(
             1
             for record in records
-            if not record.get("measurements")
-            or len(record.get("measurements", [])) == 0
+            if record.get("evaluation_type") != "Note" and (
+                not record.get("measurements") or len(record.get("measurements", [])) == 0
+            )
         )
         if empty_measurements > 0:
-            warnings.append(f"{empty_measurements} records have no measurements")
+            warnings.append(f"{empty_measurements} non-Note records have no measurements")
 
-        # Check for statistical validity concerns
-        single_measurement_count = sum(
-            1 for record in records if len(record.get("measurements", [])) == 1
-        )
-        if single_measurement_count > len(records) * 0.5:
-            warnings.append(
-                "Over 50% of records have only single measurements - statistical analysis limited"
+        # Check for statistical validity concerns - exclude Notes
+        non_note_with_measurements = [
+            record for record in records 
+            if record.get("evaluation_type") != "Note" and record.get("measurements")
+        ]
+        
+        if non_note_with_measurements:
+            single_measurement_count = sum(
+                1 for record in non_note_with_measurements 
+                if len(record.get("measurements", [])) == 1
             )
+            if single_measurement_count > len(non_note_with_measurements) * 0.5:
+                warnings.append(
+                    "Over 50% of measurement records have only single measurements - statistical analysis limited"
+                )
 
-        # Check for reasonable measurement ranges
+        # Check for reasonable measurement ranges - exclude Notes
         all_measurements = []
         for record in records:
-            measurements = record.get("measurements", [])
-            try:
-                all_measurements.extend(
-                    [float(m) for m in measurements if m is not None]
-                )
-            except (ValueError, TypeError):
-                pass
+            if record.get("evaluation_type") != "Note":
+                measurements = record.get("measurements", [])
+                try:
+                    all_measurements.extend(
+                        [float(m) for m in measurements if m is not None]
+                    )
+                except (ValueError, TypeError):
+                    pass
 
         if all_measurements:
             min_val = min(all_measurements)
