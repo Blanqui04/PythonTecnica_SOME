@@ -21,8 +21,7 @@ from PyQt5.QtGui import QColor, QFont
 import pandas as pd
 import sip  # type: ignore
 from typing import List, Dict, Any
-from src.models.dimensional.dimensional_result import DimensionalResult
-
+from src.models.dimensional.dimensional_result import DimensionalResult, DimensionalStatus
 
 class DimensionalTableManager:
     """Enhanced table manager with professional styling and improved functionality"""
@@ -45,7 +44,7 @@ class DimensionalTableManager:
         self.results: List[DimensionalResult] = []
         self._copied_row_data = None
 
-        # Enhanced dropdown options
+        # Updated dropdown options
         self.class_options = ["", "None", "SC", "CC", "IC"]
         self.instrument_options = [
             "",
@@ -57,6 +56,15 @@ class DimensionalTableManager:
             "Vision System",
         ]
         self.force_status_options = ["AUTO", "GOOD", "BAD"]
+        
+        # NEW: Add unit options
+        self.unit_options = ["mm", "°", "μm", "inch", "mil"]
+        
+        # NEW: Add datum options
+        self.datum_options = ["", "A", "B", "C", "D", "E", "F", "G", "H"]
+        
+        # NEW: Add evaluation options
+        self.evaluation_options = ["Normal", "Basic", "Informative", "Note"]
 
         # Styling constants
         self.colors = {
@@ -71,6 +79,14 @@ class DimensionalTableManager:
 
     def set_parent_window(self, parent):
         self.parent_window = parent
+
+    def _log_message(self, message: str, level: str = "INFO"):
+        """Delegate logging to parent window if available"""
+        if self.parent_window and hasattr(self.parent_window, '_log_message'):
+            self.parent_window._log_message(message, level)
+        else:
+            # Fallback to print if no parent logging available
+            print(f"[{level}] {message}")
 
     def _create_results_table(self) -> QTableWidget:
         """Create a professionally styled results table"""
@@ -130,28 +146,31 @@ class DimensionalTableManager:
             }
         """)
 
-        # Optimized column widths
+        # Updated column widths for new columns
         column_widths = {
-            0: 90,  # element_id
-            1: 60,  # batch
-            2: 60,  # cavity
-            3: 80,  # class
+            0: 70,   # element_id
+            1: 80,   # batch
+            2: 50,   # cavity
+            3: 60,   # class
             4: 220,  # description
-            5: 120,  # measuring_instrument
-            6: 80,  # nominal
-            7: 90,  # lower_tolerance
-            8: 90,  # upper_tolerance
-            9: 85,  # measurement_1
-            10: 85,  # measurement_2
-            11: 85,  # measurement_3
-            12: 85,  # measurement_4
-            13: 85,  # measurement_5
-            14: 75,  # minimum
-            15: 75,  # maximum
-            16: 75,  # mean
-            17: 85,  # std_deviation
-            18: 80,  # status
-            19: 100,  # force_status
+            5: 100,  # measuring_instrument
+            6: 70,   # unit
+            7: 40,   # datum
+            8: 90,   # evaluation_type
+            9: 70,   # nominal
+            10: 70,  # lower_tolerance
+            11: 70,  # upper_tolerance
+            12: 75,  # measurement_1
+            13: 75,  # measurement_2
+            14: 75,  # measurement_3
+            15: 75,  # measurement_4
+            16: 75,  # measurement_5
+            17: 65,  # minimum
+            18: 65,  # maximum
+            19: 70,  # mean
+            20: 75,  # std_deviation
+            21: 90,  # status
+            22: 100, # force_status
         }
 
         for col, width in column_widths.items():
@@ -283,6 +302,8 @@ class DimensionalTableManager:
             0: self._get_next_element_id(table),  # Auto-increment element_id
             1: str(self.batch_number),  # batch
             2: "1",  # cavity (default to 1)
+            6: "mm",  # default unit
+            8: "Normal",  # default evaluation type
         }
 
         for col, value in defaults.items():
@@ -292,47 +313,80 @@ class DimensionalTableManager:
         # Add enhanced dropdown widgets
         self._add_enhanced_dropdowns(table, row)
 
-        # Style calculated columns as read-only
-        for col in range(14, 20):  # calculated columns
-            item = QTableWidgetItem("")
-            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-            item.setBackground(self.colors["readonly"])
-            item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
-            table.setItem(row, col, item)
+        # Style calculated columns as read-only (updated column indices)
+        for col in range(17, 23):  # calculated columns (min, max, mean, std, status, force_status)
+            if col != 22:  # force_status is editable
+                item = QTableWidgetItem("")
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                item.setBackground(self.colors["readonly"])
+                item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
+                table.setItem(row, col, item)
 
     def _add_enhanced_dropdowns(self, table: QTableWidget, row: int):
         """Add professional dropdown widgets to specific columns"""
+        dropdown_style = self._get_combo_style()
+        
         # Class dropdown (column 3)
         class_combo = QComboBox()
         class_combo.addItems(self.class_options)
-        class_combo.setStyleSheet(self._get_combo_style())
+        class_combo.setCurrentText("")  # Default empty
+        class_combo.setStyleSheet(dropdown_style)
+        class_combo.setMaximumHeight(30)  # FIX: Set proper height
         table.setCellWidget(row, 3, class_combo)
 
         # Measuring instrument dropdown (column 5)
         instrument_combo = QComboBox()
         instrument_combo.addItems(self.instrument_options)
-        instrument_combo.setStyleSheet(self._get_combo_style())
+        instrument_combo.setCurrentText("")  # Default empty
+        instrument_combo.setStyleSheet(dropdown_style)
+        instrument_combo.setMaximumHeight(30)
         table.setCellWidget(row, 5, instrument_combo)
+        
+        # NEW: Unit dropdown (column 6)
+        unit_combo = QComboBox()
+        unit_combo.addItems(self.unit_options)
+        unit_combo.setCurrentText("mm")  # Default to mm
+        unit_combo.setStyleSheet(dropdown_style)
+        unit_combo.setMaximumHeight(30)
+        table.setCellWidget(row, 6, unit_combo)
+        
+        # NEW: Datum dropdown (column 7)
+        datum_combo = QComboBox()
+        datum_combo.addItems(self.datum_options)
+        datum_combo.setCurrentText("")  # Default empty
+        datum_combo.setStyleSheet(dropdown_style)
+        datum_combo.setMaximumHeight(30)
+        table.setCellWidget(row, 7, datum_combo)
+        
+        # NEW: Evaluation type dropdown (column 8)
+        eval_combo = QComboBox()
+        eval_combo.addItems(self.evaluation_options)
+        eval_combo.setCurrentText("Normal")  # Default to Normal
+        eval_combo.setStyleSheet(dropdown_style)
+        eval_combo.setMaximumHeight(30)
+        table.setCellWidget(row, 8, eval_combo)
 
-        # Force status dropdown (column 19)
+        # Force status dropdown (column 22) - MOVED
         force_combo = QComboBox()
         force_combo.addItems(self.force_status_options)
         force_combo.setCurrentText("AUTO")  # Default to AUTO
-        force_combo.setStyleSheet(self._get_combo_style())
-        table.setCellWidget(row, 19, force_combo)
+        force_combo.setStyleSheet(dropdown_style)
+        force_combo.setMaximumHeight(30)
+        table.setCellWidget(row, 22, force_combo)
 
     def _get_combo_style(self) -> str:
-        """Professional combobox styling"""
+        """Professional combobox styling with proper sizing"""
         return """
             QComboBox {
                 background-color: #ffffff;
                 border: 1px solid #ced4da;
                 border-radius: 4px;
-                padding: 6px 8px;
+                padding: 4px 6px;
                 color: #495057;
                 font-family: 'Segoe UI', sans-serif;
-                font-size: 11px;
-                min-height: 20px;
+                font-size: 10px;
+                max-height: 20px;
+                min-height: 10px;
             }
             QComboBox:hover {
                 border-color: #3498db;
@@ -345,16 +399,16 @@ class DimensionalTableManager:
             QComboBox::drop-down {
                 subcontrol-origin: padding;
                 subcontrol-position: top right;
-                width: 20px;
+                width: 16px;
                 border-left: 1px solid #ced4da;
                 border-top-right-radius: 4px;
                 border-bottom-right-radius: 4px;
                 background-color: #f8f9fa;
             }
             QComboBox::down-arrow {
-                width: 12px;
-                height: 12px;
-                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTMgNEw2IDdMOSA0IiBzdHJva2U9IiM2Yzc1N2QiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+);
+                width: 8px;
+                height: 8px;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIgM0w1IDZMOCAzIiBzdHJva2U9IiM2Yzc1N2QiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+);
             }
             QComboBox QAbstractItemView {
                 background-color: #ffffff;
@@ -363,6 +417,7 @@ class DimensionalTableManager:
                 selection-background-color: #3498db;
                 selection-color: #ffffff;
                 outline: none;
+                font-size: 10px;
             }
         """
 
@@ -406,10 +461,10 @@ class DimensionalTableManager:
         while next_num in existing_ids:
             next_num += 1
 
-        return f"ELEM_{next_num:03d}"
+        return f"Nº {next_num:03d}"
 
     def _duplicate_row(self, table: QTableWidget):
-        """Enhanced duplicate row with proper dropdown handling"""
+        """Enhanced duplicate row with proper dropdown handling for new columns"""
         current_row = table.currentRow()
         if current_row < 0:
             QMessageBox.information(
@@ -436,30 +491,55 @@ class DimensionalTableManager:
             if col == 0:  # Generate new element_id
                 item = QTableWidgetItem(self._get_next_element_id(table))
                 table.setItem(new_row, col, item)
-            elif col in [3, 5, 19]:  # Dropdown columns
+            elif col in [3, 5, 6, 7, 8, 22]:  # Dropdown columns (updated)
                 if col == 3:  # class
                     combo = QComboBox()
                     combo.addItems(self.class_options)
                     combo.setCurrentText(value)
                     combo.setStyleSheet(self._get_combo_style())
+                    combo.setMaximumHeight(30)
                     table.setCellWidget(new_row, col, combo)
                 elif col == 5:  # measuring_instrument
                     combo = QComboBox()
                     combo.addItems(self.instrument_options)
                     combo.setCurrentText(value)
                     combo.setStyleSheet(self._get_combo_style())
+                    combo.setMaximumHeight(30)
                     table.setCellWidget(new_row, col, combo)
-                elif col == 19:  # force_status
+                elif col == 6:  # unit
+                    combo = QComboBox()
+                    combo.addItems(self.unit_options)
+                    combo.setCurrentText(value if value else "mm")
+                    combo.setStyleSheet(self._get_combo_style())
+                    combo.setMaximumHeight(30)
+                    table.setCellWidget(new_row, col, combo)
+                elif col == 7:  # datum
+                    combo = QComboBox()
+                    combo.addItems(self.datum_options)
+                    combo.setCurrentText(value)
+                    combo.setStyleSheet(self._get_combo_style())
+                    combo.setMaximumHeight(30)
+                    table.setCellWidget(new_row, col, combo)
+                elif col == 8:  # evaluation_type
+                    combo = QComboBox()
+                    combo.addItems(self.evaluation_options)
+                    combo.setCurrentText(value if value else "Normal")
+                    combo.setStyleSheet(self._get_combo_style())
+                    combo.setMaximumHeight(30)
+                    table.setCellWidget(new_row, col, combo)
+                elif col == 22:  # force_status
                     combo = QComboBox()
                     combo.addItems(self.force_status_options)
                     combo.setCurrentText(value if value else "AUTO")
                     combo.setStyleSheet(self._get_combo_style())
+                    combo.setMaximumHeight(30)
                     table.setCellWidget(new_row, col, combo)
-            elif col >= 14:  # Calculated columns - make read-only
-                item = QTableWidgetItem("")
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                item.setBackground(self.colors["readonly"])
-                table.setItem(new_row, col, item)
+            elif col >= 17:  # Calculated columns - make read-only (updated)
+                if col != 22:  # force_status is editable
+                    item = QTableWidgetItem("")
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                    item.setBackground(self.colors["readonly"])
+                    table.setItem(new_row, col, item)
             else:  # Regular columns
                 item = QTableWidgetItem(str(value))
                 table.setItem(new_row, col, item)
@@ -529,103 +609,102 @@ class DimensionalTableManager:
                 f"✅ Updated tables with {len(results)} results"
             )
 
-    def _update_row_with_result(
-        self, table: QTableWidget, row: int, result: DimensionalResult
-    ):
-        """Update single row with result and highlight violations"""
+    def _update_row_with_result(self, table: QTableWidget, row: int, result: DimensionalResult):
+        """Update single row with result and handle force status"""
+        
+        # Get force status from dropdown
+        force_combo = table.cellWidget(row, 22)  # Updated column index
+        force_status = force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO"
+        
         # Get tolerance values for violation checking
-        lower_tol_item = table.item(row, 7)
-        upper_tol_item = table.item(row, 8)
+        lower_tol_item = table.item(row, 10)  # Updated column index
+        upper_tol_item = table.item(row, 11)  # Updated column index
+        nominal_item = table.item(row, 9)     # Updated column index
 
         lower_tol = None
         upper_tol = None
+        nominal = None
 
         try:
             if lower_tol_item and lower_tol_item.text():
                 lower_tol = float(lower_tol_item.text())
             if upper_tol_item and upper_tol_item.text():
                 upper_tol = float(upper_tol_item.text())
+            if nominal_item and nominal_item.text():
+                nominal = float(nominal_item.text())
         except ValueError:
             pass
 
-        # Update calculated columns with enhanced formatting
+        # FIX: Handle GD&T case where nominal = 0
+        if nominal == 0.0 and upper_tol is not None:
+            # For GD&T, treat as 0 ± upper_tolerance
+            lower_tol = 0.0
+            # upper_tol remains as is
+
+        # Determine final status based on force status
+        if force_status == "GOOD":
+            final_status = "GOOD"
+        elif force_status == "BAD":
+            final_status = "BAD"
+        else:  # AUTO
+            final_status = result.status.value
+
+        # Update calculated columns with enhanced formatting (updated column indices)
         calc_data = [
-            (
-                14,
-                f"{min(result.measurements):.4f}" if result.measurements else "",
-                min(result.measurements) if result.measurements else None,
-            ),
-            (
-                15,
-                f"{max(result.measurements):.4f}" if result.measurements else "",
-                max(result.measurements) if result.measurements else None,
-            ),
-            (16, f"{result.mean:.4f}" if result.mean else "", result.mean),
-            (17, f"{result.std_dev:.4f}" if result.std_dev else "", result.std_dev),
-            (18, result.status.value, None),
+            (17, f"{min(result.measurements):.4f}" if result.measurements else "", min(result.measurements) if result.measurements else None),
+            (18, f"{max(result.measurements):.4f}" if result.measurements else "", max(result.measurements) if result.measurements else None),
+            (19, f"{result.mean:.4f}" if result.mean else "", result.mean),
+            (20, f"{result.std_dev:.4f}" if result.std_dev else "", result.std_dev),
+            (21, final_status, None),  # Use final_status instead of result.status.value
         ]
 
         for col_idx, display_value, numeric_value in calc_data:
             item = table.item(row, col_idx)
             if not item:
                 item = QTableWidgetItem()
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                if col_idx != 21:  # Don't make status read-only for manual override
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 table.setItem(row, col_idx, item)
 
             item.setText(str(display_value))
             item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
 
-            # Enhanced status coloring
-            if col_idx == 18:  # status column
+            # Enhanced status coloring (column 21)
+            if col_idx == 21:  # status column
                 if display_value == "GOOD":
-                    item.setBackground(self.colors["good"])
-                    item.setForeground(QColor(39, 174, 96))  # Dark green text
+                    item.setBackground(QColor(144, 238, 144))  # Light green
+                    item.setForeground(QColor(39, 174, 96))    # Dark green text
                 elif display_value == "BAD":
-                    item.setBackground(self.colors["bad"])
-                    item.setForeground(QColor(231, 76, 60))  # Dark red text
-                else:
-                    item.setBackground(self.colors["warning"])
-                    item.setForeground(QColor(243, 156, 18))  # Dark orange text
+                    item.setBackground(QColor(255, 182, 193))  # Light red
+                    item.setForeground(QColor(231, 76, 60))    # Dark red text
+                elif display_value == "NO_DATA":
+                    item.setBackground(QColor(173, 216, 230))  # Light blue
+                    item.setForeground(QColor(52, 152, 219))   # Blue text
+                else:  # WARNING or other
+                    item.setBackground(QColor(255, 255, 224))  # Light yellow
+                    item.setForeground(QColor(243, 156, 18))   # Dark orange text
+            
+            # DON'T highlight measurement statistics (min, max, mean, std_dev)
+            elif col_idx in [17, 18, 19, 20]:
+                item.setBackground(self.colors["readonly"])
+                item.setForeground(QColor(52, 73, 94))  # Standard text color
 
-            # Highlight tolerance violations in measurement columns
-            elif col_idx in [14, 15, 16] and numeric_value is not None:
-                if self._is_outside_tolerance(numeric_value, lower_tol, upper_tol):
-                    item.setBackground(self.colors["bad"])
-                    item.setForeground(QColor(255, 255, 255))  # White text for contrast
-                    item.setToolTip(
-                        f"⚠️ Value {numeric_value:.4f} is outside tolerance!"
-                    )
-                else:
-                    item.setBackground(self.colors["readonly"])
-                    item.setForeground(
-                        QColor(39, 174, 96)
-                    )  # Green text for good values
+        # Highlight individual measurement violations (updated column indices)
+        self._highlight_measurement_violations(table, row, result, lower_tol, upper_tol, nominal)
 
-        # Also highlight individual measurement violations
-        self._highlight_measurement_violations(table, row, result, lower_tol, upper_tol)
-
-    def _highlight_measurement_violations(
-        self,
-        table: QTableWidget,
-        row: int,
-        result: DimensionalResult,
-        lower_tol,
-        upper_tol,
-    ):
+    def _highlight_measurement_violations(self, table: QTableWidget, row: int, result: DimensionalResult, lower_tol, upper_tol, nominal):
         """Highlight individual measurement cells that violate tolerance"""
-        measurement_cols = [9, 10, 11, 12, 13]  # measurement columns
+        measurement_cols = [12, 13, 14, 15, 16]  # Updated measurement columns
 
         for i, col in enumerate(measurement_cols):
             item = table.item(row, col)
             if item and item.text():
                 try:
                     value = float(item.text())
-                    if self._is_outside_tolerance(value, lower_tol, upper_tol):
+                    if self._is_outside_tolerance(value, lower_tol, upper_tol, nominal):
                         item.setBackground(self.colors["bad"])
                         item.setForeground(QColor(255, 255, 255))
-                        item.setToolTip(
-                            f"⚠️ Measurement {value:.4f} violates tolerance!"
-                        )
+                        item.setToolTip(f"⚠️ Measurement {value:.4f} violates tolerance!")
                         # Add bold font for emphasis
                         font = item.font()
                         font.setBold(True)
@@ -638,8 +717,16 @@ class DimensionalTableManager:
                 except ValueError:
                     pass
 
-    def _is_outside_tolerance(self, value: float, lower_tol, upper_tol) -> bool:
-        """Check if value is outside tolerance range"""
+    def _is_outside_tolerance(self, value: float, lower_tol, upper_tol, nominal=None) -> bool:
+        """Check if value is outside tolerance range, handling GD&T cases"""
+        # Handle GD&T case where nominal = 0
+        if nominal == 0.0 and upper_tol is not None:
+            # For GD&T, check if absolute value exceeds upper tolerance
+            if abs(value) > upper_tol:
+                return True
+            return False
+        
+        # Standard tolerance checking
         if lower_tol is not None and value < lower_tol:
             return True
         if upper_tol is not None and value > upper_tol:
@@ -662,7 +749,10 @@ class DimensionalTableManager:
                 row_data = {}
                 valid_row = False
 
-                for col, col_name in enumerate(self.display_columns[:20]):
+                for col, col_name in enumerate(self.display_columns):
+                    if col >= len(self.display_columns):
+                        break
+                        
                     # Handle dropdown widgets
                     cell_widget = table.cellWidget(row, col)
                     if isinstance(cell_widget, QComboBox):
@@ -677,16 +767,13 @@ class DimensionalTableManager:
                     if not value:
                         value = None
                     else:
-                        # Enhanced numeric validation
-                        if (
-                            col_name
-                            in ["nominal", "lower_tolerance", "upper_tolerance"]
-                            + self.measurement_columns
-                        ):
+                        # Enhanced numeric validation for updated columns
+                        numeric_columns = ["nominal", "lower_tolerance", "upper_tolerance"] + self.measurement_columns
+                        if col_name in numeric_columns:
                             try:
                                 numeric_value = float(value)
                                 row_data[col_name] = numeric_value
-                                if col_name == "nominal":
+                                if col_name == "nominal" or any(col_name == f"measurement_{i}" for i in range(1, 6)):
                                     valid_row = True
                             except (ValueError, TypeError):
                                 if self.parent_window:
@@ -700,6 +787,15 @@ class DimensionalTableManager:
                             if col_name in ["element_id", "description"] and value:
                                 valid_row = True
 
+                # Check for Note entries (evaluation_type = "Note")
+                if row_data.get("evaluation_type") == "Note":
+                    # For notes, we don't need measurements, just description
+                    if row_data.get("element_id") and row_data.get("description"):
+                        valid_row = True
+                        # Force status for notes if not set
+                        if not row_data.get("force_status") or row_data.get("force_status") == "AUTO":
+                            row_data["force_status"] = "GOOD"  # Default notes to GOOD
+
                 # Auto-fill batch if empty
                 if not row_data.get("batch"):
                     row_data["batch"] = self.batch_number
@@ -707,34 +803,41 @@ class DimensionalTableManager:
                 # Enhanced validation
                 has_element_id = row_data.get("element_id") is not None
                 has_description = row_data.get("description") is not None
-                has_nominal = row_data.get("nominal") is not None
-                has_measurements = any(
-                    row_data.get(f"measurement_{i}") is not None for i in range(1, 6)
-                )
+                is_note = row_data.get("evaluation_type") == "Note"
+                
+                # For notes, we don't need measurements or nominal
+                if is_note:
+                    if has_element_id and has_description:
+                        all_data.append(row_data)
+                else:
+                    # Normal validation for measurement entries
+                    has_nominal_or_tolerance = (
+                        row_data.get("nominal") is not None or 
+                        row_data.get("upper_tolerance") is not None or
+                        row_data.get("lower_tolerance") is not None
+                    )
+                    has_measurements = any(
+                        row_data.get(f"measurement_{i}") is not None for i in range(1, 6)
+                    )
 
-                if (
-                    has_element_id
-                    and has_description
-                    and has_nominal
-                    and has_measurements
-                ):
-                    all_data.append(row_data)
-                elif valid_row:
-                    missing = []
-                    if not has_element_id:
-                        missing.append("element_id")
-                    if not has_description:
-                        missing.append("description")
-                    if not has_nominal:
-                        missing.append("nominal")
-                    if not has_measurements:
-                        missing.append("measurements")
+                    if has_element_id and has_description and has_nominal_or_tolerance and has_measurements:
+                        all_data.append(row_data)
+                    elif valid_row:
+                        missing = []
+                        if not has_element_id:
+                            missing.append("element_id")
+                        if not has_description:
+                            missing.append("description")
+                        if not has_nominal_or_tolerance:
+                            missing.append("nominal/tolerance")
+                        if not has_measurements:
+                            missing.append("measurements")
 
-                    if self.parent_window:
-                        self.parent_window._log_message(
-                            f"⚠️ Skipping row {row + 1}: missing {', '.join(missing)}",
-                            "WARNING",
-                        )
+                        if self.parent_window:
+                            self.parent_window._log_message(
+                                f"⚠️ Skipping row {row + 1}: missing {', '.join(missing)}",
+                                "WARNING",
+                            )
 
         if not all_data:
             return pd.DataFrame()
@@ -1112,3 +1215,207 @@ class DimensionalTableManager:
                         stats["warning_count"] += 1
 
         return stats
+
+
+# ADDITIONAL METHODS NEEDED FOR dimensional_table_manager.py
+
+# Add method to filter dimensions based on evaluation type:
+
+    def _filter_dimensions_for_evaluation(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Filter dataframe to only include dimensions that should be evaluated"""
+        if 'evaluation_type' not in df.columns:
+            return df
+        
+        # Only process Normal dimensions and Notes (Notes get forced status)
+        evaluation_df = df[df['evaluation_type'].isin(['Normal', 'Note'])].copy()
+        
+        self._log_message(
+            f"Filtered {len(df)} total dimensions to {len(evaluation_df)} for evaluation " +
+            f"({len(df[df['evaluation_type'] == 'Basic'])} Basic, " + 
+            f"{len(df[df['evaluation_type'] == 'Informative'])} Informative excluded)"
+        )
+        
+        return evaluation_df
+
+    # Add method to handle Note entries:
+
+    def _handle_note_entries(self, results):
+        """Handle note entries and create appropriate DimensionalResult objects"""
+        all_results = []
+        
+        for result in results:
+            if hasattr(result, 'to_dict'):
+                row = result.to_dict()
+            else:
+                row = result
+                
+            try:
+                # Extract measurements from the row data
+                measurements = []
+                for i in range(1, 6):  # measurement_1 to measurement_5
+                    meas_key = f'measurement_{i}'
+                    if meas_key in row and row[meas_key] is not None:
+                        try:
+                            measurements.append(float(row[meas_key]))
+                        except (ValueError, TypeError):
+                            continue
+                
+                # Calculate mean and std_dev if measurements exist
+                if measurements:
+                    mean_val = sum(measurements) / len(measurements)
+                    if len(measurements) > 1:
+                        variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
+                        std_dev_val = variance ** 0.5
+                    else:
+                        std_dev_val = 0.0
+                else:
+                    mean_val = 0.0
+                    std_dev_val = 0.0
+                    measurements = []
+                
+                # Calculate deviations from nominal
+                nominal_val = float(row.get('nominal', 0))
+                deviations = [meas - nominal_val for meas in measurements]
+                
+                # Check tolerances and count out-of-spec measurements
+                lower_tol = row.get('lower_tolerance')
+                upper_tol = row.get('upper_tolerance')
+                out_of_spec_count = 0
+                
+                if lower_tol is not None and upper_tol is not None:
+                    try:
+                        lower_tol = float(lower_tol)
+                        upper_tol = float(upper_tol)
+                        for meas in measurements:
+                            if meas < (nominal_val + lower_tol) or meas > (nominal_val + upper_tol):
+                                out_of_spec_count += 1
+                    except (ValueError, TypeError):
+                        pass
+                
+                # Determine status
+                force_status = row.get('force_status', 'AUTO')
+                if force_status == 'GOOD':
+                    status = DimensionalStatus.GOOD
+                elif force_status == 'BAD':
+                    status = DimensionalStatus.BAD
+                else:
+                    # Auto-determine based on out-of-spec count
+                    status = DimensionalStatus.BAD if out_of_spec_count > 0 else DimensionalStatus.GOOD
+                
+                # Create DimensionalResult with correct parameters
+                note_result = DimensionalResult(
+                    element_id=row.get('element_id', ''),
+                    batch=row.get('batch', ''),
+                    cavity=row.get('cavity', ''),
+                    classe=row.get('class', ''),  # Note: 'classe' not 'class'
+                    description=row.get('description', ''),
+                    nominal=nominal_val,
+                    lower_tolerance=lower_tol,
+                    upper_tolerance=upper_tol,
+                    measurements=measurements,
+                    deviation=deviations,
+                    mean=mean_val,
+                    std_dev=std_dev_val,
+                    out_of_spec_count=out_of_spec_count,
+                    status=status,
+                    gdt_flags={},  # Initialize empty dict
+                    datum_element_id=row.get('datum'),
+                    feature_type=row.get('evaluation_type'),
+                    warnings=[]
+                )
+                
+                all_results.append(note_result)
+                
+            except Exception as e:
+                self._log_message(f"Error creating DimensionalResult: {str(e)}", "ERROR")
+                continue
+        
+        return all_results
+
+    # Update the method that calls processing to use filtering:
+
+    def _get_processed_dataframe(self) -> pd.DataFrame:
+        """Get dataframe ready for processing with proper filtering"""
+        df = self._get_dataframe_from_tables()
+        
+        if df.empty:
+            return df
+            
+        # Filter for evaluation
+        filtered_df = self._filter_dimensions_for_evaluation(df)
+        
+        # Remove Note entries from processing (they'll be handled separately)
+        processing_df = filtered_df[filtered_df['evaluation_type'] != 'Note'].copy()
+        
+        return processing_df
+
+    # ADD TO dimensional_table_manager.py - Update GD&T helper for new column indices:
+
+    def _apply_gdt_to_row(self, table: QTableWidget, row: int, gdt_text: str, dialog):
+        """Apply GD&T text to table row with enhanced formatting (updated column indices)"""
+        if not gdt_text.strip():
+            dialog.accept()
+            return
+
+        try:
+            from src.models.dimensional.gdt_interpreter import GDTInterpreter
+
+            gdt_interpreter = GDTInterpreter()
+            formatted_text = gdt_interpreter.format_gdt_display(gdt_text)
+
+            # Apply to description column (column 4)
+            desc_item = table.item(row, 4)
+            if not desc_item:
+                desc_item = QTableWidgetItem()
+                table.setItem(row, 4, desc_item)
+
+            desc_item.setText(formatted_text)
+
+            # Enhanced GD&T parsing and tolerance application
+            gdt_info = gdt_interpreter.parse_gdt_description(formatted_text)
+            if gdt_info.get("has_gdt") and gdt_info.get("tolerance_value"):
+                # Updated column indices for tolerances
+                lower_item = table.item(row, 10)  # lower_tolerance
+                upper_item = table.item(row, 11)  # upper_tolerance
+
+                if (not lower_item or not lower_item.text()) and (
+                    not upper_item or not upper_item.text()
+                ):
+                    nominal_item = table.item(row, 9)  # nominal
+                    nominal = (
+                        float(nominal_item.text())
+                        if nominal_item and nominal_item.text()
+                        else 0.0
+                    )
+
+                    lower_tol, upper_tol = (
+                        gdt_interpreter.convert_gdt_to_tolerance_range(
+                            gdt_info, nominal
+                        )
+                    )
+
+                    if not lower_item:
+                        lower_item = QTableWidgetItem()
+                        table.setItem(row, 10, lower_item)
+                    if not upper_item:
+                        upper_item = QTableWidgetItem()
+                        table.setItem(row, 11, upper_item)
+
+                    lower_item.setText(f"{lower_tol:.4f}")
+                    upper_item.setText(f"{upper_tol:.4f}")
+
+            self._mark_unsaved_changes()
+            if self.parent_window:
+                self.parent_window._log_message(f"🔧 Applied GD&T: {formatted_text}")
+
+        except ImportError:
+            QMessageBox.warning(
+                self.parent_window, "GD&T Helper", "GD&T interpreter not available."
+            )
+        except Exception as e:
+            if self.parent_window:
+                self.parent_window._log_message(
+                    f"❌ GD&T application error: {str(e)}", "ERROR"
+                )
+
+        dialog.accept()

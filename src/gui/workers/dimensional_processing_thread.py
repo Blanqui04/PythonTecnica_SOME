@@ -7,7 +7,7 @@ import pandas as pd
 import logging
 
 from src.services.dimensional_service import DimensionalService
-from src.models.dimensional.gdt_interpreter import GDTInterpreter
+#from src.models.dimensional.gdt_interpreter import GDTInterpreter
 
 class ProcessingThread(QThread):
     """Thread for processing dimensional analysis to prevent UI freezing"""
