@@ -615,7 +615,7 @@ class DimensionalTableManager:
                 cavity_item = table.item(row, 2)
 
                 if not all([element_id_item, batch_item, cavity_item]):
-                    self._log_message(f"    ⚠️ Row {row + 1}: Missing identifier items", "WARNING")
+                    self._log_message(f" ⚠️ Row {row + 1}: Missing identifier items", "WARNING")
                     continue
 
                 element_id = element_id_item.text()
@@ -647,45 +647,31 @@ class DimensionalTableManager:
 
 
     def _update_row_with_result(self, table: QTableWidget, row: int, result: DimensionalResult):
-        """Update single row with result - FIXED VERSION with comprehensive logging"""
+        """Update single row with result - with enhanced styling and debugging"""
         element_id = result.element_id
         self._log_message(f"      🔧 Updating {element_id} with result:", "DEBUG")
-        self._log_message(f"        Status: {result.status.value}", "DEBUG")
-        self._log_message(f"        Measurements: {result.measurements}", "DEBUG")
-        self._log_message(f"        Mean: {result.mean:.4f}", "DEBUG")
-        self._log_message(f"        Std Dev: {result.std_dev:.4f}", "DEBUG")
         
         # Get force status from dropdown
         force_combo = table.cellWidget(row, 22)  # force_status column
         force_status = force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO"
-        self._log_message(f"        Force Status: {force_status}", "DEBUG")
         
-        # FIXED: Determine final status based on force status FIRST
+        # Determine final status
         if force_status == "GOOD":
             final_status = "GOOD"
-            self._log_message("-> Final Status: GOOD (forced)", "DEBUG")
         elif force_status == "BAD":
             final_status = "BAD"
-            self._log_message("-> Final Status: BAD (forced)", "DEBUG")
         else:  # AUTO
-            # Check if this is a Note entry
             eval_combo = table.cellWidget(row, 8)  # evaluation_type column
             evaluation_type = eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal"
-            
-            if evaluation_type == "Note":
-                final_status = "GOOD"  # Notes default to GOOD when AUTO
-                self._log_message("-> Final Status: GOOD (Note default)", "DEBUG")
-            else:
-                final_status = result.status.value
-                self._log_message(f"-> Final Status: {final_status} (calculated)", "DEBUG")
+            final_status = "GOOD" if evaluation_type == "Note" else result.status.value
 
-        # Update calculated columns (updated column indices)
+        # Update calculated columns
         updates = [
             (17, f"{min(result.measurements):.4f}" if result.measurements else ""),  # minimum
             (18, f"{max(result.measurements):.4f}" if result.measurements else ""),  # maximum
-            (19, f"{result.mean:.4f}" if result.mean else ""),                       # mean
-            (20, f"{result.std_dev:.4f}" if result.std_dev else ""),               # std_deviation
-            (21, final_status),                                                      # status
+            (19, f"{result.mean:.4f}" if result.mean else ""),  # mean
+            (20, f"{result.std_dev:.4f}" if result.std_dev else ""),  # std_deviation
+            (21, final_status),  # status
         ]
 
         for col_idx, value in updates:
@@ -697,31 +683,40 @@ class DimensionalTableManager:
                 table.setItem(row, col_idx, item)
 
             item.setText(str(value))
-            item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
-
-            # Enhanced status coloring (column 21) - BACKGROUND ONLY
+            
+            # DEBUG: Log before applying styles
+            self._log_message(f"        Applying styles to row {row}, col {col_idx} (value: {value})", "DEBUG")
+            
             if col_idx == 21:  # status column
-                if value == "GOOD":
+                # Apply status background colors
+                if final_status in ["GOOD", "OK"]:
                     item.setBackground(QColor(144, 238, 144))  # Light green
-                    item.setForeground(QColor(0, 0, 0))        # BLACK text
-                elif value == "BAD":
+                    self._log_message("          Setting GOOD/OK status (green)", "DEBUG")
+                elif final_status == "BAD":
                     item.setBackground(QColor(255, 182, 193))  # Light red
-                    item.setForeground(QColor(0, 0, 0))        # BLACK text
+                    self._log_message("          Setting BAD status (red)", "DEBUG")
                 else:
                     item.setBackground(QColor(255, 255, 224))  # Light yellow
-                    item.setForeground(QColor(0, 0, 0))        # BLACK text
+                    self._log_message("          Setting other status (yellow)", "DEBUG")
+                
+                # Status text styling
+                item.setForeground(QColor(0, 0, 0))  # Black text
+                font = QFont("Segoe UI", 9)
+                item.setFont(font)
             else:
-                # Statistics columns - gray background, black text
-                item.setBackground(self.colors["readonly"])
-                item.setForeground(QColor(0, 0, 0))
+                # Statistics columns (min, max, mean, std)
+                item.setBackground(QColor(240, 240, 240))  # Light gray
+                item.setForeground(QColor(0, 0, 0))  # Black text
+                font = QFont("Segoe UI", 9)
+                item.setFont(font)
 
-        # Highlight measurement violations
+        # Highlight measurement violations with more debugging
         self._highlight_measurement_violations_with_logging(table, row, result, element_id)
 
 
     def _highlight_measurement_violations_with_logging(self, table: QTableWidget, row: int, 
-                                                       result: DimensionalResult, element_id: str):
-        """Highlight measurement violations with logging"""
+                                                    result: DimensionalResult, element_id: str):
+        """Highlight measurement violations with enhanced debugging"""
         measurement_cols = [12, 13, 14, 15, 16]  # measurement columns
         violations_found = 0
         
@@ -731,54 +726,52 @@ class DimensionalTableManager:
         
         if result.lower_tolerance is not None and result.upper_tolerance is not None:
             if result.nominal == 0.0 and result.lower_tolerance == 0.0:
-                # GD&T case with nominal=0
                 upper_limit = result.upper_tolerance
-                self._log_message(f"        GD&T tolerance check: |value| <= {upper_limit}", "DEBUG")
             else:
-                # Standard bilateral tolerance
                 lower_limit = result.nominal + result.lower_tolerance
                 upper_limit = result.nominal + result.upper_tolerance
-                self._log_message(f"        Standard tolerance: {lower_limit} <= value <= {upper_limit}", "DEBUG")
 
         for i, col in enumerate(measurement_cols):
             item = table.item(row, col)
-            if item and item.text():
-                try:
-                    value = float(item.text())
-                    is_violation = False
-                    
-                    if result.nominal == 0.0 and result.lower_tolerance == 0.0 and upper_limit is not None:
-                        # GD&T case
-                        is_violation = abs(value) > upper_limit
-                    elif lower_limit is not None and upper_limit is not None:
-                        # Standard case
-                        is_violation = not (lower_limit <= value <= upper_limit)
-                    
-                    if is_violation:
-                        item.setBackground(self.colors["bad"])    # Red background
-                        item.setForeground(QColor(0, 0, 0))       # BLACK text
-                        item.setToolTip(f"⚠️ Measurement {value:.4f} violates tolerance!")
-                        font = item.font()
-                        font.setBold(True)
-                        item.setFont(font)
-                        violations_found += 1
-                        self._log_message(f"❌ Measurement {i+1}: {value:.4f} VIOLATES tolerance", "DEBUG")
-                    else:
-                        item.setBackground(self.colors["white"])  # White background
-                        item.setForeground(QColor(0, 0, 0))       # BLACK text
-                        item.setToolTip("")
-                        font = item.font()
-                        font.setBold(False)
-                        item.setFont(font)
-                        self._log_message(f"✅ Measurement {i+1}: {value:.4f} OK", "DEBUG")
-                        
-                except ValueError:
-                    self._log_message(f"⚠️ Invalid measurement value in column {i+1}", "WARNING")
-        
+            if not item:
+                continue
+                
+            self._log_message(f"        Processing measurement {i+1} in column {col}", "DEBUG")
+            
+            if not item.text():
+                self._log_message("          Empty measurement - skipping", "DEBUG")
+                continue
+
+            try:
+                value = float(item.text())
+                is_violation = False
+                
+                if result.nominal == 0.0 and result.lower_tolerance == 0.0 and upper_limit is not None:
+                    is_violation = abs(value) > upper_limit
+                elif lower_limit is not None and upper_limit is not None:
+                    is_violation = not (lower_limit <= value <= upper_limit)
+                
+                if is_violation:
+                    self._log_message(f"          VIOLATION: {value} out of tolerance", "DEBUG")
+                    item.setBackground(QColor(255, 182, 193))  # Light red
+                    item.setForeground(QColor(0, 0, 0))  # Black text
+                    item.setToolTip(f"⚠️ Measurement {value:.3f} violates tolerance!")
+                    violations_found += 1
+                else:
+                    self._log_message(f"          OK: {value} within tolerance", "DEBUG")
+                    item.setBackground(QColor(255, 255, 255))  # White
+                    item.setForeground(QColor(0, 0, 0))  # Black text
+                    item.setToolTip("")
+                
+                # Apply regular font
+                font = QFont("Segoe UI", 9)
+                item.setFont(font)
+                
+            except ValueError:
+                self._log_message(f"⚠️ Invalid measurement value in column {col}", "WARNING")
+
         if violations_found > 0:
             self._log_message(f"🚨 {violations_found} measurement violations found for {element_id}", "WARNING")
-        else:
-            self._log_message(f"✅ All measurements OK for {element_id}", "DEBUG")
 
     def _is_outside_tolerance(self, value: float, lower_tol, upper_tol, nominal=None) -> bool:
         """Check if value is outside tolerance range, handling GD&T cases"""
@@ -988,7 +981,7 @@ class DimensionalTableManager:
             if col in [6, 7, 8, 9, 10, 11, 12, 13]:  # nominal, tolerances, measurements
                 try:
                     value = float(item.text())
-                    item.setText(f"{value:.4f}")
+                    item.setText(f"{value:.3f}")
                 except ValueError:
                     pass
 
@@ -1211,8 +1204,8 @@ class DimensionalTableManager:
                         upper_item = QTableWidgetItem()
                         table.setItem(row, 8, upper_item)
 
-                    lower_item.setText(f"{lower_tol:.4f}")
-                    upper_item.setText(f"{upper_tol:.4f}")
+                    lower_item.setText(f"{lower_tol:.3f}")
+                    upper_item.setText(f"{upper_tol:.3f}")
 
             self._mark_unsaved_changes()
             if self.parent_window:
@@ -1512,8 +1505,8 @@ class DimensionalTableManager:
                         upper_item = QTableWidgetItem()
                         table.setItem(row, 11, upper_item)
 
-                    lower_item.setText(f"{lower_tol:.4f}")
-                    upper_item.setText(f"{upper_tol:.4f}")
+                    lower_item.setText(f"{lower_tol:.3f}")
+                    upper_item.setText(f"{upper_tol:.3f}")
 
             self._mark_unsaved_changes()
             if self.parent_window:
