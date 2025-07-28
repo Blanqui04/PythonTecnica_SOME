@@ -137,15 +137,19 @@ class PTCOVERProcessor:
     def _process_ptcover_csv(self, csv_file: str, rivets_type: str, cavitat_name: str) -> pd.DataFrame:
         """Processa un CSV específic del client PTCOVER"""
         try:
-            # Intentar llegir CSV amb diferents encodings
+            # Intentar llegir CSV amb diferents encodings (millor suport Unicode)
             df = None
-            encodings = ['utf-8', 'windows-1252', 'latin-1', 'cp1252']
+            encodings = ['utf-8', 'utf-8-sig', 'windows-1252', 'latin-1', 'cp1252', 'iso-8859-1']
             
             for encoding in encodings:
                 try:
                     df = pd.read_csv(csv_file, sep=';', encoding=encoding)
+                    logger.debug(f"PTCOVER CSV llegit amb encoding {encoding}: {csv_file}")
                     break
                 except UnicodeDecodeError:
+                    continue
+                except Exception as e:
+                    logger.debug(f"Error llegint PTCOVER CSV amb {encoding}: {e}")
                     continue
             
             if df is None:
@@ -158,13 +162,14 @@ class PTCOVERProcessor:
             # Extreure nom del fitxer primer
             filename = os.path.basename(csv_file)
             
-            # NETEJAT DE VALORS PROBLEMÀTICS
+            # NETEJAT DE VALORS PROBLEMÀTICS AMB SUPORT UNICODE MILLORAT
             # Detectar columnes que poden contenir valors problemàtics
             possible_columns = {
                 'element': ['Element', 'element', 'ELEMENT', 'Feature', 'feature', 'FEATURE', 'Mesura', 'mesura'],
                 'actual': ['Actual', 'actual', 'ACTUAL', 'Value', 'value', 'VALUE', 'Valor', 'valor'],
                 'nominal': ['Nominal', 'nominal', 'NOMINAL', 'Target', 'target', 'TARGET'],
-                'tolerance': ['Tolerance', 'tolerance', 'TOLERANCE', 'Tol', 'tol', 'TOL']
+                'tolerance_neg': ['Tol -', 'tol -', 'TOL -', 'Tolerance-', 'tolerance-'],
+                'tolerance_pos': ['Tol +', 'tol +', 'TOL +', 'Tolerance+', 'tolerance+']
             }
             
             # Trobar les columnes corresponents
@@ -182,14 +187,19 @@ class PTCOVERProcessor:
                 # Detectar problemes abans
                 problems_before = ValueCleaner.detect_problematic_values(df)
                 
-                # Netejar DataFrame
+                # Netejar DataFrame amb suport Unicode millorat
                 df = ValueCleaner.clean_dataframe_columns(
                     df,
                     element_col=detected_columns.get('element'),
                     actual_col=detected_columns.get('actual'),
                     nominal_col=detected_columns.get('nominal'),
-                    tolerance_col=detected_columns.get('tolerance')
+                    tolerance_col=detected_columns.get('tolerance_neg')  # Netejar tolerancia negativa
                 )
+                
+                # Netejar també tolerancia positiva si existeix
+                if detected_columns.get('tolerance_pos'):
+                    tolerance_pos_col = detected_columns['tolerance_pos']
+                    df[tolerance_pos_col] = df[tolerance_pos_col].apply(ValueCleaner.clean_numeric_value)
                 
                 # Detectar problemes després
                 problems_after = ValueCleaner.detect_problematic_values(df)

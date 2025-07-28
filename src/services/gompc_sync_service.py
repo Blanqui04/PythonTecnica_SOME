@@ -147,7 +147,7 @@ class GompcSyncService:
             return False
     
     def _verify_database_connection(self) -> bool:
-        """Verifica la connexió a la base de dades"""
+        """Verifica la connexió a la base de dades amb suport Unicode millorat"""
         try:
             # Carregar configuració BBDD
             db_config = self.network_scanner.load_db_config()
@@ -155,12 +155,28 @@ class GompcSyncService:
                 self.logger.error("❌ No es pot carregar configuració BBDD")
                 return False
             
-            # Test de connexió
+            # Test de connexió amb encoding UTF-8
             from src.database.quality_measurement_adapter import QualityMeasurementDBAdapter
             adapter = QualityMeasurementDBAdapter(db_config)
             
             if adapter.connect():
-                self.logger.info(f"✅ Connexió BBDD establerta: {db_config['host']}:{db_config['port']}")
+                # Verificar que l'encoding és correcte
+                with adapter.connection.cursor() as cursor:
+                    cursor.execute("SHOW client_encoding")
+                    encoding = cursor.fetchone()[0]
+                    self.logger.info(f"✅ Connexió BBDD establerta amb encoding: {encoding}")
+                    
+                    # Verificar l'esquema de la taula
+                    cursor.execute("""
+                        SELECT data_type 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'mesuresqualitat' AND column_name = 'actual'
+                    """)
+                    result = cursor.fetchone()
+                    if result:
+                        actual_type = result[0]
+                        self.logger.info(f"✅ Tipus de dada 'actual': {actual_type}")
+                    
                 adapter.close()
                 return True
             else:
