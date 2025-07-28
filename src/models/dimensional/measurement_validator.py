@@ -6,10 +6,8 @@ from typing import Dict, List, Any
 def validate_measurements(record: Dict[str, Any]) -> bool:
     """
     Validate measurement record for dimensional analysis
-
     Args:
         record: Dictionary containing measurement data
-
     Returns:
         True if record is valid, False otherwise
     """
@@ -188,10 +186,8 @@ def _validate_tolerance(tolerance: Any) -> bool:
 def validate_batch_consistency(records: List[Dict[str, Any]]) -> List[str]:
     """
     Validate consistency across a batch of measurement records
-
     Args:
         records: List of measurement record dictionaries
-
     Returns:
         List of warning messages
     """
@@ -401,7 +397,7 @@ def sanitize_record(record: Dict[str, Any]) -> Dict[str, Any]:
             "description",
             "batch",
             "cavity",
-            "class"
+            "class",
             "datum_element_id",
         ]
         for field in string_fields:
@@ -530,10 +526,8 @@ def validate_dimensional_result_compatibility(record: Dict[str, Any]) -> List[st
 def prepare_record_for_analysis(record: Dict[str, Any]) -> Dict[str, Any]:
     """
     Prepare and validate a record for dimensional analysis
-
     Args:
         record: Raw measurement record
-
     Returns:
         Prepared record ready for DimensionalAnalyzer.analyze_row()
     """

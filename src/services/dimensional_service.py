@@ -4,7 +4,7 @@ import logging
 from typing import List, Optional, Callable, Dict, Any
 from statistics import mean, stdev
 from src.models.dimensional.dimensional_analyzer import DimensionalAnalyzer
-from src.models.dimensional.measurement_validator import validate_measurements, prepare_record_for_analysis
+#from src.models.dimensional.measurement_validator import validate_measurements, prepare_record_for_analysis
 from src.models.dimensional.dimensional_result import DimensionalResult, DimensionalStatus
 from src.models.dimensional.gdt_interpreter import GDTInterpreter, create_enhanced_gdt_flags
 
@@ -17,23 +17,45 @@ class DimensionalService:
         self.gdt_interpreter = GDTInterpreter()
         self.logger = logging.getLogger(__name__)
         
+        # Configure logger for detailed output
+        if not self.logger.handlers:
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter(
+                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            )
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.DEBUG)
+        
     def process_dataframe(self, df: pd.DataFrame, progress_callback: Optional[Callable] = None) -> List[DimensionalResult]:
         """
-        Process a dataframe of dimensional measurements with enhanced GD&T support
-        
-        Args:
-            df: DataFrame containing measurement data
-            progress_callback: Optional callback function for progress updates
-            
-        Returns:
-            List of DimensionalResult objects
+        FIXED process_dataframe with proper error handling and tolerance processing
         """
         results = []
         total_rows = len(df)
         processed_count = 0
         error_count = 0
         
-        self.logger.info(f"Starting enhanced processing of {total_rows} measurement records")
+        self.logger.info("🔧 " + "="*80)
+        self.logger.info(f"🔧 DIMENSIONAL SERVICE: Starting processing of {total_rows} records")
+        self.logger.info("🔧 " + "="*80)
+        
+        # Validate input DataFrame
+        if df.empty:
+            self.logger.error("❌ Empty DataFrame provided to service")
+            return []
+        
+        # Log DataFrame structure
+        self.logger.info("📊 DataFrame structure:")
+        self.logger.info(f"   - Shape: {df.shape}")
+        self.logger.info(f"   - Columns: {list(df.columns)}")
+        
+        # Required columns check
+        required_cols = ['element_id', 'description']
+        missing_cols = [col for col in required_cols if col not in df.columns]
+        if missing_cols:
+            self.logger.error(f"❌ Missing required columns: {missing_cols}")
+            return []
         
         for idx, row in df.iterrows():
             try:
@@ -42,65 +64,103 @@ class DimensionalService:
                     progress = int((processed_count / total_rows) * 100)
                     progress_callback(progress)
                 
-                # Convert row to dict and process
-                record = self._prepare_enhanced_record(row)
+                element_id = row.get('element_id', f'Row_{idx}')
+                self.logger.debug(f"🔧 Processing element: {element_id} (row {idx})")
                 
-                if self._validate_enhanced_record(record):
-                    result = self._analyze_enhanced_row(record)
+                # STEP 1: Prepare record with exhaustive logging
+                record = self._prepare_record(row, idx)
+                
+                # STEP 2: Validate record
+                if self._validate_record(record, element_id):
+                    # STEP 3: Analyze the record using the analyzer
+                    result = self.analyzer.analyze_row(record)
                     results.append(result)
+                    
+                    # Log the result
+                    self.logger.debug(f"✅ {element_id}: {result.status.value} - {len(result.warnings)} warnings")
                     
                     # Log warnings if any
                     if result.warnings:
-                        self.logger.warning(f"Element {record.get('element_id', 'Unknown')}: {'; '.join(result.warnings)}")
+                        for warning in result.warnings:
+                            self.logger.debug(f"⚠️ {element_id}: {warning}")
                 else:
                     error_count += 1
-                    self.logger.warning(f"Skipping invalid record at row {idx}: {record.get('element_id', 'Unknown')}")
+                    self.logger.warning(f"❌ Skipping invalid record {element_id} at row {idx}")
                     
                 processed_count += 1
+                
+                # Log progress periodically
+                if processed_count % 10 == 0:
+                    self.logger.info(f"📈 Service progress: {processed_count}/{total_rows} ({processed_count/total_rows*100:.1f}%)")
                 
             except Exception as e:
                 error_count += 1
                 element_id = row.get('element_id', f'Row_{idx}')
-                self.logger.error(f"Error processing element {element_id}: {str(e)}")
+                self.logger.error(f"❌ CRITICAL ERROR processing element {element_id}: {str(e)}")
+                self.logger.error(f"❌ Full exception for {element_id}:", exc_info=True)
+                
+                # Create error result to maintain count
+                error_result = self._create_error_result(row, f"Processing error: {str(e)}", element_id)
+                results.append(error_result)
+                processed_count += 1
                 continue
         
         # Final progress update
         if progress_callback:
             progress_callback(100)
-            
-        self.logger.info(f"Enhanced processing completed: {len(results)} successful, {error_count} errors")
+        
+        # Final summary
+        self.logger.info("🔧 " + "="*80)
+        self.logger.info("🔧 SERVICE PROCESSING COMPLETED")
+        self.logger.info(f" - Total processed: {processed_count}/{total_rows}")
+        self.logger.info(f" - Successful: {len(results) - error_count}")
+        self.logger.info(f" - Errors: {error_count}")
+        self.logger.info(f" - Success rate: {((len(results) - error_count)/total_rows)*100:.1f}%")
+        self.logger.info("🔧 " + "="*80)
+        
         return results
     
-    def _prepare_enhanced_record(self, row: pd.Series) -> Dict[str, Any]:
+    def _prepare_record(self, row: pd.Series, idx: int) -> Dict[str, Any]:
         """
-        Prepare a measurement record from a pandas Series with enhanced GD&T handling
+        FIXED Prepare a measurement record with proper tolerance handling
+        """
+        element_id = row.get('element_id', f'Row_{idx}')
+        self.logger.debug(f"🔧 Preparing record for {element_id}")
         
-        Args:
-            row: Pandas Series containing measurement data
-            
-        Returns:
-            Dictionary with prepared measurement data
-        """
         record = row.to_dict()
         
-        # Extract measurements from measurement_1 to measurement_5
+        # STEP 1: Extract measurements with detailed logging
         measurements = []
+        self.logger.debug(f"🔧 {element_id}: Extracting measurements...")
+        
         for i in range(1, 6):
             key = f"measurement_{i}"
-            if key in record and pd.notna(record[key]):
-                try:
-                    value = float(record[key])
-                    measurements.append(value)
-                except (ValueError, TypeError):
-                    self.logger.warning(f"Invalid measurement value in {key}: {record[key]}")
-                    continue
+            if key in record:
+                value = record[key]
+                self.logger.debug(f"🔧 {element_id}: {key} = {value} (type: {type(value)})")
+                
+                if pd.notna(value) and str(value).strip() != "":
+                    try:
+                        float_value = float(value)
+                        measurements.append(float_value)
+                        self.logger.debug(f"✅ {element_id}: {key} = {float_value} (valid)")
+                    except (ValueError, TypeError) as e:
+                        self.logger.warning(f"❌ {element_id}: Invalid {key} value '{value}': {str(e)}")
+                        continue
+                else:
+                    self.logger.debug(f"🔧 {element_id}: {key} is null/empty")
+            else:
+                self.logger.debug(f"🔧 {element_id}: {key} column not found")
         
         record["measurements"] = measurements
+        self.logger.debug(f"🔧 {element_id}: Extracted {len(measurements)} measurements: {measurements}")
         
-        # Enhanced GD&T handling for description
+        # STEP 2: Handle description and GD&T
         description = str(record.get("description", ""))
+        self.logger.debug(f"🔧 {element_id}: Description = '{description}'")
+        
         if description:
-            # Format GD&T symbols properly
+            # Format GD&T symbols
             formatted_description = self.gdt_interpreter.format_gdt_display(description)
             record["description"] = formatted_description
             
@@ -108,30 +168,43 @@ class DimensionalService:
             gdt_info = self.gdt_interpreter.parse_gdt_description(description)
             record["gdt_info"] = gdt_info
             
-            # If GD&T tolerance is found and no separate tolerance provided, use GD&T
-            if gdt_info['has_gdt'] and gdt_info['tolerance_value']:
-                nominal = float(record.get("nominal", 0)) if pd.notna(record.get("nominal")) else 0.0
-                if not self._has_explicit_tolerance(record):
-                    gdt_tolerance, gdt_warnings = self.gdt_interpreter.extract_tolerance_from_gdt(description, nominal)
-                    if gdt_tolerance:
-                        record["tolerance"] = gdt_tolerance
-                        record["gdt_warnings"] = gdt_warnings
+            self.logger.debug(f"🔧 {element_id}: GD&T analysis - has_gdt: {gdt_info.get('has_gdt', False)}")
         
-        # Prepare tolerance data (existing logic)
-        if "tolerance" not in record:
-            record["tolerance"] = self._prepare_tolerance_data(record)
-        
-        # Ensure required numeric fields are properly converted
+        # STEP 3: Handle numeric fields
         for field in ["nominal", "lower_tolerance", "upper_tolerance"]:
-            if field in record and pd.notna(record[field]):
-                try:
-                    record[field] = float(record[field])
-                except (ValueError, TypeError):
-                    self.logger.warning(f"Invalid {field} value: {record[field]}")
-                    if field == "nominal":
-                        record[field] = 0.0
-                    else:
-                        record[field] = None
+            if field in record:
+                value = record[field]
+                self.logger.debug(f"🔧 {element_id}: {field} = {value} (type: {type(value)})")
+                
+                if pd.notna(value):
+                    try:
+                        float_value = float(value)
+                        record[field] = float_value
+                        self.logger.debug(f"✅ {element_id}: {field} = {float_value} (converted)")
+                    except (ValueError, TypeError):
+                        self.logger.warning(f"❌ {element_id}: Invalid {field} value: {value}")
+                        if field == "nominal":
+                            record[field] = 0.0
+                            self.logger.debug(f"🔧 {element_id}: {field} defaulted to zero")
+                        else:
+                            record[field] = None
+        
+        # STEP 4: Handle force_status
+        force_status = record.get("force_status", "AUTO")
+        if pd.isna(force_status) or force_status == "":
+            record["force_status"] = "AUTO"
+        else:
+            record["force_status"] = str(force_status).upper()
+        
+        # STEP 5: Handle evaluation_type
+        evaluation_type = record.get("evaluation_type", "Normal")
+        if pd.isna(evaluation_type) or evaluation_type == "":
+            record["evaluation_type"] = "Normal"
+        else:
+            record["evaluation_type"] = str(evaluation_type)
+        
+        self.logger.debug(f"🔧 {element_id}: force_status = {record['force_status']}")
+        self.logger.debug(f"🔧 {element_id}: evaluation_type = {record['evaluation_type']}")
         
         return record
     
@@ -185,46 +258,37 @@ class DimensionalService:
         
         return tolerances
     
-    def _validate_enhanced_record(self, record: Dict[str, Any]) -> bool:
+    def _validate_record(self, record: Dict[str, Any], element_id: str) -> bool:
         """
-        Validate a measurement record with enhanced GD&T validation
+        Enhanced record validation with detailed logging
+        """
+        self.logger.debug(f"🔧 Validating record for {element_id}")
         
-        Args:
-            record: Dictionary containing measurement record
-            
-        Returns:
-            True if record is valid, False otherwise
-        """
+        # Check if this is a Note entry
+        evaluation_type = record.get("evaluation_type", "Normal")
+        is_note = evaluation_type == "Note"
+        
         # Basic validation
-        required_fields = ["element_id", "description", "nominal"]
+        if is_note:
+            required_fields = ["element_id", "description"]
+        else:
+            required_fields = ["element_id", "description", "nominal"]
+            
         for field in required_fields:
             if not record.get(field):
-                self.logger.warning(f"Missing required field: {field}")
+                self.logger.warning(f"❌ {element_id}: Missing required field: {field}")
                 return False
         
-        # Check we have at least one measurement
+        # Check measurements for non-Note entries
         measurements = record.get("measurements", [])
-        if not measurements:
-            self.logger.warning(f"No valid measurements found for element {record.get('element_id')}")
+        if not is_note and not measurements:
+            self.logger.warning(f"❌ {element_id}: No valid measurements found for non-Note entry")
             return False
         
-        # Enhanced GD&T validation
-        gdt_info = record.get("gdt_info", {})
-        if gdt_info.get('has_gdt'):
-            gdt_warnings = gdt_info.get('warnings', [])
-            if gdt_warnings:
-                for warning in gdt_warnings:
-                    self.logger.warning(f"GD&T validation for {record.get('element_id')}: {warning}")
-        
-        # Use existing validator with enhancements
-        try:
-            prepared_record = prepare_record_for_analysis(record)
-            return validate_measurements(prepared_record)
-        except Exception as e:
-            self.logger.error(f"Enhanced validation error: {str(e)}")
-            return False
+        self.logger.debug(f"✅ {element_id}: Record validation passed")
+        return True
     
-    def _analyze_enhanced_row(self, record: Dict[str, Any]) -> DimensionalResult:
+    def _analyze_row(self, record: Dict[str, Any]) -> DimensionalResult:
         """
         Analyze a single measurement row with enhanced GD&T support
         
@@ -373,15 +437,17 @@ class DimensionalService:
             self.logger.error(f"Error analyzing row for element {record.get('element_id', 'Unknown')}: {str(e)}")
             return self._create_error_result(record, f"Analysis error: {str(e)}")
 
-    def _create_error_result(self, record: Dict[str, Any], error_message: str) -> DimensionalResult:
+    def _create_error_result(self, record: Dict[str, Any], error_message: str, element_id: str = None) -> DimensionalResult:
         """Create a result object for error cases"""
+        element_id = element_id if element_id is not None else str(record.get("element_id", "Unknown"))
+        
         return DimensionalResult(
-            element_id=str(record.get("element_id", "Unknown")),
+            element_id=element_id,
             batch=str(record.get("batch", "Unknown")),
             cavity=str(record.get("cavity", "Unknown")),
             classe=str(record.get("class", "Unknown")),
             description=str(record.get("description", "")),
-            nominal=float(record.get("nominal", 0.0)) if record.get("nominal") is not None else 0.0,
+            nominal=float(record.get("nominal", 0.0)) if pd.notna(record.get("nominal")) else 0.0,
             lower_tolerance=None,
             upper_tolerance=None,
             measurements=[],
@@ -394,7 +460,7 @@ class DimensionalService:
             datum_element_id=record.get("datum_element_id"),
             effective_tolerance_upper=None,
             effective_tolerance_lower=None,
-            feature_type=self._determine_feature_type(record.get("description", "")),
+            feature_type="dimension",
             warnings=[error_message],
         )
 
@@ -463,12 +529,6 @@ class DimensionalService:
     def get_processing_summary(self, results: List[DimensionalResult]) -> Dict[str, Any]:
         """
         Generate an enhanced summary of processing results
-        
-        Args:
-            results: List of DimensionalResult objects
-            
-        Returns:
-            Dictionary containing summary statistics
         """
         if not results:
             return {
@@ -488,7 +548,7 @@ class DimensionalService:
         # Feature type analysis
         feature_types = {}
         for result in results:
-            ft = result.feature_type
+            ft = result.feature_type or "dimension"
             feature_types[ft] = feature_types.get(ft, 0) + 1
         
         # Cavity analysis

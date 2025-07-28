@@ -325,30 +325,20 @@ class GDTInterpreter:
 
         # Position tolerance - depends on feature type and material condition
         elif tolerance_type == "position":
-            # Position is always bilateral around true position
-            # For holes (internal features): typically bilateral
-            # For pins/bosses (external features): typically bilateral
-            # Material condition affects bonus tolerance, not base range
             return -tolerance_value, tolerance_value
 
         # Orientation tolerances - bilateral unless specified otherwise
         elif tolerance_type in ["parallelism", "perpendicularity", "angularity"]:
-            # These control orientation, so bilateral makes sense
             return -tolerance_value, tolerance_value
 
         # Profile tolerances - special handling for nominal=0 and bilateral
         elif tolerance_type in ["profile", "profile_line", "profile_surface"]:
             if is_bilateral_profile:
-                # Explicitly bilateral profile
                 return -tolerance_value / 2, tolerance_value / 2
             else:
-                # Default profile interpretation
                 if nominal == 0:
-                    # For nominal=0 profiles, often the tolerance is unilateral
-                    # (measuring deviation from ideal surface)
                     return 0.0, tolerance_value
                 else:
-                    # Standard bilateral profile
                     return -tolerance_value / 2, tolerance_value / 2
 
         # Runout tolerances - always unilateral positive (measuring wobble/variation)
@@ -401,11 +391,9 @@ class GDTInterpreter:
             "straightness": "⏤",
             "runout": "↗",
             "total runout": "↗↗",
-            # Material conditions
             "(M)": "Ⓜ",
             "(L)": "Ⓛ",
             "(S)": "Ⓢ",
-            # Common symbols
             "diameter": "Ø",
             "dia": "Ø",
             "diam": "Ø",
