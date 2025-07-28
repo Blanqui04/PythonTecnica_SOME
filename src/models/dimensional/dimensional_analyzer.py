@@ -254,14 +254,10 @@ class DimensionalAnalyzer:
 
             # Handle nominal value
             try:
-                nominal = (
-                    float(record["nominal"]) if pd.notna(record.get("nominal")) else 0.0
-                )
+                nominal = float(record["nominal"]) if pd.notna(record.get("nominal")) else 0.0
             except (ValueError, TypeError, KeyError):
                 if not is_note:
-                    return self._create_error_result(
-                        record, "Invalid or missing nominal value"
-                    )
+                    return self._create_error_result(record, "Invalid or missing nominal value")
                 nominal = 0.0
 
             self.logger.debug(f"🔧 {element_id}: nominal = {nominal}")
@@ -270,20 +266,16 @@ class DimensionalAnalyzer:
             measurements = record.get("measurements", [])
             if not isinstance(measurements, list):
                 measurements = []
-
+            
             # Ensure all measurements are floats
             valid_measurements = []
             for i, m in enumerate(measurements):
                 if pd.notna(m):
                     try:
                         valid_measurements.append(float(m))
-                        self.logger.debug(
-                            f"🔧 {element_id}: measurement_{i + 1} = {float(m)}"
-                        )
+                        self.logger.debug(f"🔧 {element_id}: measurement_{i+1} = {float(m)}")
                     except (ValueError, TypeError):
-                        self.logger.warning(
-                            f"❌ {element_id}: Invalid measurement at position {i}: {m}"
-                        )
+                        self.logger.warning(f"❌ {element_id}: Invalid measurement at position {i}: {m}")
                         continue
 
             measurements = valid_measurements
@@ -291,9 +283,7 @@ class DimensionalAnalyzer:
 
             # For Notes, measurements are optional
             if not is_note and not measurements:
-                return self._create_error_result(
-                    record, "No valid measurements provided"
-                )
+                return self._create_error_result(record, "No valid measurements provided")
 
             # Calculate deviations
             deviation = [m - nominal for m in measurements] if measurements else []
@@ -321,29 +311,19 @@ class DimensionalAnalyzer:
                 if not is_note:
                     tol_warnings.append(f"Invalid tolerance values: {str(e)}")
 
-            self.logger.debug(
-                f"🔧 {element_id}: parsed tolerances = [{lower_tol}, {upper_tol}]"
-            )
+            self.logger.debug(f"🔧 {element_id}: parsed tolerances = [{lower_tol}, {upper_tol}]")
 
             # Try to extract from GD&T if no tolerances provided
             if lower_tol == 0.0 and upper_tol == 0.0 and description:
                 try:
-                    gdt_tolerance, gdt_warnings = (
-                        self.gdt_interpreter.extract_tolerance_from_gdt(
-                            description, nominal
-                        )
-                    )
+                    gdt_tolerance, gdt_warnings = self.gdt_interpreter.extract_tolerance_from_gdt(description, nominal)
                     if gdt_tolerance and len(gdt_tolerance) >= 2:
                         lower_tol = float(gdt_tolerance[0])
                         upper_tol = float(gdt_tolerance[1])
                         tol_warnings.extend(gdt_warnings)
-                        self.logger.debug(
-                            f"🔧 {element_id}: GD&T tolerances = [{lower_tol}, {upper_tol}]"
-                        )
+                        self.logger.debug(f"🔧 {element_id}: GD&T tolerances = [{lower_tol}, {upper_tol}]")
                 except Exception as e:
-                    self.logger.warning(
-                        f"❌ {element_id}: GD&T tolerance extraction failed: {str(e)}"
-                    )
+                    self.logger.warning(f"❌ {element_id}: GD&T tolerance extraction failed: {str(e)}")
 
             # Create GD&T flags
             gdt_flags = create_enhanced_gdt_flags(description)
@@ -356,13 +336,11 @@ class DimensionalAnalyzer:
             if force_status == "GOOD":
                 status = DimensionalStatus.GOOD
                 out_of_spec = []
-                eval_warnings = ["Note entry - Status set to GOOD by user"]
+                eval_warnings = ["Status set to GOOD by user"]
                 self.logger.debug(f"🔧 {element_id}: Status forced to GOOD")
             elif force_status == "BAD":
                 status = DimensionalStatus.BAD
-                out_of_spec = (
-                    measurements.copy()
-                )  # All measurements considered out of spec
+                out_of_spec = measurements.copy()  # All measurements considered out of spec
                 eval_warnings = ["Status forced to BAD"]
                 self.logger.debug(f"🔧 {element_id}: Status forced to BAD")
             else:  # AUTO evaluation
@@ -373,60 +351,101 @@ class DimensionalAnalyzer:
                     eval_warnings = ["Note entry - defaulted to GOOD"]
                     self.logger.debug(f"🔧 {element_id}: Note entry, status = GOOD")
                 elif measurements:
-                    # Standard tolerance evaluation
+                    # Enhanced tolerance evaluation with GD&T support
                     if lower_tol == 0.0 and upper_tol == 0.0:
-                        # No tolerance provided - informative measurement
-                        status = DimensionalStatus.GOOD
-                        out_of_spec = []
-                        eval_warnings = [
-                            "No tolerance provided - informative measurement"
-                        ]
-                        self.logger.debug(
-                            f"🔧 {element_id}: No tolerance, status = GOOD (informative)"
-                        )
+                        # Check if this is a GD&T feature that should still be evaluated
+                        is_gdt_feature = any(gdt_flags.get(k) for k in ["POSITION", "FLATNESS", "CIRCULARITY", 
+                                                                       "PARALLELISM", "PERPENDICULARITY", "ANGULARITY", 
+                                                                       "CONCENTRICITY", "PROFILE", "STRAIGHTNESS", 
+                                                                       "CYLINDRICITY", "RUNOUT", "TOTAL_RUNOUT"])
+                        
+                        if is_gdt_feature and nominal == 0.0:
+                            # Special handling for GD&T features with nominal=0
+                            # These measure deviation from theoretical exact (position) or perfect form (flatness)
+                            self.logger.debug(f"🔧 {element_id}: GD&T feature with nominal=0 detected")
+                            
+                            # Try to extract tolerance from description
+                            try:
+                                gdt_tolerance, gdt_warnings = self.gdt_interpreter.extract_tolerance_from_gdt(description, nominal)
+                                if gdt_tolerance and len(gdt_tolerance) >= 2:
+                                    gdt_lower = float(gdt_tolerance[0])
+                                    gdt_upper = float(gdt_tolerance[1])
+                                    
+                                    self.logger.debug(f"🔧 {element_id}: Extracted GD&T tolerance = [{gdt_lower}, {gdt_upper}]")
+                                    
+                                    # For nominal=0 GD&T features, check absolute values against upper limit
+                                    if gdt_flags.get("POSITION"):
+                                        # Position: check if deviation is within tolerance zone
+                                        out_of_spec = [m for m in measurements if abs(m) > gdt_upper]
+                                    elif gdt_flags.get("FLATNESS") or gdt_flags.get("STRAIGHTNESS"):
+                                        # Form tolerances: always positive deviation from perfect form
+                                        out_of_spec = [m for m in measurements if m < 0 or m > gdt_upper]
+                                    else:
+                                        # Other GD&T: bilateral tolerance
+                                        out_of_spec = [m for m in measurements if not (gdt_lower <= m <= gdt_upper)]
+                                    
+                                    status = DimensionalStatus.GOOD if not out_of_spec else DimensionalStatus.BAD
+                                    eval_warnings = [f"GD&T evaluation with tolerance [{gdt_lower}, {gdt_upper}]"]
+                                    
+                                    # Update tolerance values for result
+                                    lower_tol = gdt_lower
+                                    upper_tol = gdt_upper
+                                    
+                                    self.logger.debug(f"🔧 {element_id}: GD&T evaluation - {len(out_of_spec)} out of spec")
+                                else:
+                                    # GD&T feature but no extractable tolerance
+                                    status = DimensionalStatus.GOOD
+                                    out_of_spec = []
+                                    eval_warnings = ["GD&T feature detected but tolerance not extractable - defaulted to GOOD"]
+                                    self.logger.debug(f"🔧 {element_id}: GD&T feature, no extractable tolerance")
+                            except Exception as e:
+                                self.logger.warning(f"❌ {element_id}: Error extracting GD&T tolerance: {str(e)}")
+                                status = DimensionalStatus.GOOD
+                                out_of_spec = []
+                                eval_warnings = ["GD&T tolerance extraction failed - defaulted to GOOD"]
+                        else:
+                            # No tolerance provided - informative measurement
+                            status = DimensionalStatus.GOOD
+                            out_of_spec = []
+                            eval_warnings = ["No tolerance provided - informative measurement"]
+                            self.logger.debug(f"🔧 {element_id}: No tolerance, status = GOOD (informative)")
                     else:
-                        # Calculate limits
+                        # Standard tolerance evaluation
                         lower_limit = nominal + lower_tol
                         upper_limit = nominal + upper_tol
-
-                        self.logger.debug(
-                            f"🔧 {element_id}: limits = [{lower_limit}, {upper_limit}]"
-                        )
-
-                        # Check measurements against limits
-                        out_of_spec = []
-                        for i, m in enumerate(measurements):
-                            if not (lower_limit <= m <= upper_limit):
-                                out_of_spec.append(m)
-                                self.logger.debug(
-                                    f"❌ {element_id}: measurement_{i + 1} = {m} OUT OF SPEC"
-                                )
-                            else:
-                                self.logger.debug(
-                                    f"✅ {element_id}: measurement_{i + 1} = {m} OK"
-                                )
-
-                        status = (
-                            DimensionalStatus.GOOD
-                            if not out_of_spec
-                            else DimensionalStatus.BAD
-                        )
+                        
+                        self.logger.debug(f"🔧 {element_id}: limits = [{lower_limit}, {upper_limit}]")
+                        
+                        # Special handling for nominal=0 with explicit tolerances
+                        if nominal == 0.0 and lower_tol == 0.0 and upper_tol > 0.0:
+                            # Unilateral positive tolerance for nominal=0 (common for GD&T form tolerances)
+                            out_of_spec = [m for m in measurements if m < 0 or m > upper_tol]
+                            self.logger.debug(f"🔧 {element_id}: Nominal=0 unilateral evaluation")
+                        elif nominal == 0.0 and lower_tol < 0.0 and upper_tol > 0.0:
+                            # Bilateral tolerance for nominal=0 (common for position tolerances)
+                            out_of_spec = [m for m in measurements if abs(m) > max(abs(lower_tol), abs(upper_tol))]
+                            self.logger.debug(f"🔧 {element_id}: Nominal=0 bilateral evaluation")
+                        else:
+                            # Standard bilateral tolerance check
+                            out_of_spec = []
+                            for i, m in enumerate(measurements):
+                                if not (lower_limit <= m <= upper_limit):
+                                    out_of_spec.append(m)
+                                    self.logger.debug(f"❌ {element_id}: measurement_{i+1} = {m} OUT OF SPEC")
+                                else:
+                                    self.logger.debug(f"✅ {element_id}: measurement_{i+1} = {m} OK")
+                        
+                        status = DimensionalStatus.GOOD if not out_of_spec else DimensionalStatus.BAD
                         eval_warnings = []
-
-                        self.logger.debug(
-                            f"🔧 {element_id}: {len(out_of_spec)} out of {len(measurements)} out of spec"
-                        )
-                        self.logger.debug(
-                            f"🔧 {element_id}: Final status = {status.value}"
-                        )
+                        
+                        self.logger.debug(f"🔧 {element_id}: {len(out_of_spec)} out of {len(measurements)} out of spec")
+                        self.logger.debug(f"🔧 {element_id}: Final status = {status.value}")
                 else:
                     # No measurements to evaluate
                     status = DimensionalStatus.GOOD
                     out_of_spec = []
                     eval_warnings = ["No measurements to evaluate"]
-                    self.logger.debug(
-                        f"🔧 {element_id}: No measurements, status = GOOD"
-                    )
+                    self.logger.debug(f"🔧 {element_id}: No measurements, status = GOOD")
 
             # Calculate statistics
             if measurements:
@@ -447,13 +466,9 @@ class DimensionalAnalyzer:
             # Add measurement count warnings (skip for Notes)
             if not is_note and measurements:
                 if len(measurements) < 5:
-                    warnings.append(
-                        f"Only {len(measurements)} measurements provided; 5+ recommended."
-                    )
+                    warnings.append(f"Only {len(measurements)} measurements provided; 5+ recommended.")
                 if len(measurements) == 1:
-                    warnings.append(
-                        "Only 1 measurement - no statistical analysis possible."
-                    )
+                    warnings.append("Only 1 measurement - no statistical analysis possible.")
 
             # Create result
             result = DimensionalResult(
@@ -479,15 +494,11 @@ class DimensionalAnalyzer:
                 warnings=warnings,
             )
 
-            self.logger.debug(
-                f"✅ {element_id}: Analysis complete - Status: {result.status.value}"
-            )
+            self.logger.debug(f"✅ {element_id}: Analysis complete - Status: {result.status.value}")
             return result
 
         except Exception as e:
-            self.logger.error(
-                f"❌ ANALYZER ERROR for element {record.get('element_id', 'Unknown')}: {str(e)}"
-            )
+            self.logger.error(f"❌ ANALYZER ERROR for element {record.get('element_id', 'Unknown')}: {str(e)}")
             self.logger.error("❌ Full exception:", exc_info=True)
             return self._create_error_result(record, f"Analysis error: {str(e)}")
 
@@ -497,7 +508,7 @@ class DimensionalAnalyzer:
         """
         if not description:
             return "dimension"
-
+            
         desc_lower = description.lower()
 
         # Define feature type mappings
@@ -524,9 +535,7 @@ class DimensionalAnalyzer:
 
         return "dimension"  # Default fallback
 
-    def _create_error_result(
-        self, record: Dict[str, Any], error_message: str
-    ) -> DimensionalResult:
+    def _create_error_result(self, record: Dict[str, Any], error_message: str) -> DimensionalResult:
         """Create a result object for error cases"""
         return DimensionalResult(
             element_id=str(record.get("element_id", "Unknown")),
@@ -534,9 +543,7 @@ class DimensionalAnalyzer:
             cavity=str(record.get("cavity", "Unknown")),
             classe=str(record.get("class", "Unknown")),
             description=str(record.get("description", "")),
-            nominal=float(record.get("nominal", 0.0))
-            if pd.notna(record.get("nominal"))
-            else 0.0,
+            nominal=float(record.get("nominal", 0.0)) if pd.notna(record.get("nominal")) else 0.0,
             lower_tolerance=None,
             upper_tolerance=None,
             measurements=[],
