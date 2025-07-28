@@ -652,17 +652,25 @@ class NetworkScanner:
             DataFrame amb les dades del CSV + columnes addicionals, o None si error
         """
         try:
-            # Llegir CSV - provar diferents separadors
+            # Llegir CSV - provar diferents separadors i encodings per evitar problemes Unicode
             separators = [';', ',', '\t']
+            encodings = ['utf-8', 'utf-8-sig', 'windows-1252', 'latin-1', 'cp1252', 'iso-8859-1']
             df = None
             
-            for sep in separators:
-                try:
-                    df = pd.read_csv(file_path, sep=sep, encoding='utf-8')
-                    if len(df.columns) > 1:  # Si té més d'una columna, probablement és correcte
-                        break
-                except:
-                    continue
+            for encoding in encodings:
+                for sep in separators:
+                    try:
+                        df = pd.read_csv(file_path, sep=sep, encoding=encoding)
+                        if len(df.columns) > 1:  # Si té més d'una columna, probablement és correcte
+                            logger.debug(f"CSV llegit amb encoding {encoding} i separador '{sep}': {file_path}")
+                            break
+                    except UnicodeDecodeError:
+                        continue
+                    except Exception as e:
+                        logger.debug(f"Error llegint amb {encoding}/{sep}: {e}")
+                        continue
+                if df is not None and len(df.columns) > 1:
+                    break
             
             if df is None or df.empty:
                 logger.warning(f"No es pot llegir o el fitxer està buit: {file_path}")
