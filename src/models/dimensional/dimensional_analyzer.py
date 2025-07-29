@@ -243,12 +243,13 @@ class DimensionalAnalyzer:
             batch = str(record.get("batch", "Unknown"))
             cavity = str(record.get("cavity", "Unknown"))
             classe = str(record.get("class", "Unknown"))
+            measuring_instrument = str(record.get("measuring_instrument", "Unknown"))
+            evaluation_type = record.get("evaluation_type", "Normal")
             description = str(record.get("description", ""))
 
             self.logger.debug(f"🔧 ANALYZER: Processing {element_id}")
 
             # Handle evaluation_type for Notes
-            evaluation_type = record.get("evaluation_type", "Normal")
             is_note = evaluation_type == "Note"
             self.logger.debug(f"🔧 {element_id}: is_note = {is_note}")
 
@@ -491,7 +492,7 @@ class DimensionalAnalyzer:
                 effective_tolerance_upper=upper_tol if upper_tol != 0.0 else None,
                 effective_tolerance_lower=lower_tol if lower_tol != 0.0 else None,
                 feature_type=feature_type,
-                warnings=warnings,
+                warnings=tol_warnings + eval_warnings,
             )
 
             self.logger.debug(f"✅ {element_id}: Analysis complete - Status: {result.status.value}")

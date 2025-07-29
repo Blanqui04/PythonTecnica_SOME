@@ -8,6 +8,7 @@ class DimensionalStatus(str, Enum):
     GOOD = "GOOD"
     BAD = "BAD"
     WARNING = "WARNING"
+    TED = "T.E.D."
 
 
 @dataclass
@@ -35,6 +36,8 @@ class DimensionalResult:
     # New optional fields
     feature_type: Optional[str] = None
     warnings: Optional[List[str]] = field(default_factory=list)
+    measuring_instrument: Optional[str] = None
+    evaluation_type: Optional[str] = None
 
     def to_dict(self) -> dict:
         # Convert dataclass to dict, but serialize enums and lists properly
