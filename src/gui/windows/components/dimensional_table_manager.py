@@ -55,10 +55,11 @@ class DimensionalTableManager:
             print(f"[{level}] {message}")   # Fallback to print if no parent logging available
 
     def _create_results_table(self) -> QTableWidget:
-        """Create a professionally styled results table"""
+        """Create a professionally styled results table - FIXED to allow cell colors"""
         table = QTableWidget()
         table.setColumnCount(len(self.display_columns))
         table.setHorizontalHeaderLabels(self.column_headers)
+        
         # Enhanced table configuration
         table.setSortingEnabled(False)
         table.setAlternatingRowColors(True)
@@ -67,32 +68,9 @@ class DimensionalTableManager:
         table.customContextMenuRequested.connect(
             lambda pos: self._show_context_menu(table, pos)
         )
-        # Professional styling
-        table.setStyleSheet("""
-            QTableWidget {
-                background-color: #ffffff;
-                alternate-background-color: #f8f9fa;
-                gridline-color: #e9ecef;
-                border: 1px solid #dee2e6;
-                border-radius: 8px;
-                selection-background-color: #3498db;
-                selection-color: #ffffff;
-                color: #2c3e50;
-                font-family: 'Segoe UI', sans-serif;
-                font-size: 11px;
-            }
-            QTableWidget::item {
-                padding: 8px;
-                border-bottom: 1px solid #f1f3f4;
-            }
-            QTableWidget::item:selected {
-                background-color: #3498db;
-                color: #ffffff;
-            }
-        """)
-        # Enhanced header styling
+        # Enhanced header styling (unchanged)
         header = table.horizontalHeader()
-        header.setStretchLastSection(True)
+        header.setStretchLastSection(True)       
         header.setStyleSheet("""
             QHeaderView::section {
                 background-color: #34495e;
@@ -108,7 +86,8 @@ class DimensionalTableManager:
                 background-color: #2c3e50;
             }
         """)
-        # Updated column widths for new columns
+        
+        # Column widths (unchanged)
         column_widths = {
             0: 80,  # element_id
             1: 80,  # batch
@@ -253,7 +232,7 @@ class DimensionalTableManager:
         menu.exec_(table.mapToGlobal(position))
 
     def _populate_default_row(self, table: QTableWidget, row: int):
-        """Populate row with defaults and enhanced UI elements"""
+        """Populate row with defaults and enhanced UI elements - FIXED for status cell"""
         # Set basic defaults
         defaults = {
             0: self._get_next_element_id(table),  # Auto-increment element_id
@@ -270,13 +249,18 @@ class DimensionalTableManager:
         self._add_dropdowns(table, row)    # Add enhanced dropdown widgets
 
         # Style calculated columns as read-only (updated column indices)
-        for col in range(
-            17, 23
-        ):  # calculated columns (min, max, mean, std, status, force_status)
+        for col in range(17, 23):  # calculated columns (min, max, mean, std, status, force_status)
             if col != 22:  # force_status is editable
                 item = QTableWidgetItem("")
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                item.setBackground(self.colors["readonly"])
+                
+                if col == 21:  # STATUS COLUMN - special handling
+                    # Don't set any background initially - let the styling method handle it
+                    self._log_message(f"📋 Created empty status cell for row {row + 1}", "DEBUG")
+                else:
+                    # Other calculated columns get light gray background
+                    item.setBackground(QColor(248, 249, 250))  # Very light gray
+                
                 item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
                 table.setItem(row, col, item)
 
@@ -495,7 +479,7 @@ class DimensionalTableManager:
                 if col != 22:  # force_status is editable
                     item = QTableWidgetItem("")
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                    item.setBackground(self.colors["readonly"])
+                    #item.setBackground(self.colors["readonly"])
                     table.setItem(new_row, col, item)
             else:  # Regular columns
                 item = QTableWidgetItem(str(value))
@@ -645,8 +629,8 @@ class DimensionalTableManager:
             
             item.setText(str(value))
             # Style statistics columns
-            item.setBackground(QColor(248, 249, 250))  # Light gray
-            item.setForeground(QColor(52, 58, 64))     # Dark gray text
+            #item.setBackground(QColor(248, 249, 250))  # Light gray
+            #item.setForeground(QColor(52, 58, 64))     # Dark gray text
             font = QFont("Segoe UI", 9)
             item.setFont(font)
 
@@ -699,71 +683,94 @@ class DimensionalTableManager:
         self._highlight_measurement_violations(table, row, result, evaluation_type)
 
     def _apply_status_styling(self, item, status, row, col):
-        """Apply enhanced styling to status cells - FIXED VERSION"""
-        self._log_message(f"🎨 Applying styling - Status: '{status}', Row: {row}, Col: {col}", "INFO")
-
+        """Apply status cell coloring - FIXED VERSION with strong colors that override table styles"""
         if not item:
             self._log_message("❌ No item to style!", "ERROR")
             return
 
-        # CRITICAL FIX: Ensure the item is NOT marked as read-only for styling
-        current_flags = item.flags()
-        if not (current_flags & Qt.ItemIsEditable):
-            # Item is read-only, make it editable temporarily for styling
-            item.setFlags(current_flags | Qt.ItemIsEditable)
-            self._log_message("🔧 Temporarily made item editable for styling", "DEBUG")
+        self._log_message(f"🎨 Applying styling - Status: '{status}', Row: {row}, Col: {col}", "INFO")
 
-        # Clear any existing styling first
+        original_flags = item.flags()
+        item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
+
+        # Clear any existing styling completely
         item.setData(Qt.BackgroundRole, None)
         item.setData(Qt.ForegroundRole, None)
+        item.setData(Qt.FontRole, None)
 
-        # Set font
+        # Set font first - bold and slightly larger
         font = QFont("Segoe UI", 10, QFont.Bold)
         item.setFont(font)
 
-        # Apply colors based on status
-        if status in ["GOOD", "OK"]:
-            bg_color = QColor(34, 139, 34)    # Forest Green
-            fg_color = QColor(255, 255, 255)  # White text
-            tooltip = "✅ All measurements within tolerance"
+        # Apply STRONG colors based on status - using QColor with explicit RGB values
+        if status == "GOOD":
+            # STRONG GREEN - Forest Green
+            bg_color = QColor(34, 139, 34)     # Forest Green
+            fg_color = QColor(255, 255, 255)   # Pure White
+            tooltip = "✅ GOOD - All measurements within tolerance"
+            self._log_message("🟢 Setting GOOD styling: Forest Green background", "INFO")
             
         elif status == "BAD":
-            bg_color = QColor(178, 34, 34)    # Fire Brick Red  
-            fg_color = QColor(255, 255, 255)  # White text
-            tooltip = "❌ One or more measurements out of tolerance"
+            # STRONG RED - Fire Brick Red
+            bg_color = QColor(178, 34, 34)     # Fire Brick Red
+            fg_color = QColor(255, 255, 255)   # Pure White
+            tooltip = "❌ BAD - One or more measurements out of tolerance"
+            self._log_message("🔴 Setting BAD styling: Fire Brick Red background", "INFO")
             
         elif status == "N.E.":  # Not Evaluable (Basic/Informative)
-            bg_color = QColor(52, 152, 219)   # Blue
-            fg_color = QColor(255, 255, 255)  # White text
-            tooltip = "ℹ️ Not evaluable (Basic/Informative dimension)"
+            # STRONG BLUE
+            bg_color = QColor(30, 115, 190)    # Strong Blue
+            fg_color = QColor(255, 255, 255)   # Pure White
+            tooltip = "ℹ️ N.E. - Not Evaluable (Basic/Informative dimension)"
+            self._log_message("🔵 Setting N.E. styling: Strong Blue background", "INFO")
             
         else:  # WARNING/UNKNOWN status
-            bg_color = QColor(255, 215, 0)    # Gold
-            fg_color = QColor(0, 0, 0)        # Black text
-            tooltip = f"⚠️ Status: {status} (unknown/warning)"
+            # STRONG YELLOW/ORANGE
+            bg_color = QColor(255, 140, 0)     # Dark Orange
+            fg_color = QColor(0, 0, 0)         # Black text for contrast
+            tooltip = f"⚠️ WARNING - Status: {status}"
+            self._log_message("🟡 Setting WARNING styling: Dark Orange background", "INFO")
 
-        # Apply the styling
+        # Apply the styling with FORCE - using setData to ensure it sticks
         try:
+            # Method 1: Use setData (most reliable)
+            item.setData(Qt.BackgroundRole, bg_color)
+            item.setData(Qt.ForegroundRole, fg_color)
+            item.setData(Qt.ToolTipRole, tooltip)
+            
+            # Method 2: Also use direct methods as backup
             item.setBackground(bg_color)
             item.setForeground(fg_color)
             item.setToolTip(tooltip)
             
-            self._log_message(f"✅ Applied styling: BG({bg_color.red()},{bg_color.green()},{bg_color.blue()})", "INFO")
+            self._log_message(f"✅ Applied colors - BG: RGB({bg_color.red()}, {bg_color.green()}, {bg_color.blue()})", "INFO")
+            self._log_message(f"                  - FG: RGB({fg_color.red()}, {fg_color.green()}, {fg_color.blue()})", "INFO")
             
-            # Make it read-only again after styling
-            item.setFlags(current_flags)
+            # CRITICAL: Restore original flags AFTER styling
+            item.setFlags(original_flags)
             
-            # Force table update
+            # Force immediate visual update
             if hasattr(item, "tableWidget") and item.tableWidget():
-                item.tableWidget().viewport().update()
+                table_widget = item.tableWidget()
+                # Update the specific cell
+                table_widget.updateItem(item)
+                # Force viewport repaint
+                table_widget.viewport().update()
+                # Additional forced refresh
+                table_widget.repaint()
+                self._log_message("🔄 Forced table repaint and update", "INFO")
                 
+            self._log_message("✅ Status styling applied successfully!", "INFO")
+            
         except Exception as e:
             self._log_message(f"❌ Error applying styling: {str(e)}", "ERROR")
+            # Restore flags even if styling failed
+            item.setFlags(original_flags)
 
 
     def _highlight_measurement_violations(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str = "Normal"):
         """Highlight measurement violations - ENHANCED for GD&T support"""
-        measurement_cols = [12, 13, 14, 15, 16]  # measurement columns
+        measurement_cols = [12, 13, 14, 15, 16, 17, 18, 19]  # measurement columns
         violations_found = 0
 
         # Skip violation highlighting for Basic/Informative
@@ -822,7 +829,7 @@ class DimensionalTableManager:
                 if is_violation:
                     # RED FONT COLOR for violations
                     item.setForeground(QColor(220, 53, 69))  # Bootstrap danger red
-                    item.setBackground(QColor(255, 255, 255))  # White background
+                    #item.setBackground(QColor(255, 255, 255))  # White background
                     item.setToolTip(f"⚠️ Measurement {formatted_value} violates tolerance!")
                     violations_found += 1
                     
@@ -831,8 +838,8 @@ class DimensionalTableManager:
                     item.setFont(font)
                 else:
                     # Normal styling for good measurements
-                    item.setForeground(QColor(52, 58, 64))  # Dark gray
-                    item.setBackground(QColor(255, 255, 255))  # White background
+                    item.setForeground(QColor(34, 139, 34))  # Dark gray 
+                    #item.setBackground(QColor(255, 255, 255))  # White background
                     item.setToolTip("")
                     
                     # Regular font
@@ -847,7 +854,7 @@ class DimensionalTableManager:
 
 
     def _clear_calculated_columns(self, table: QTableWidget, row: int):
-        """Clear calculated columns when measurements are removed"""
+        """Clear calculated columns when measurements are removed - ENHANCED"""
         calculated_cols = [17, 18, 19, 20, 21]  # min, max, mean, std, status
 
         self._log_message(f"🧹 CLEARING calculated columns for row {row + 1}", "INFO")
@@ -856,40 +863,45 @@ class DimensionalTableManager:
             item = table.item(row, col)
             if not item:
                 item = QTableWidgetItem()
-                if col != 21:  # Don't make status read-only
+                if col != 21:  # Don't make status read-only initially
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                 table.setItem(row, col, item)
 
+            # Clear the text
             item.setText("")
 
-            if col == 21:  # status column - CLEAR WITH LOGGING
-                self._log_message(
-                    f"  🎨 Clearing status cell styling for row {row + 1}", "INFO"
-                )
-
-                # Clear all styling data
+            if col == 21:  # status column - CLEAR STYLING COMPLETELY
+                self._log_message(f"🎨 Clearing status cell styling for row {row + 1}", "INFO")
+                
+                # FORCE clear all styling data
                 item.setData(Qt.BackgroundRole, None)
                 item.setData(Qt.ForegroundRole, None)
-
-                # Set neutral/default styling
-                item.setBackground(QColor(245, 245, 245))  # Very light gray
-                item.setForeground(QColor(73, 80, 87))  # Dark gray text
+                item.setData(Qt.FontRole, None)
+                item.setData(Qt.ToolTipRole, None)
+                
+                # Also clear using direct methods
+                item.setBackground(QColor())  # Default/transparent
+                item.setForeground(QColor())  # Default
+                item.setToolTip("")
+                
+                # Set default font
                 font = QFont("Segoe UI", 9)  # Normal weight
                 item.setFont(font)
-                item.setToolTip("No measurements - status not calculated")
-
-                self._log_message(
-                    "    ✅ Status cell cleared and reset to neutral styling", "INFO"
-                )
+                
+                # Make it read-only after clearing
+                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
+                
+                self._log_message("✅ Status cell cleared and reset to neutral styling", "INFO")
             else:
-                # Statistics columns
-                item.setBackground(QColor(248, 249, 250))  # Light gray
-                item.setForeground(QColor(52, 58, 64))  # Dark gray
+                # Statistics columns - light styling
+                item.setBackground(QColor(248, 249, 250))  # Very light gray
+                item.setForeground(QColor(52, 58, 64))     # Dark gray text
                 font = QFont("Segoe UI", 9)
                 item.setFont(font)
 
-        # Force table update
+        # Force table update after clearing
         table.viewport().update()
+        table.repaint()
         self._log_message("🔄 Table viewport updated after clearing columns", "INFO")
 
     def _on_cell_changed(self, row: int, col: int):
