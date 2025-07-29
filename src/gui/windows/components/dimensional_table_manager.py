@@ -8,8 +8,12 @@ from PyQt5.QtGui import QColor, QFont
 import pandas as pd
 import sip  # type: ignore
 from typing import List, Dict, Any
-from src.models.dimensional.dimensional_result import (DimensionalResult, DimensionalStatus)
+from src.models.dimensional.dimensional_result import (
+    DimensionalResult,
+    DimensionalStatus,
+)
 from src.models.dimensional.gdt_interpreter import GDTInterpreter
+
 
 class DimensionalTableManager:
     """Enhanced table manager with professional styling and improved functionality"""
@@ -24,25 +28,41 @@ class DimensionalTableManager:
         self.results_tabs = QTabWidget()
         self.results: List[DimensionalResult] = []
         self._copied_row_data = None
-
-        # Updated dropdown options
-        self.class_options = ["", "None", "SC", "CC", "IC"]
-        self.instrument_options = ["", "3D Scanbox", "CMM", "Visual", "Caliper", "Micrometer", "Vision System",]
-        self.force_status_options = ["AUTO", "GOOD", "BAD"]
+        self._original_measurements = {}  # {(row, col): value}
+        self.class_options = ["", "CC", "SC", "IC"]
+        self.instrument_options = [
+            "",
+            "3D Scanbox",
+            "CMM",
+            "Visual",
+            "Caliper",
+            "Micrometer",
+            "Vision System",
+            "Laser Scanner",
+            "Optical Comparator",
+            "Height Gauge",
+            "Pin Gauge",
+            "Thread Gauge",
+            "Go/No-Go Gauge",
+            "Surface Roughness Tester",
+            "Hardness Tester",
+            "Coordinate Measuring Arm",
+            "Portable CMM",
+            "Profile Projector",
+        ]
+        self.force_status_options = ["AUTO", "GOOD", "BAD", "T.E.D."]
         self.unit_options = ["", "mm", "°", "μm", "cm", "in"]
         self.datum_options = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
         self.evaluation_options = ["Normal", "Basic", "Informative", "Note", "GD&T"]
-
-        # Styling constants
         self.colors = {
-            "good": QColor(144, 238, 144),  # Light green
-            "bad": QColor(255, 182, 193),  # Light red
-            "warning": QColor(255, 255, 224),  # Light yellow
+            "good": QColor(144, 238, 144),      # Light green
+            "bad": QColor(255, 182, 193),       # Light red
+            "warning": QColor(255, 255, 224),   # Light yellow
             "readonly": QColor(248, 249, 250),  # Light gray
-            "header": QColor(52, 73, 94),  # Dark blue-gray
-            "primary": QColor(52, 152, 219),  # Blue
-            "white": QColor(255, 255, 255),
-            "balck": QColor(0, 0, 0),
+            "header": QColor(52, 73, 94),       # Dark blue-gray
+            "primary": QColor(52, 152, 219),    # Blue
+            "white": QColor(255, 255, 255),     # White
+            "black": QColor(0, 0, 0),           # Black
         }
 
     def set_parent_window(self, parent):
@@ -53,14 +73,16 @@ class DimensionalTableManager:
         if self.parent_window and hasattr(self.parent_window, "_log_message"):
             self.parent_window._log_message(message, level)
         else:
-            print(f"[{level}] {message}")   # Fallback to print if no parent logging available
+            print(
+                f"[{level}] {message}"
+            )  # Fallback to print if no parent logging available
 
     def _create_results_table(self) -> QTableWidget:
         """Create a professionally styled results table - FIXED to allow cell colors"""
         table = QTableWidget()
         table.setColumnCount(len(self.display_columns))
         table.setHorizontalHeaderLabels(self.column_headers)
-        
+
         # Enhanced table configuration
         table.setSortingEnabled(False)
         table.setAlternatingRowColors(True)
@@ -71,7 +93,7 @@ class DimensionalTableManager:
         )
         # Enhanced header styling (unchanged)
         header = table.horizontalHeader()
-        header.setStretchLastSection(True)       
+        header.setStretchLastSection(True)
         header.setStyleSheet("""
             QHeaderView::section {
                 background-color: #34495e;
@@ -87,32 +109,32 @@ class DimensionalTableManager:
                 background-color: #2c3e50;
             }
         """)
-        
+
         # Column widths (unchanged)
         column_widths = {
             0: 80,  # element_id
             1: 80,  # batch
-            2: 50,  # cavity
-            3: 60,  # class
-            4: 220,  # description - wider for long descriptions
-            5: 100,  # measuring_instrument
-            6: 70,  # unit
-            7: 40,  # datum
-            8: 90,  # evaluation_type
+            2: 60,  # cavity
+            3: 50,  # class
+            4: 200,  # description - wider for long descriptions
+            5: 90,  # measuring_instrument
+            6: 60,  # unit
+            7: 60,  # datum
+            8: 80,  # evaluation_type
             9: 70,  # nominal
-            10: 70,  # lower_tolerance
-            11: 70,  # upper_tolerance
-            12: 75,  # measurement_1
-            13: 75,  # measurement_2
-            14: 75,  # measurement_3
-            15: 75,  # measurement_4
-            16: 75,  # measurement_5
-            17: 65,  # minimum
-            18: 65,  # maximum
-            19: 70,  # mean
-            20: 75,  # std_deviation
-            21: 90,  # status
-            22: 100,  # force_status
+            10: 75,  # lower_tolerance
+            11: 75,  # upper_tolerance
+            12: 70,  # measurement_1
+            13: 70,  # measurement_2
+            14: 70,  # measurement_3
+            15: 70,  # measurement_4
+            16: 70,  # measurement_5
+            17: 60,  # minimum
+            18: 60,  # maximum
+            19: 65,  # mean
+            20: 65,  # std_deviation
+            21: 100,  # status
+            22: 90,  # force_status
         }
 
         for col, width in column_widths.items():
@@ -247,21 +269,25 @@ class DimensionalTableManager:
             item = QTableWidgetItem(str(value))
             table.setItem(row, col, item)
 
-        self._add_dropdowns(table, row)    # Add enhanced dropdown widgets
+        self._add_dropdowns(table, row)  # Add enhanced dropdown widgets
 
         # Style calculated columns as read-only (updated column indices)
-        for col in range(17, 23):  # calculated columns (min, max, mean, std, status, force_status)
+        for col in range(
+            17, 23
+        ):  # calculated columns (min, max, mean, std, status, force_status)
             if col != 22:  # force_status is editable
                 item = QTableWidgetItem("")
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                
+
                 if col == 21:  # STATUS COLUMN - special handling
                     # Don't set any background initially - let the styling method handle it
-                    self._log_message(f"📋 Created empty status cell for row {row + 1}", "DEBUG")
+                    self._log_message(
+                        f"📋 Created empty status cell for row {row + 1}", "DEBUG"
+                    )
                 else:
                     # Other calculated columns get light gray background
                     item.setBackground(QColor(248, 249, 250))  # Very light gray
-                
+
                 item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
                 table.setItem(row, col, item)
 
@@ -496,7 +522,9 @@ class DimensionalTableManager:
         """Enhanced delete row with confirmation"""
         current_row = table.currentRow()
         if current_row < 0:
-            QMessageBox.information(self.parent_window, "No Selection", "Please select a row to delete.")
+            QMessageBox.information(
+                self.parent_window, "No Selection", "Please select a row to delete."
+            )
             return
 
         # Get element ID for confirmation
@@ -531,7 +559,9 @@ class DimensionalTableManager:
         for r in results:
             key = (r.element_id, str(r.batch), str(r.cavity))
             results_dict[key] = r
-            self._log_message(f"  📋 Result key: {key} -> Status: {r.status.value}", "DEBUG")
+            self._log_message(
+                f"  📋 Result key: {key} -> Status: {r.status.value}", "DEBUG"
+            )
 
         self._log_message(f"📊 Total results to apply: {len(results)}", "INFO")
 
@@ -555,7 +585,9 @@ class DimensionalTableManager:
                 cavity_item = table.item(row, 2)
 
                 if not all([element_id_item, batch_item, cavity_item]):
-                    self._log_message(f"⚠️ Row {row + 1}: Missing identifier items", "WARNING")
+                    self._log_message(
+                        f"⚠️ Row {row + 1}: Missing identifier items", "WARNING"
+                    )
                     continue
 
                 element_id = element_id_item.text()
@@ -565,11 +597,16 @@ class DimensionalTableManager:
                 result = results_dict.get(key)
 
                 if result:
-                    self._log_message(f"✅ Row {row + 1}: Found result for {element_id}", "DEBUG")
+                    self._log_message(
+                        f"✅ Row {row + 1}: Found result for {element_id}", "DEBUG"
+                    )
                     self._update_row_with_result(table, row, result)
                     updated_count += 1
                 else:
-                    self._log_message(f"❌ Row {row + 1}: No result found for key {key}", "WARNING",)
+                    self._log_message(
+                        f"❌ Row {row + 1}: No result found for key {key}",
+                        "WARNING",
+                    )
                     not_found_count += 1
 
         # Final summary
@@ -577,14 +614,17 @@ class DimensionalTableManager:
         self._log_message("📊 TABLE UPDATE SUMMARY:", "INFO")
         self._log_message(f"  Rows updated: {updated_count}", "INFO")
         self._log_message(f"  Rows not found: {not_found_count}", "INFO")
-        self._log_message("=" * 50, "INFO")
 
         if updated_count > 0:
-            self._log_message(f"✅ Successfully updated {updated_count} rows with results", "INFO")
+            self._log_message(
+                f"✅ Successfully updated {updated_count} rows with results", "INFO"
+            )
         else:
             self._log_message("❌ No rows were updated - check data matching", "ERROR")
 
-    def _update_row_with_result(self, table: QTableWidget, row: int, result: DimensionalResult):
+    def _update_row_with_result(
+        self, table: QTableWidget, row: int, result: DimensionalResult
+    ):
         """Update single row with result - ENHANCED for all evaluation types"""
         element_id = result.element_id
         self._log_message(f"🔧 Updating {element_id} with result:", "DEBUG")
@@ -592,11 +632,9 @@ class DimensionalTableManager:
         # Get evaluation type to determine how to handle this row
         eval_combo = table.cellWidget(row, 8)  # evaluation_type column
         evaluation_type = (
-            eval_combo.currentText()
-            if isinstance(eval_combo, QComboBox)
-            else "Normal"
+            eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal"
         )
-        
+
         self._log_message(f"📋 Evaluation Type: {evaluation_type}", "INFO")
 
         def format_value(val):
@@ -615,10 +653,10 @@ class DimensionalTableManager:
 
         # Update statistical columns for ALL evaluation types
         stat_updates = [
-            (17, min_val),   # minimum
-            (18, max_val),   # maximum  
+            (17, min_val),  # minimum
+            (18, max_val),  # maximum
             (19, mean_val),  # mean
-            (20, std_val),   # std_deviation
+            (20, std_val),  # std_deviation
         ]
 
         for col_idx, value in stat_updates:
@@ -627,11 +665,11 @@ class DimensionalTableManager:
                 item = QTableWidgetItem()
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)  # Make read-only
                 table.setItem(row, col_idx, item)
-            
+
             item.setText(str(value))
             # Style statistics columns
             item.setBackground(QColor(248, 249, 250))  # Light gray
-            item.setForeground(QColor(52, 58, 64))     # Dark gray text
+            item.setForeground(QColor(52, 58, 64))  # Dark gray text
             font = QFont("Segoe UI", 9)
             item.setFont(font)
 
@@ -639,46 +677,60 @@ class DimensionalTableManager:
         status_item = table.item(row, 21)  # status column
         if not status_item:
             status_item = QTableWidgetItem()
-            status_item.setFlags(status_item.flags() ^ Qt.ItemIsEditable)  # Make read-only
+            status_item.setFlags(
+                status_item.flags() ^ Qt.ItemIsEditable
+            )  # Make read-only
             table.setItem(row, 21, status_item)
 
         if evaluation_type in ["Basic", "Informative"]:
             # Basic/Informative: No status evaluation, use special status
             status_item.setText("T.E.D.")  # Not Evaluable
             self._apply_status_styling(status_item, "T.E.D.", row, 21)
-            self._log_message(f"✅ Set T.E.D. status for {evaluation_type} evaluation", "INFO")
-            
+            self._log_message(
+                f"✅ Set T.E.D. status for {evaluation_type} evaluation", "INFO"
+            )
+
         elif evaluation_type == "Note":
             # Notes: Always use force status or default to GOOD
             force_combo = table.cellWidget(row, 22)  # force_status column
-            force_status = (force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO")
-            
+            force_status = (
+                force_combo.currentText()
+                if isinstance(force_combo, QComboBox)
+                else "AUTO"
+            )
+
             if force_status == "GOOD":
                 final_status = "GOOD"
             elif force_status == "BAD":
                 final_status = "BAD"
             else:
                 final_status = "GOOD"  # Notes default to GOOD unless forced
-                
+
             status_item.setText(final_status)
             self._apply_status_styling(status_item, final_status, row, 21)
-            
+
         else:  # Normal and GD&T evaluations
             # Get force status
             force_combo = table.cellWidget(row, 22)  # force_status column
-            force_status = (force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO")
-            
+            force_status = (
+                force_combo.currentText()
+                if isinstance(force_combo, QComboBox)
+                else "AUTO"
+            )
+
             if force_status == "GOOD":
                 final_status = "GOOD"
             elif force_status == "BAD":
                 final_status = "BAD"
             else:  # AUTO - use calculated status
                 final_status = result.status.value
-                
+
             status_item.setText(final_status)
             self._apply_status_styling(status_item, final_status, row, 21)
 
-        self._log_message(f"📊 Final Status for {element_id}: {status_item.text()}", "INFO")
+        self._log_message(
+            f"📊 Final Status for {element_id}: {status_item.text()}", "INFO"
+        )
 
         # Highlight measurement violations with RED FONT COLOR
         self._highlight_measurement_violations(table, row, result, evaluation_type)
@@ -689,7 +741,9 @@ class DimensionalTableManager:
             self._log_message("❌ No item to style!", "ERROR")
             return
 
-        self._log_message(f"🎨 Applying styling - Status: '{status}', Row: {row}, Col: {col}", "INFO")
+        self._log_message(
+            f"🎨 Applying styling - Status: '{status}', Row: {row}, Col: {col}", "INFO"
+        )
 
         original_flags = item.flags()
         item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
@@ -706,31 +760,39 @@ class DimensionalTableManager:
         # Apply STRONG colors based on status - using QColor with explicit RGB values
         if status == "GOOD":
             # STRONG GREEN - Forest Green
-            bg_color = self.colors["good"]    # Forest Green
-            fg_color = self.colors["white"]    # Pure White
+            bg_color = self.colors["good"]  # Forest Green
+            fg_color = self.colors["white"]  # Pure White
             tooltip = "✅ GOOD - All measurements within tolerance"
-            self._log_message("🟢 Setting GOOD styling: Forest Green background", "INFO")
-            
+            self._log_message(
+                "🟢 Setting GOOD styling: Forest Green background", "INFO"
+            )
+
         elif status == "BAD":
             # STRONG RED - Fire Brick Red
-            bg_color = self.colors["bad"]    # Fire Brick Red
-            fg_color = self.colors["white"]   # Pure White
+            bg_color = self.colors["bad"]  # Fire Brick Red
+            fg_color = self.colors["white"]  # Pure White
             tooltip = "❌ BAD - One or more measurements out of tolerance"
-            self._log_message("🔴 Setting BAD styling: Fire Brick Red background", "INFO")
-            
+            self._log_message(
+                "🔴 Setting BAD styling: Fire Brick Red background", "INFO"
+            )
+
         elif status == "T.E.D.":  # Not Evaluable (Basic/Informative)
             # STRONG BLUE
-            bg_color = self.colors["primary"]   # Strong Blue
-            fg_color = self.colors["white"]     # Pure White
+            bg_color = self.colors["primary"]  # Strong Blue
+            fg_color = self.colors["white"]  # Pure White
             tooltip = "ℹ️ T.E.D. - Theoretical exact dimension is not evaluable (Basic|Informative dimension)"
-            self._log_message("🔵 Setting T.E.D. styling: Strong Blue background", "INFO")
-            
+            self._log_message(
+                "🔵 Setting T.E.D. styling: Strong Blue background", "INFO"
+            )
+
         else:  # WARNING/UNKNOWN status
             # STRONG YELLOW/ORANGE
-            bg_color = self.colors["warning"]     # Dark Orange
-            fg_color = self.colors["black"]         # Black text for contrast
+            bg_color = self.colors["warning"]  # Dark Orange
+            fg_color = self.colors["black"]  # Black text for contrast
             tooltip = f"⚠️ WARNING - Status: {status}"
-            self._log_message("🟡 Setting WARNING styling: Dark Orange background", "INFO")
+            self._log_message(
+                "🟡 Setting WARNING styling: Dark Orange background", "INFO"
+            )
 
         # Apply the styling with FORCE - using setData to ensure it sticks
         try:
@@ -738,18 +800,24 @@ class DimensionalTableManager:
             item.setData(Qt.BackgroundRole, bg_color)
             item.setData(Qt.ForegroundRole, fg_color)
             item.setData(Qt.ToolTipRole, tooltip)
-            
+
             # Method 2: Also use direct methods as backup
             item.setBackground(bg_color)
             item.setForeground(fg_color)
             item.setToolTip(tooltip)
-            
-            self._log_message(f"✅ Applied colors - BG: RGB({bg_color.red()}, {bg_color.green()}, {bg_color.blue()})", "INFO")
-            self._log_message(f"                  - FG: RGB({fg_color.red()}, {fg_color.green()}, {fg_color.blue()})", "INFO")
-            
+
+            self._log_message(
+                f"✅ Applied colors - BG: RGB({bg_color.red()}, {bg_color.green()}, {bg_color.blue()})",
+                "INFO",
+            )
+            self._log_message(
+                f"                  - FG: RGB({fg_color.red()}, {fg_color.green()}, {fg_color.blue()})",
+                "INFO",
+            )
+
             # CRITICAL: Restore original flags AFTER styling
             item.setFlags(original_flags)
-            
+
             # Force immediate visual update
             if hasattr(item, "tableWidget") and item.tableWidget():
                 table_widget = item.tableWidget()
@@ -760,18 +828,17 @@ class DimensionalTableManager:
                 # Additional forced refresh
                 table_widget.repaint()
                 self._log_message("🔄 Forced table repaint and update", "INFO")
-                
+
             self._log_message("✅ Status styling applied successfully!", "INFO")
-            
+
         except Exception as e:
             self._log_message(f"❌ Error applying styling: {str(e)}", "ERROR")
             # Restore flags even if styling failed
             item.setFlags(original_flags)
 
-
     def _highlight_measurement_violations(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str = "Normal"):
-        """Highlight measurement violations - ENHANCED for GD&T support"""
-        measurement_cols = [12, 13, 14, 15, 16, 17, 18, 19]  # measurement columns
+        """Highlight measurement violations - unified logic for GD&T and Normal, tracks original/edited values"""
+        measurement_cols = [12, 13, 14, 15, 16]  # measurement columns
         violations_found = 0
 
         # Skip violation highlighting for Basic/Informative
@@ -779,80 +846,69 @@ class DimensionalTableManager:
             self._log_message(f"⏭️ Skipping violation check for {evaluation_type} evaluation", "DEBUG")
             return
 
-        # Get tolerance information
-        lower_limit = None
-        upper_limit = None
+        # Unified tolerance calculation
+        lower_limit = result.nominal + (result.lower_tolerance if result.lower_tolerance is not None else 0)
+        upper_limit = result.nominal + (result.upper_tolerance if result.upper_tolerance is not None else 0)
+        self._log_message(f"📏 Tolerances - Lower: {result.lower_tolerance}, Upper: {result.upper_tolerance}", "INFO")
+        self._log_message(f"📏 Tolerance range: {lower_limit} to {upper_limit}", "INFO")
 
-        if result.lower_tolerance is not None and result.upper_tolerance is not None:
-            if evaluation_type == "GD&T" and result.nominal == 0.0:
-                # GD&T with zero nominal - use tolerances as absolute limits
-                if result.lower_tolerance == 0.0:
-                    # Unilateral tolerance (0 to +upper)
-                    lower_limit = 0.0
-                    upper_limit = result.upper_tolerance
-                    self._log_message(f"🎯 GD&T Unilateral: 0 to +{upper_limit}", "INFO")
-                else:
-                    # Bilateral tolerance around zero
-                    lower_limit = result.lower_tolerance  # Should be negative
-                    upper_limit = result.upper_tolerance  # Should be positive
-                    self._log_message(f"🎯 GD&T Bilateral: {lower_limit} to {upper_limit}", "INFO")
-            else:
-                # Normal tolerance calculation (nominal ± tolerance)
-                lower_limit = result.nominal + result.lower_tolerance
-                upper_limit = result.nominal + result.upper_tolerance
-                self._log_message(f"📏 Normal tolerance: {lower_limit} to {upper_limit}", "INFO")
-
-        for i, col in enumerate(measurement_cols):
+        for idx, col in enumerate(measurement_cols):
             item = table.item(row, col)
             if not item or not item.text():
                 continue
-
             try:
                 value = float(item.text())
-                is_violation = False
-
-                if lower_limit is not None and upper_limit is not None:
-                    if evaluation_type == "GD&T" and result.nominal == 0.0:
-                        if result.lower_tolerance == 0.0:
-                            # Unilateral: check absolute value against upper limit
-                            is_violation = abs(value) > upper_limit
-                        else:
-                            # Bilateral around zero
-                            is_violation = not (lower_limit <= value <= upper_limit)
-                    else:
-                        # Normal tolerance check
-                        is_violation = not (lower_limit <= value <= upper_limit)
-
-                # Format value to 3 decimal places
+                is_violation = not (lower_limit <= value <= upper_limit)
                 formatted_value = f"{value:.3f}"
                 item.setText(formatted_value)
 
-                if is_violation:
-                    # RED FONT COLOR for violations
-                    item.setForeground(QColor(220, 53, 69))  # Bootstrap danger red
-                    #item.setBackground(QColor(255, 255, 255))  # White background
-                    item.setToolTip(f"⚠️ Measurement {formatted_value} violates tolerance!")
-                    violations_found += 1
-                    
-                    # Bold font for violations
-                    font = QFont("Segoe UI", 9, QFont.Bold)
-                    item.setFont(font)
+                key = (row, col)
+                og_value = self._original_measurements.get(key)
+                if og_value is None:
+                    # First run: store original value
+                    self._original_measurements[key] = formatted_value
+                    og_value = formatted_value
+                    was_violation = is_violation
+                    is_edited = False
                 else:
-                    # Normal styling for good measurements
-                    item.setForeground(QColor(34, 139, 34))  # Dark gray 
-                    #item.setBackground(QColor(255, 255, 255))  # White background
-                    item.setToolTip("")
-                    
-                    # Regular font
+                    was_violation = not (lower_limit <= float(og_value) <= upper_limit)
+                    is_edited = formatted_value != og_value
+
+                # Color logic
+                if not is_edited:
+                    # Original value
+                    if is_violation:
+                        item.setForeground(QColor(220, 53, 69))  # Red
+                        item.setBackground(QColor(255, 255, 255))
+                        item.setToolTip("Original measurement violates tolerance")
+                        violations_found += 1
+                    else:
+                        item.setForeground(QColor(34, 159, 34))  # Green
+                        item.setBackground(QColor(255, 255, 255))
+                        item.setToolTip("Original measurement within tolerance")
+                else:
+                    # Edited value
+                    if was_violation:
+                        item.setForeground(QColor(128, 0, 128))  # Purple
+                        item.setBackground(QColor(255, 255, 255))
+                        item.setToolTip("Edited value (was out of spec)")
+                    else:
+                        item.setForeground(QColor(52, 152, 219))  # Blue
+                        item.setBackground(QColor(255, 255, 255))
+                        item.setToolTip("Edited value (was in spec or newly added)")
+
+                # Font logic
+                if is_violation or is_edited:
+                    font = QFont("Segoe UI", 9, QFont.Bold)
+                else:
                     font = QFont("Segoe UI", 9)
-                    item.setFont(font)
+                item.setFont(font)
 
             except ValueError:
                 self._log_message(f"⚠️ Invalid measurement value in column {col}", "WARNING")
 
         if violations_found > 0:
             self._log_message(f"🚨 {violations_found} measurement violations found for {result.element_id}", "WARNING")
-
 
     def _clear_calculated_columns(self, table: QTableWidget, row: int):
         """Clear calculated columns when measurements are removed - ENHANCED"""
@@ -872,31 +928,35 @@ class DimensionalTableManager:
             item.setText("")
 
             if col == 21:  # status column - CLEAR STYLING COMPLETELY
-                self._log_message(f"🎨 Clearing status cell styling for row {row + 1}", "INFO")
-                
+                self._log_message(
+                    f"🎨 Clearing status cell styling for row {row + 1}", "INFO"
+                )
+
                 # FORCE clear all styling data
                 item.setData(Qt.BackgroundRole, None)
                 item.setData(Qt.ForegroundRole, None)
                 item.setData(Qt.FontRole, None)
                 item.setData(Qt.ToolTipRole, None)
-                
+
                 # Also clear using direct methods
                 item.setBackground(QColor())  # Default/transparent
                 item.setForeground(QColor())  # Default
                 item.setToolTip("")
-                
+
                 # Set default font
                 font = QFont("Segoe UI", 9)  # Normal weight
                 item.setFont(font)
-                
+
                 # Make it read-only after clearing
                 item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                
-                self._log_message("✅ Status cell cleared and reset to neutral styling", "INFO")
+
+                self._log_message(
+                    "✅ Status cell cleared and reset to neutral styling", "INFO"
+                )
             else:
                 # Statistics columns - light styling
                 item.setBackground(QColor(248, 249, 250))  # Very light gray
-                item.setForeground(QColor(52, 58, 64))     # Dark gray text
+                item.setForeground(QColor(52, 58, 64))  # Dark gray text
                 font = QFont("Segoe UI", 9)
                 item.setFont(font)
 
@@ -922,7 +982,10 @@ class DimensionalTableManager:
         if item:
             # Check if measurement column was cleared/modified
             if col in [12, 13, 14, 15, 16]:  # measurement columns
-                self._log_message(f"📝 Measurement column {col} changed in row {row + 1}: '{item.text()}'","DEBUG",)
+                self._log_message(
+                    f"📝 Measurement column {col} changed in row {row + 1}: '{item.text()}'",
+                    "DEBUG",
+                )
 
                 # Check if all measurements are empty
                 all_measurements_empty = True
@@ -933,16 +996,31 @@ class DimensionalTableManager:
                         all_measurements_empty = False
                         measurement_count += 1
 
-                self._log_message(f"📊 Measurement status: {measurement_count}/5 measurements, all_empty={all_measurements_empty}","DEBUG",)
+                self._log_message(
+                    f"📊 Measurement status: {measurement_count}/5 measurements, all_empty={all_measurements_empty}",
+                    "DEBUG",
+                )
 
                 # If all measurements are empty, clear calculated columns
                 if all_measurements_empty:
-                    self._log_message(" 🧹 All measurements empty - clearing calculated columns", "INFO",)
+                    self._log_message(
+                        " 🧹 All measurements empty - clearing calculated columns",
+                        "INFO",
+                    )
                     self._clear_calculated_columns(current_table, row)
                     return
 
             # Auto-formatting for numeric columns (3 decimal places max)
-            if col in [9, 10, 11, 12, 13, 14, 15, 16]:  # nominal, tolerances, measurements
+            if col in [
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16,
+            ]:  # nominal, tolerances, measurements
                 try:
                     if item.text().strip():  # Only format non-empty values
                         value = float(item.text())
@@ -954,7 +1032,10 @@ class DimensionalTableManager:
                                 "DEBUG",
                             )
                 except ValueError:
-                    self._log_message(f"⚠️ Invalid numeric value in row {row + 1}, col {col}: '{item.text()}'", "WARNING",)
+                    self._log_message(
+                        f"⚠️ Invalid numeric value in row {row + 1}, col {col}: '{item.text()}'",
+                        "WARNING",
+                    )
 
     def _get_dataframe_from_tables(self) -> pd.DataFrame:
         """Enhanced dataframe extraction with comprehensive logging - FIXED VERSION"""
@@ -980,7 +1061,9 @@ class DimensionalTableManager:
                 continue
 
             tab_name = self.parent_window.results_tabs.tabText(tab_idx)
-            self._log_message(f"📋 Processing Tab: {tab_name} ({table.rowCount()} rows)", "INFO")
+            self._log_message(
+                f"📋 Processing Tab: {tab_name} ({table.rowCount()} rows)", "INFO"
+            )
 
             # Process each row in the table
             for row in range(table.rowCount()):
@@ -1000,7 +1083,9 @@ class DimensionalTableManager:
                         value = cell_widget.currentText().strip()
                         if not value or value == "":
                             value = None
-                        self._log_message(f"📝 {col_name} (dropdown): '{value}'", "DEBUG")
+                        self._log_message(
+                            f"📝 {col_name} (dropdown): '{value}'", "DEBUG"
+                        )
                     else:
                         # Handle regular table items
                         item = table.item(row, col)
@@ -1014,14 +1099,24 @@ class DimensionalTableManager:
                         row_data[col_name] = None
                     else:
                         # Enhanced numeric validation
-                        numeric_columns = ["nominal", "lower_tolerance", "upper_tolerance"] + self.measurement_columns
+                        numeric_columns = [
+                            "nominal",
+                            "lower_tolerance",
+                            "upper_tolerance",
+                        ] + self.measurement_columns
                         if col_name in numeric_columns:
                             try:
                                 numeric_value = float(value)
                                 row_data[col_name] = numeric_value
-                                self._log_message(f" ✅ Converted to numeric: {numeric_value}", "DEBUG",)
+                                self._log_message(
+                                    f" ✅ Converted to numeric: {numeric_value}",
+                                    "DEBUG",
+                                )
                             except (ValueError, TypeError):
-                                self._log_message(f"❌ Invalid numeric value: {value}", "WARNING",)
+                                self._log_message(
+                                    f"❌ Invalid numeric value: {value}",
+                                    "WARNING",
+                                )
                                 row_data[col_name] = None
                         else:
                             row_data[col_name] = value
@@ -1029,7 +1124,9 @@ class DimensionalTableManager:
                 # Auto-fill batch if empty
                 if not row_data.get("batch"):
                     row_data["batch"] = self.batch_number
-                    self._log_message(f"🔧 Auto-filled batch: {self.batch_number}", "DEBUG")
+                    self._log_message(
+                        f"🔧 Auto-filled batch: {self.batch_number}", "DEBUG"
+                    )
 
                 # Validation logic
                 is_valid_row = self._validate_row_data(row_data, row + 1)
@@ -1040,7 +1137,9 @@ class DimensionalTableManager:
                     self._log_message(f"✅ Row {row + 1} added to dataset", "INFO")
                 else:
                     skipped_rows += 1
-                    self._log_message(f"❌ Row {row + 1} skipped (validation failed)", "WARNING")
+                    self._log_message(
+                        f"❌ Row {row + 1} skipped (validation failed)", "WARNING"
+                    )
 
         # Final logging
         self._log_message("=" * 50, "INFO")
@@ -1061,7 +1160,9 @@ class DimensionalTableManager:
         self._log_message("📋 DataFrame columns:", "INFO")
         for col in df.columns:
             non_null_count = df[col].notna().sum()
-            self._log_message(f"{col}: {non_null_count}/{len(df)} non-null values", "INFO")
+            self._log_message(
+                f"{col}: {non_null_count}/{len(df)} non-null values", "INFO"
+            )
         return df
 
     def _validate_row_data(self, row_data: dict, row_number: int) -> bool:
@@ -1102,7 +1203,9 @@ class DimensionalTableManager:
         # Additional explicit check to ensure it's a valid number
         try:
             nominal_float = float(nominal)
-            self._log_message(f"nominal: {nominal_float} (✅ Valid number, including zero)", "DEBUG")
+            self._log_message(
+                f"nominal: {nominal_float} (✅ Valid number, including zero)", "DEBUG"
+            )
         except (ValueError, TypeError):
             self._log_message(f"❌ Invalid nominal value: {nominal}", "WARNING")
             return False
@@ -1129,7 +1232,10 @@ class DimensionalTableManager:
         upper_tol = row_data.get("upper_tolerance")
 
         if lower_tol is None and upper_tol is None:
-            self._log_message("⚠️ No tolerances provided - will use force_status or default evaluation","WARNING",)
+            self._log_message(
+                "⚠️ No tolerances provided - will use force_status or default evaluation",
+                "WARNING",
+            )
         else:
             self._log_message(f"tolerances: {lower_tol} / {upper_tol}", "DEBUG")
 
@@ -1313,8 +1419,6 @@ class DimensionalTableManager:
             return
 
         try:
-            
-
             gdt_interpreter = GDTInterpreter()
             formatted_text = gdt_interpreter.format_gdt_display(gdt_text)
 
@@ -1374,10 +1478,15 @@ class DimensionalTableManager:
 
         dialog.accept()
 
-    def _on_evaluation_type_changed(self, table: QTableWidget, row: int, evaluation_type: str):
+    def _on_evaluation_type_changed(
+        self, table: QTableWidget, row: int, evaluation_type: str
+    ):
         """Handle evaluation type change - auto-fill GD&T values"""
-        self._log_message(f"🔧 Evaluation type changed to '{evaluation_type}' for row {row + 1}", "INFO")
-        
+        self._log_message(
+            f"🔧 Evaluation type changed to '{evaluation_type}' for row {row + 1}",
+            "INFO",
+        )
+
         if evaluation_type == "GD&T":
             # Auto-fill nominal with 0.00001
             nominal_item = table.item(row, 9)  # nominal column
@@ -1385,16 +1494,19 @@ class DimensionalTableManager:
                 nominal_item = QTableWidgetItem()
                 table.setItem(row, 9, nominal_item)
             nominal_item.setText("0.001")
-            
+
             # Auto-fill lower tolerance with 0.000
             lower_tol_item = table.item(row, 10)  # lower_tolerance column
             if not lower_tol_item:
                 lower_tol_item = QTableWidgetItem()
                 table.setItem(row, 10, lower_tol_item)
             lower_tol_item.setText("0.000")
-            
-            self._log_message("✅ Auto-filled GD&T values: nominal=0.00001, lower_tolerance=0.000", "INFO")
-            
+
+            self._log_message(
+                "✅ Auto-filled GD&T values: nominal=0.00001, lower_tolerance=0.000",
+                "INFO",
+            )
+
             # Mark changes
             self._mark_unsaved_changes()
 
@@ -1509,7 +1621,9 @@ class DimensionalTableManager:
 
         # Only process Normal, Note, and GD&T dimensions for status evaluation
         # Basic and Informative get calculations but NO status
-        evaluation_df = df[df["evaluation_type"].isin(["Normal", "Note", "GD&T"])].copy()
+        evaluation_df = df[
+            df["evaluation_type"].isin(["Normal", "Note", "GD&T"])
+        ].copy()
 
         self._log_message(
             f"Filtered {len(df)} total dimensions to {len(evaluation_df)} for evaluation "
@@ -1544,7 +1658,9 @@ class DimensionalTableManager:
                 if measurements:
                     mean_val = sum(measurements) / len(measurements)
                     if len(measurements) > 1:
-                        variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
+                        variance = sum((x - mean_val) ** 2 for x in measurements) / (
+                            len(measurements) - 1
+                        )
                         std_dev_val = variance**0.5
                     else:
                         std_dev_val = 0.0
@@ -1558,7 +1674,7 @@ class DimensionalTableManager:
                 nominal_val = float(row.get("nominal", 0))
                 lower_tol = row.get("lower_tolerance")
                 upper_tol = row.get("upper_tolerance")
-                
+
                 # Calculate deviations and check tolerances
                 deviations = [meas - nominal_val for meas in measurements]
                 out_of_spec_count = 0
@@ -1567,7 +1683,7 @@ class DimensionalTableManager:
                     try:
                         lower_tol = float(lower_tol)
                         upper_tol = float(upper_tol)
-                        
+
                         for meas in measurements:
                             if evaluation_type == "GD&T" and nominal_val == 0.0:
                                 # GD&T with zero nominal
@@ -1581,18 +1697,22 @@ class DimensionalTableManager:
                                         out_of_spec_count += 1
                             else:
                                 # Normal tolerance check
-                                if meas < (nominal_val + lower_tol) or meas > (nominal_val + upper_tol):
+                                if meas < (nominal_val + lower_tol) or meas > (
+                                    nominal_val + upper_tol
+                                ):
                                     out_of_spec_count += 1
-                                    
+
                     except (ValueError, TypeError):
                         pass
 
                 # Determine status based on evaluation type
                 force_status = row.get("force_status", "AUTO")
-                
+
                 if evaluation_type in ["Basic", "Informative"]:
                     # These types are not evaluable
-                    status = DimensionalStatus.GOOD  # Placeholder, will be overridden with "N.E."
+                    status = (
+                        DimensionalStatus.GOOD
+                    )  # Placeholder, will be overridden with "N.E."
                 elif force_status == "GOOD":
                     status = DimensionalStatus.GOOD
                 elif force_status == "BAD":
@@ -1601,7 +1721,11 @@ class DimensionalTableManager:
                     status = DimensionalStatus.GOOD  # Notes default to GOOD
                 else:
                     # Auto-determine based on out-of-spec count
-                    status = DimensionalStatus.BAD if out_of_spec_count > 0 else DimensionalStatus.GOOD
+                    status = (
+                        DimensionalStatus.BAD
+                        if out_of_spec_count > 0
+                        else DimensionalStatus.GOOD
+                    )
 
                 # Create DimensionalResult
                 note_result = DimensionalResult(
@@ -1628,7 +1752,9 @@ class DimensionalTableManager:
                 all_results.append(note_result)
 
             except Exception as e:
-                self._log_message(f"Error creating DimensionalResult: {str(e)}", "ERROR")
+                self._log_message(
+                    f"Error creating DimensionalResult: {str(e)}", "ERROR"
+                )
                 continue
 
         return all_results
@@ -1644,6 +1770,8 @@ class DimensionalTableManager:
 
         # Filter for evaluation
         filtered_df = self._filter_dimensions_for_evaluation(df)
-        processing_df = filtered_df[filtered_df["evaluation_type"] != "Note"].copy() # Remove Note entries from processing (they'll be handled separately)
+        processing_df = filtered_df[
+            filtered_df["evaluation_type"] != "Note"
+        ].copy()  # Remove Note entries from processing (they'll be handled separately)
 
         return processing_df
