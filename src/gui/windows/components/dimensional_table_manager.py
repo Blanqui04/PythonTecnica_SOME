@@ -42,6 +42,7 @@ class DimensionalTableManager:
             "header": QColor(52, 73, 94),  # Dark blue-gray
             "primary": QColor(52, 152, 219),  # Blue
             "white": QColor(255, 255, 255),
+            "balck": QColor(0, 0, 0),
         }
 
     def set_parent_window(self, parent):
@@ -479,7 +480,7 @@ class DimensionalTableManager:
                 if col != 22:  # force_status is editable
                     item = QTableWidgetItem("")
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                    #item.setBackground(self.colors["readonly"])
+                    item.setBackground(self.colors["readonly"])
                     table.setItem(new_row, col, item)
             else:  # Regular columns
                 item = QTableWidgetItem(str(value))
@@ -629,8 +630,8 @@ class DimensionalTableManager:
             
             item.setText(str(value))
             # Style statistics columns
-            #item.setBackground(QColor(248, 249, 250))  # Light gray
-            #item.setForeground(QColor(52, 58, 64))     # Dark gray text
+            item.setBackground(QColor(248, 249, 250))  # Light gray
+            item.setForeground(QColor(52, 58, 64))     # Dark gray text
             font = QFont("Segoe UI", 9)
             item.setFont(font)
 
@@ -643,9 +644,9 @@ class DimensionalTableManager:
 
         if evaluation_type in ["Basic", "Informative"]:
             # Basic/Informative: No status evaluation, use special status
-            status_item.setText("N.E.")  # Not Evaluable
-            self._apply_status_styling(status_item, "N.E.", row, 21)
-            self._log_message(f"✅ Set N.E. status for {evaluation_type} evaluation", "INFO")
+            status_item.setText("T.E.D.")  # Not Evaluable
+            self._apply_status_styling(status_item, "T.E.D.", row, 21)
+            self._log_message(f"✅ Set T.E.D. status for {evaluation_type} evaluation", "INFO")
             
         elif evaluation_type == "Note":
             # Notes: Always use force status or default to GOOD
@@ -705,29 +706,29 @@ class DimensionalTableManager:
         # Apply STRONG colors based on status - using QColor with explicit RGB values
         if status == "GOOD":
             # STRONG GREEN - Forest Green
-            bg_color = QColor(34, 139, 34)     # Forest Green
-            fg_color = QColor(255, 255, 255)   # Pure White
+            bg_color = self.colors["good"]    # Forest Green
+            fg_color = self.colors["white"]    # Pure White
             tooltip = "✅ GOOD - All measurements within tolerance"
             self._log_message("🟢 Setting GOOD styling: Forest Green background", "INFO")
             
         elif status == "BAD":
             # STRONG RED - Fire Brick Red
-            bg_color = QColor(178, 34, 34)     # Fire Brick Red
-            fg_color = QColor(255, 255, 255)   # Pure White
+            bg_color = self.colors["bad"]    # Fire Brick Red
+            fg_color = self.colors["white"]   # Pure White
             tooltip = "❌ BAD - One or more measurements out of tolerance"
             self._log_message("🔴 Setting BAD styling: Fire Brick Red background", "INFO")
             
-        elif status == "N.E.":  # Not Evaluable (Basic/Informative)
+        elif status == "T.E.D.":  # Not Evaluable (Basic/Informative)
             # STRONG BLUE
-            bg_color = QColor(30, 115, 190)    # Strong Blue
-            fg_color = QColor(255, 255, 255)   # Pure White
-            tooltip = "ℹ️ N.E. - Not Evaluable (Basic/Informative dimension)"
-            self._log_message("🔵 Setting N.E. styling: Strong Blue background", "INFO")
+            bg_color = self.colors["primary"]   # Strong Blue
+            fg_color = self.colors["white"]     # Pure White
+            tooltip = "ℹ️ T.E.D. - Theoretical exact dimension is not evaluable (Basic|Informative dimension)"
+            self._log_message("🔵 Setting T.E.D. styling: Strong Blue background", "INFO")
             
         else:  # WARNING/UNKNOWN status
             # STRONG YELLOW/ORANGE
-            bg_color = QColor(255, 140, 0)     # Dark Orange
-            fg_color = QColor(0, 0, 0)         # Black text for contrast
+            bg_color = self.colors["warning"]     # Dark Orange
+            fg_color = self.colors["black"]         # Black text for contrast
             tooltip = f"⚠️ WARNING - Status: {status}"
             self._log_message("🟡 Setting WARNING styling: Dark Orange background", "INFO")
 
