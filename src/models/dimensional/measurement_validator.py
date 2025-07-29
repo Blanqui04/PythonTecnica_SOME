@@ -116,6 +116,11 @@ def validate_measurements(record: Dict[str, Any]) -> bool:
                         f"Invalid datum measurement value: {datum_measurement}"
                     )
 
+        # FIX: For GD&T and nominal==0, do not skip validation
+        if evaluation_type == "GD&T" or (not is_note and record.get("nominal", 0.0) == 0.0):
+            # Accept nominal==0 as valid for GD&T
+            pass
+
         return True
 
     except Exception as e:

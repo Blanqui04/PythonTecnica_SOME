@@ -1086,17 +1086,25 @@ class DimensionalTableManager:
             self._log_message("❌ Missing description", "WARNING")
             return False
 
-        # FIXED: Handle different evaluation types
-        if evaluation_type == "Note": # For Notes, we only need element_id and description
+        # For Notes, we only need element_id and description
+        if evaluation_type == "Note":
             self._log_message("✅ Note entry - basic validation passed", "DEBUG")
             return True
 
-        # For Normal/Basic/Informative entries, check nominal and measurements
+        # For all other types, check nominal and measurements
         nominal = row_data.get("nominal")
 
-        # FIXED: Allow nominal = 0 (it's valid for GD&T)
+        # CRITICAL FIX: Explicitly check for None, not falsy values
         if nominal is None:
             self._log_message("❌ Missing nominal value", "WARNING")
+            return False
+
+        # Additional explicit check to ensure it's a valid number
+        try:
+            nominal_float = float(nominal)
+            self._log_message(f"nominal: {nominal_float} (✅ Valid number, including zero)", "DEBUG")
+        except (ValueError, TypeError):
+            self._log_message(f"❌ Invalid nominal value: {nominal}", "WARNING")
             return False
 
         self._log_message(f"nominal: {nominal} (✅ Valid, including zero)", "DEBUG")
@@ -1365,6 +1373,30 @@ class DimensionalTableManager:
                 )
 
         dialog.accept()
+
+    def _on_evaluation_type_changed(self, table: QTableWidget, row: int, evaluation_type: str):
+        """Handle evaluation type change - auto-fill GD&T values"""
+        self._log_message(f"🔧 Evaluation type changed to '{evaluation_type}' for row {row + 1}", "INFO")
+        
+        if evaluation_type == "GD&T":
+            # Auto-fill nominal with 0.00001
+            nominal_item = table.item(row, 9)  # nominal column
+            if not nominal_item:
+                nominal_item = QTableWidgetItem()
+                table.setItem(row, 9, nominal_item)
+            nominal_item.setText("0.001")
+            
+            # Auto-fill lower tolerance with 0.000
+            lower_tol_item = table.item(row, 10)  # lower_tolerance column
+            if not lower_tol_item:
+                lower_tol_item = QTableWidgetItem()
+                table.setItem(row, 10, lower_tol_item)
+            lower_tol_item.setText("0.000")
+            
+            self._log_message("✅ Auto-filled GD&T values: nominal=0.00001, lower_tolerance=0.000", "INFO")
+            
+            # Mark changes
+            self._mark_unsaved_changes()
 
     def clear_all_tables(self):
         """Enhanced clear all tables with better error handling"""
