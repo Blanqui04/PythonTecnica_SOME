@@ -9,8 +9,8 @@
     "secondary": {
         "host": "172.26.5.159",
         "port": "5434",
-        "database": "airflow",
-        "user": "airflow",
-        "password": "airflow"
+        "database": "airflow_db",
+        "user": "airflow_user",
+        "password": "airflow123"
     }
 }
