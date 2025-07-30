@@ -9,7 +9,7 @@ from src.models.dimensional.dimensional_result import (
     DimensionalStatus,
 )
 from .dimensional_table_ui import DimensionalTableUI
-
+from datetime import datetime
 
 class DimensionalTableManager(DimensionalTableUI):
     """Enhanced table manager with professional styling and improved functionality"""
@@ -17,6 +17,27 @@ class DimensionalTableManager(DimensionalTableUI):
     def __init__(self, display_columns, column_headers, required_columns, measurement_columns, batch_number):
         super().__init__(display_columns, column_headers, required_columns, measurement_columns, batch_number)
         self.results: List[DimensionalResult] = []
+        # Performance optimization: Cache original measurements
+        self._original_measurements = {}
+        self._last_update_time = datetime.now()
+        self._update_threshold = 1.0  # Minimum seconds between updates
+
+    def _log_message(self, message: str, level: str = "INFO"):
+        """Throttled logging to improve performance"""
+        now = datetime.now()
+        
+        # Only log INFO and DEBUG messages if enough time has passed
+        if level in ["INFO", "DEBUG"]:
+            if (now - self._last_update_time).total_seconds() < self._update_threshold:
+                return
+            self._last_update_time = now
+        
+        # Always log WARNING and ERROR
+        if hasattr(self, 'parent_window') and self.parent_window:
+            if hasattr(self.parent_window, '_log_message'):
+                self.parent_window._log_message(message, level)
+        else:
+            print(f"[{level}] {message}")
 
     def _update_tables_with_results(self, results: List[DimensionalResult]):
         """Enhanced results update with comprehensive logging - FIXED VERSION"""
@@ -276,11 +297,7 @@ class DimensionalTableManager(DimensionalTableUI):
             # Force immediate visual update
             if hasattr(item, "tableWidget") and item.tableWidget():
                 table_widget = item.tableWidget()
-                # Update the specific cell
-                table_widget.updateItem(item)
-                # Force viewport repaint
                 table_widget.viewport().update()
-                # Additional forced refresh
                 table_widget.repaint()
                 self._log_message("🔄 Forced table repaint and update", "INFO")
 

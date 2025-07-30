@@ -43,9 +43,7 @@ class DimensionalResult:
         # Convert dataclass to dict, but serialize enums and lists properly
         d = asdict(self)
         # Convert enum to string
-        d["status"] = (
-            self.status.value if isinstance(self.status, Enum) else self.status
-        )
+        d["status"] = (self.status.value if isinstance(self.status, Enum) else self.status)
         # Join warnings list to simple list if None, ensure JSON serializable
         if d.get("warnings") is None:
             d["warnings"] = []
