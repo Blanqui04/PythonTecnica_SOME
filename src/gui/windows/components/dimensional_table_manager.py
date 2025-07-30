@@ -1,549 +1,22 @@
-# src/gui/windows/dimensional_table_manager.py
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QLabel, QPushButton,
-                             QTableWidget, QTableWidgetItem, QMessageBox,
-                             QHBoxLayout, QTextEdit, QComboBox, QGroupBox,
-                             QTabWidget, QAbstractItemView, QMenu, QDialog,)
+# src/gui/windows/components/dimensional_table_manager.py
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QComboBox
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QFont
 import pandas as pd
-import sip  # type: ignore
-from typing import List, Dict, Any
+from typing import List
 from src.models.dimensional.dimensional_result import (
     DimensionalResult,
     DimensionalStatus,
 )
-from src.models.dimensional.gdt_interpreter import GDTInterpreter
+from .dimensional_table_ui import DimensionalTableUI
 
 
-class DimensionalTableManager:
+class DimensionalTableManager(DimensionalTableUI):
     """Enhanced table manager with professional styling and improved functionality"""
 
     def __init__(self, display_columns, column_headers, required_columns, measurement_columns, batch_number):
-        self.parent_window = None
-        self.display_columns = display_columns
-        self.column_headers = column_headers
-        self.required_columns = required_columns
-        self.measurement_columns = measurement_columns
-        self.batch_number = batch_number
-        self.results_tabs = QTabWidget()
+        super().__init__(display_columns, column_headers, required_columns, measurement_columns, batch_number)
         self.results: List[DimensionalResult] = []
-        self._copied_row_data = None
-        self._original_measurements = {}  # {(row, col): value}
-        self.class_options = ["", "CC", "SC", "IC"]
-        self.instrument_options = [
-            "",
-            "3D Scanbox",
-            "CMM",
-            "Visual",
-            "Caliper",
-            "Micrometer",
-            "Vision System",
-            "Laser Scanner",
-            "Optical Comparator",
-            "Height Gauge",
-            "Pin Gauge",
-            "Thread Gauge",
-            "Go/No-Go Gauge",
-            "Surface Roughness Tester",
-            "Hardness Tester",
-            "Coordinate Measuring Arm",
-            "Portable CMM",
-            "Profile Projector",
-        ]
-        self.force_status_options = ["AUTO", "GOOD", "BAD", "T.E.D."]
-        self.unit_options = ["", "mm", "°", "μm", "cm", "in"]
-        self.datum_options = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
-        self.evaluation_options = ["Normal", "Basic", "Informative", "Note", "GD&T"]
-        self.colors = {
-            "good": QColor(144, 238, 144),      # Light green
-            "bad": QColor(255, 182, 193),       # Light red
-            "warning": QColor(255, 255, 224),   # Light yellow
-            "readonly": QColor(248, 249, 250),  # Light gray
-            "header": QColor(52, 73, 94),       # Dark blue-gray
-            "primary": QColor(52, 152, 219),    # Blue
-            "white": QColor(255, 255, 255),     # White
-            "black": QColor(0, 0, 0),           # Black
-        }
-
-    def set_parent_window(self, parent):
-        self.parent_window = parent
-
-    def _log_message(self, message: str, level: str = "INFO"):
-        """Delegate logging to parent window if available"""
-        if self.parent_window and hasattr(self.parent_window, "_log_message"):
-            self.parent_window._log_message(message, level)
-        else:
-            print(
-                f"[{level}] {message}"
-            )  # Fallback to print if no parent logging available
-
-    def _create_results_table(self) -> QTableWidget:
-        """Create a professionally styled results table - FIXED to allow cell colors"""
-        table = QTableWidget()
-        table.setColumnCount(len(self.display_columns))
-        table.setHorizontalHeaderLabels(self.column_headers)
-
-        # Enhanced table configuration
-        table.setSortingEnabled(False)
-        table.setAlternatingRowColors(True)
-        table.setSelectionBehavior(QAbstractItemView.SelectRows)
-        table.setContextMenuPolicy(Qt.CustomContextMenu)
-        table.customContextMenuRequested.connect(
-            lambda pos: self._show_context_menu(table, pos)
-        )
-        # Enhanced header styling (unchanged)
-        header = table.horizontalHeader()
-        header.setStretchLastSection(True)
-        header.setStyleSheet("""
-            QHeaderView::section {
-                background-color: #34495e;
-                color: #ffffff;
-                padding: 12px 8px;
-                border: none;
-                border-right: 1px solid #2c3e50;
-                font-weight: 600;
-                font-size: 10px;
-                text-transform: uppercase;
-            }
-            QHeaderView::section:hover {
-                background-color: #2c3e50;
-            }
-        """)
-
-        # Column widths (unchanged)
-        column_widths = {
-            0: 80,  # element_id
-            1: 80,  # batch
-            2: 60,  # cavity
-            3: 50,  # class
-            4: 200,  # description - wider for long descriptions
-            5: 90,  # measuring_instrument
-            6: 60,  # unit
-            7: 60,  # datum
-            8: 80,  # evaluation_type
-            9: 70,  # nominal
-            10: 75,  # lower_tolerance
-            11: 75,  # upper_tolerance
-            12: 70,  # measurement_1
-            13: 70,  # measurement_2
-            14: 70,  # measurement_3
-            15: 70,  # measurement_4
-            16: 70,  # measurement_5
-            17: 60,  # minimum
-            18: 60,  # maximum
-            19: 65,  # mean
-            20: 65,  # std_deviation
-            21: 100,  # status
-            22: 90,  # force_status
-        }
-
-        for col, width in column_widths.items():
-            if col < table.columnCount():
-                table.setColumnWidth(col, width)
-
-        # Set row height to handle long descriptions
-        table.verticalHeader().setDefaultSectionSize(35)
-        table.setWordWrap(True)  # Enable word wrap for long text
-        table.cellChanged.connect(self._on_cell_changed)
-        return table
-
-    def _create_summary_widget(self) -> QWidget:
-        """Create enhanced summary widget with professional styling"""
-        widget = QWidget()
-        widget.setStyleSheet("""
-            QWidget {
-                background-color: #f8f9fa;
-                border-radius: 8px;
-            }
-            QLabel {
-                color: #2c3e50;
-                font-family: 'Segoe UI', sans-serif;
-            }
-            QGroupBox {
-                font-weight: 600;
-                color: #34495e;
-                border: 2px solid #e9ecef;
-                border-radius: 8px;
-                margin-top: 10px;
-                padding-top: 10px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 8px 0 8px;
-                background-color: #f8f9fa;
-            }
-        """)
-
-        layout = QVBoxLayout()
-        # Enhanced statistics display
-        self.stats_label = QLabel("📊 No analysis performed yet")
-        self.stats_label.setStyleSheet("""
-            QLabel {
-                font-size: 14px;
-                padding: 15px;
-                background-color: #ffffff;
-                border: 1px solid #e9ecef;
-                border-radius: 6px;
-                color: #495057;
-            }
-        """)
-        layout.addWidget(self.stats_label)
-        # Enhanced cavity comparison
-        self.cavity_group = QGroupBox("🔧 Cavity Comparison")
-        self.cavity_layout = QVBoxLayout()
-        self.cavity_group.setLayout(self.cavity_layout)
-        layout.addWidget(self.cavity_group)
-        # Enhanced feature breakdown
-        self.feature_group = QGroupBox("📈 Feature Type Breakdown")
-        self.feature_layout = QVBoxLayout()
-        self.feature_group.setLayout(self.feature_layout)
-        layout.addWidget(self.feature_group)
-        layout.addStretch()
-        widget.setLayout(layout)
-        return widget
-
-    def _show_context_menu(self, table: QTableWidget, position):
-        """Enhanced context menu with professional styling"""
-        if not self.parent_window.manual_mode:
-            return
-
-        menu = QMenu()
-        menu.setStyleSheet("""
-            QMenu {
-                background-color: #ffffff;
-                border: 1px solid #dee2e6;
-                border-radius: 6px;
-                padding: 4px;
-                color: #2c3e50;
-                font-family: 'Segoe UI', sans-serif;
-            }
-            QMenu::item {
-                padding: 8px 16px;
-                border-radius: 4px;
-                margin: 1px;
-            }
-            QMenu::item:selected {
-                background-color: #3498db;
-                color: #ffffff;
-            }
-            QMenu::separator {
-                height: 1px;
-                background-color: #ecf0f1;
-                margin: 4px 8px;
-            }
-        """)
-
-        # Menu actions
-        add_row_action = menu.addAction("➕ Add Row")
-        add_row_action.triggered.connect(self._add_manual_row)
-        duplicate_row_action = menu.addAction("📋 Duplicate Row")
-        duplicate_row_action.triggered.connect(lambda: self._duplicate_row(table))
-        delete_row_action = menu.addAction("🗑️ Delete Row")
-        delete_row_action.triggered.connect(lambda: self._delete_row(table))
-        menu.addSeparator()
-
-        gdt_helper_action = menu.addAction("🔧 GD&T Helper")
-        gdt_helper_action.triggered.connect(lambda: self._show_gdt_helper(table))
-        menu.addSeparator()
-
-        copy_action = menu.addAction("📄 Copy Row")
-        copy_action.triggered.connect(lambda: self._copy_row(table))
-        paste_action = menu.addAction("📋 Paste Row")
-        paste_action.triggered.connect(lambda: self._paste_row(table))
-
-        menu.exec_(table.mapToGlobal(position))
-
-    def _populate_default_row(self, table: QTableWidget, row: int):
-        """Populate row with defaults and enhanced UI elements - FIXED for status cell"""
-        # Set basic defaults
-        defaults = {
-            0: self._get_next_element_id(table),  # Auto-increment element_id
-            1: str(self.batch_number),  # batch
-            2: "1",  # cavity (default to 1)
-            6: "mm",  # default unit
-            8: "Normal",  # default evaluation type
-        }
-
-        for col, value in defaults.items():
-            item = QTableWidgetItem(str(value))
-            table.setItem(row, col, item)
-
-        self._add_dropdowns(table, row)  # Add enhanced dropdown widgets
-
-        # Style calculated columns as read-only (updated column indices)
-        for col in range(
-            17, 23
-        ):  # calculated columns (min, max, mean, std, status, force_status)
-            if col != 22:  # force_status is editable
-                item = QTableWidgetItem("")
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-
-                if col == 21:  # STATUS COLUMN - special handling
-                    # Don't set any background initially - let the styling method handle it
-                    self._log_message(
-                        f"📋 Created empty status cell for row {row + 1}", "DEBUG"
-                    )
-                else:
-                    # Other calculated columns get light gray background
-                    item.setBackground(QColor(248, 249, 250))  # Very light gray
-
-                item.setFont(QFont("Segoe UI", 9, QFont.DemiBold))
-                table.setItem(row, col, item)
-
-    def _add_dropdowns(self, table: QTableWidget, row: int):
-        """Add professional dropdown widgets to specific columns"""
-        dropdown_style = self._get_combo_style()
-
-        # Class dropdown (column 3)
-        class_combo = QComboBox()
-        class_combo.addItems(self.class_options)
-        class_combo.setCurrentText("")  # Default empty
-        class_combo.setStyleSheet(dropdown_style)
-        class_combo.setMaximumHeight(30)  # FIX: Set proper height
-        table.setCellWidget(row, 3, class_combo)
-
-        # Measuring instrument dropdown (column 5)
-        instrument_combo = QComboBox()
-        instrument_combo.addItems(self.instrument_options)
-        instrument_combo.setCurrentText("3D Scanbox")  # Default to scanbox
-        instrument_combo.setStyleSheet(dropdown_style)
-        instrument_combo.setMaximumHeight(30)
-        table.setCellWidget(row, 5, instrument_combo)
-
-        # Unit dropdown (column 6)
-        unit_combo = QComboBox()
-        unit_combo.addItems(self.unit_options)
-        unit_combo.setCurrentText("mm")  # Default to mm
-        unit_combo.setStyleSheet(dropdown_style)
-        unit_combo.setMaximumHeight(30)
-        table.setCellWidget(row, 6, unit_combo)
-
-        # Datum dropdown (column 7)
-        datum_combo = QComboBox()
-        datum_combo.addItems(self.datum_options)
-        datum_combo.setCurrentText("")  # Default empty
-        datum_combo.setStyleSheet(dropdown_style)
-        datum_combo.setMaximumHeight(30)
-        table.setCellWidget(row, 7, datum_combo)
-
-        # Evaluation type dropdown (column 8)
-        eval_combo = QComboBox()
-        eval_combo.addItems(self.evaluation_options)
-        eval_combo.setCurrentText("Normal")  # Default to Normal
-        eval_combo.setStyleSheet(dropdown_style)
-        eval_combo.setMaximumHeight(30)
-        table.setCellWidget(row, 8, eval_combo)
-
-        # Force status dropdown (column 22)
-        force_combo = QComboBox()
-        force_combo.addItems(self.force_status_options)
-        force_combo.setCurrentText("AUTO")  # Default to AUTO
-        force_combo.setStyleSheet(dropdown_style)
-        force_combo.setMaximumHeight(30)
-        table.setCellWidget(row, 22, force_combo)
-
-    def _get_combo_style(self) -> str:
-        """Professional combobox styling with proper sizing"""
-        return """
-            QComboBox {
-                background-color: #ffffff;
-                border: 1px solid #ced4da;
-                border-radius: 4px;
-                padding: 4px 6px;
-                color: #495057;
-                font-family: 'Segoe UI', sans-serif;
-                font-size: 10px;
-                max-height: 20px;
-                min-height: 10px;
-            }
-            QComboBox:hover {
-                border-color: #3498db;
-                background-color: #f8feff;
-            }
-            QComboBox:focus {
-                border-color: #3498db;
-                border-width: 2px;
-            }
-            QComboBox::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 16px;
-                border-left: 1px solid #ced4da;
-                border-top-right-radius: 4px;
-                border-bottom-right-radius: 4px;
-                background-color: #f8f9fa;
-            }
-            QComboBox::down-arrow {
-                width: 8px;
-                height: 8px;
-                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIgM0w1IDZMOCAzIiBzdHJva2U9IiM2Yzc1N2QiIHN0cm9rZS13aWR0aD0iMS4yIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz4KPC9zdmc+);
-            }
-            QComboBox QAbstractItemView {
-                background-color: #ffffff;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                selection-background-color: #3498db;
-                selection-color: #ffffff;
-                outline: none;
-                font-size: 10px;
-            }
-        """
-
-    def _get_next_element_id(self, table: QTableWidget) -> str:
-        """Generate sequential element_id"""
-        existing_ids = set()
-
-        # Collect existing IDs from current table
-        for row in range(table.rowCount()):
-            item = table.item(row, 0)
-            if item and item.text():
-                try:
-                    # Extract numeric part if format is like "E001", "ELEM_001", etc.
-                    text = item.text().strip()
-                    if text.replace("_", "").replace("-", "").isalnum():
-                        # Extract numbers from the ID
-                        numbers = "".join(filter(str.isdigit, text))
-                        if numbers:
-                            existing_ids.add(int(numbers))
-                except (ValueError, AttributeError):
-                    pass
-
-        # Also check other tabs in parent window
-        if self.parent_window and hasattr(self.parent_window, "results_tabs"):
-            for tab_idx in range(self.parent_window.results_tabs.count()):
-                tab_table = self.parent_window.results_tabs.widget(tab_idx)
-                if isinstance(tab_table, QTableWidget) and tab_table != table:
-                    for row in range(tab_table.rowCount()):
-                        item = tab_table.item(row, 0)
-                        if item and item.text():
-                            try:
-                                text = item.text().strip()
-                                numbers = "".join(filter(str.isdigit, text))
-                                if numbers:
-                                    existing_ids.add(int(numbers))
-                            except (ValueError, AttributeError):
-                                pass
-
-        # Generate next sequential ID
-        next_num = 1
-        while next_num in existing_ids:
-            next_num += 1
-
-        return f"Nº{next_num:03d}"
-
-    def _duplicate_row(self, table: QTableWidget):
-        """Enhanced duplicate row with proper dropdown handling for new columns"""
-        current_row = table.currentRow()
-        if current_row < 0:
-            QMessageBox.information(
-                self.parent_window, "No Selection", "Please select a row to duplicate."
-            )
-            return
-
-        # Get row data including dropdown values
-        row_data = []
-        for col in range(table.columnCount()):
-            cell_widget = table.cellWidget(current_row, col)
-            if isinstance(cell_widget, QComboBox):
-                row_data.append(cell_widget.currentText())
-            else:
-                item = table.item(current_row, col)
-                row_data.append(item.text() if item else "")
-
-        new_row = table.rowCount()  # Create new row
-        table.insertRow(new_row)
-
-        # Populate new row with duplicated data
-        for col, value in enumerate(row_data):
-            if col == 0:  # Generate new element_id
-                item = QTableWidgetItem(self._get_next_element_id(table))
-                table.setItem(new_row, col, item)
-            elif col in [3, 5, 6, 7, 8, 22]:  # Dropdown columns (updated)
-                if col == 3:  # class
-                    combo = QComboBox()
-                    combo.addItems(self.class_options)
-                    combo.setCurrentText(value)
-                    combo.setStyleSheet(self._get_combo_style())
-                    combo.setMaximumHeight(30)
-                    table.setCellWidget(new_row, col, combo)
-                elif col == 5:  # measuring_instrument
-                    combo = QComboBox()
-                    combo.addItems(self.instrument_options)
-                    combo.setCurrentText(value)
-                    combo.setStyleSheet(self._get_combo_style())
-                    combo.setMaximumHeight(30)
-                    table.setCellWidget(new_row, col, combo)
-                elif col == 6:  # unit
-                    combo = QComboBox()
-                    combo.addItems(self.unit_options)
-                    combo.setCurrentText(value if value else "mm")
-                    combo.setStyleSheet(self._get_combo_style())
-                    combo.setMaximumHeight(30)
-                    table.setCellWidget(new_row, col, combo)
-                elif col == 7:  # datum
-                    combo = QComboBox()
-                    combo.addItems(self.datum_options)
-                    combo.setCurrentText(value)
-                    combo.setStyleSheet(self._get_combo_style())
-                    combo.setMaximumHeight(30)
-                    table.setCellWidget(new_row, col, combo)
-                elif col == 8:  # evaluation_type
-                    combo = QComboBox()
-                    combo.addItems(self.evaluation_options)
-                    combo.setCurrentText(value if value else "Normal")
-                    combo.setStyleSheet(self._get_combo_style())
-                    combo.setMaximumHeight(30)
-                    table.setCellWidget(new_row, col, combo)
-                elif col == 22:  # force_status
-                    combo = QComboBox()
-                    combo.addItems(self.force_status_options)
-                    combo.setCurrentText(value if value else "AUTO")
-                    combo.setStyleSheet(self._get_combo_style())
-                    combo.setMaximumHeight(30)
-                    table.setCellWidget(new_row, col, combo)
-            elif col >= 17:  # Calculated columns - make read-only (updated)
-                if col != 22:  # force_status is editable
-                    item = QTableWidgetItem("")
-                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                    item.setBackground(self.colors["readonly"])
-                    table.setItem(new_row, col, item)
-            else:  # Regular columns
-                item = QTableWidgetItem(str(value))
-                table.setItem(new_row, col, item)
-
-        self._mark_unsaved_changes()
-        if self.parent_window:
-            self.parent_window._log_message(
-                f"Row duplicated with new ID: {self._get_next_element_id(table)}"
-            )
-
-    def _delete_row(self, table: QTableWidget):
-        """Enhanced delete row with confirmation"""
-        current_row = table.currentRow()
-        if current_row < 0:
-            QMessageBox.information(
-                self.parent_window, "No Selection", "Please select a row to delete."
-            )
-            return
-
-        # Get element ID for confirmation
-        element_item = table.item(current_row, 0)
-        element_id = element_item.text() if element_item else f"Row {current_row + 1}"
-
-        reply = QMessageBox.question(
-            self.parent_window,
-            "Confirm Delete",
-            f"Are you sure you want to delete {element_id}?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-
-        if reply == QMessageBox.Yes:
-            table.removeRow(current_row)
-            self._mark_unsaved_changes()
-            if self.parent_window:
-                self.parent_window._log_message(f"Deleted {element_id}")
 
     def _update_tables_with_results(self, results: List[DimensionalResult]):
         """Enhanced results update with comprehensive logging - FIXED VERSION"""
@@ -559,9 +32,7 @@ class DimensionalTableManager:
         for r in results:
             key = (r.element_id, str(r.batch), str(r.cavity))
             results_dict[key] = r
-            self._log_message(
-                f"  📋 Result key: {key} -> Status: {r.status.value}", "DEBUG"
-            )
+            self._log_message(f"📋 Result key: {key} -> Status: {r.status.value}", "DEBUG")
 
         self._log_message(f"📊 Total results to apply: {len(results)}", "INFO")
 
@@ -585,9 +56,7 @@ class DimensionalTableManager:
                 cavity_item = table.item(row, 2)
 
                 if not all([element_id_item, batch_item, cavity_item]):
-                    self._log_message(
-                        f"⚠️ Row {row + 1}: Missing identifier items", "WARNING"
-                    )
+                    self._log_message(f"⚠️ Row {row + 1}: Missing identifier items", "WARNING")
                     continue
 
                 element_id = element_id_item.text()
@@ -597,16 +66,11 @@ class DimensionalTableManager:
                 result = results_dict.get(key)
 
                 if result:
-                    self._log_message(
-                        f"✅ Row {row + 1}: Found result for {element_id}", "DEBUG"
-                    )
+                    self._log_message(f"✅ Row {row + 1}: Found result for {element_id}", "DEBUG")
                     self._update_row_with_result(table, row, result)
                     updated_count += 1
                 else:
-                    self._log_message(
-                        f"❌ Row {row + 1}: No result found for key {key}",
-                        "WARNING",
-                    )
+                    self._log_message(f"❌ Row {row + 1}: No result found for key {key}", "WARNING")
                     not_found_count += 1
 
         # Final summary
@@ -616,24 +80,18 @@ class DimensionalTableManager:
         self._log_message(f"  Rows not found: {not_found_count}", "INFO")
 
         if updated_count > 0:
-            self._log_message(
-                f"✅ Successfully updated {updated_count} rows with results", "INFO"
-            )
+            self._log_message(f"✅ Successfully updated {updated_count} rows with results", "INFO")
         else:
             self._log_message("❌ No rows were updated - check data matching", "ERROR")
 
-    def _update_row_with_result(
-        self, table: QTableWidget, row: int, result: DimensionalResult
-    ):
+    def _update_row_with_result(self, table: QTableWidget, row: int, result: DimensionalResult):
         """Update single row with result - ENHANCED for all evaluation types"""
         element_id = result.element_id
         self._log_message(f"🔧 Updating {element_id} with result:", "DEBUG")
 
         # Get evaluation type to determine how to handle this row
         eval_combo = table.cellWidget(row, 8)  # evaluation_type column
-        evaluation_type = (
-            eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal"
-        )
+        evaluation_type = (eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal")
 
         self._log_message(f"📋 Evaluation Type: {evaluation_type}", "INFO")
 
@@ -645,13 +103,30 @@ class DimensionalTableManager:
             except (ValueError, TypeError):
                 return str(val)
 
-        # Always update calculated columns (min, max, mean, std) regardless of evaluation type
-        min_val = format_value(min(result.measurements)) if result.measurements else ""
-        max_val = format_value(max(result.measurements)) if result.measurements else ""
-        mean_val = format_value(result.mean) if result.mean is not None else ""
-        std_val = format_value(result.std_dev) if result.std_dev is not None else ""
+        # For Note evaluation type, only show statistics if there are measurements
+        if evaluation_type == "Note":
+            if result.measurements:
+                # Note with measurements - show all statistics
+                min_val = format_value(min(result.measurements))
+                max_val = format_value(max(result.measurements))
+                mean_val = format_value(result.mean) if result.mean is not None else ""
+                std_val = format_value(result.std_dev) if result.std_dev is not None else ""
+                self._log_message("📝 Note evaluation with measurements: Showing all statistics", "INFO")
+            else:
+                # Note with no measurements - show nothing
+                min_val = ""
+                max_val = ""
+                mean_val = ""
+                std_val = ""
+                self._log_message("📝 Note evaluation with no measurements: Setting all statistics to empty", "INFO")
+        else:
+            # Normal, GD&T, Basic, Informative - show all statistics
+            min_val = format_value(min(result.measurements)) if result.measurements else ""
+            max_val = format_value(max(result.measurements)) if result.measurements else ""
+            mean_val = format_value(result.mean) if result.mean is not None else ""
+            std_val = format_value(result.std_dev) if result.std_dev is not None else ""
 
-        # Update statistical columns for ALL evaluation types
+        # Update statistical columns
         stat_updates = [
             (17, min_val),  # minimum
             (18, max_val),  # maximum
@@ -728,12 +203,9 @@ class DimensionalTableManager:
             status_item.setText(final_status)
             self._apply_status_styling(status_item, final_status, row, 21)
 
-        self._log_message(
-            f"📊 Final Status for {element_id}: {status_item.text()}", "INFO"
-        )
+        self._log_message(f"📊 Final Status for {element_id}: {status_item.text()}", "INFO")
 
-        # Highlight measurement violations with RED FONT COLOR
-        self._highlight_measurement_violations(table, row, result, evaluation_type)
+        self._highlight_measurement_violations(table, row, result, evaluation_type)     # Highlight measurement violations with RED FONT COLOR
 
     def _apply_status_styling(self, item, status, row, col):
         """Apply status cell coloring - FIXED VERSION with strong colors that override table styles"""
@@ -741,9 +213,7 @@ class DimensionalTableManager:
             self._log_message("❌ No item to style!", "ERROR")
             return
 
-        self._log_message(
-            f"🎨 Applying styling - Status: '{status}', Row: {row}, Col: {col}", "INFO"
-        )
+        self._log_message(f"🎨 Applying styling - Status: '{status}', Row: {row}, Col: {col}", "INFO")
 
         original_flags = item.flags()
         item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable | Qt.ItemIsEditable)
@@ -763,36 +233,28 @@ class DimensionalTableManager:
             bg_color = self.colors["good"]  # Forest Green
             fg_color = self.colors["white"]  # Pure White
             tooltip = "✅ GOOD - All measurements within tolerance"
-            self._log_message(
-                "🟢 Setting GOOD styling: Forest Green background", "INFO"
-            )
+            self._log_message("🟢 Setting GOOD styling: Forest Green background", "INFO")
 
         elif status == "BAD":
             # STRONG RED - Fire Brick Red
             bg_color = self.colors["bad"]  # Fire Brick Red
             fg_color = self.colors["white"]  # Pure White
             tooltip = "❌ BAD - One or more measurements out of tolerance"
-            self._log_message(
-                "🔴 Setting BAD styling: Fire Brick Red background", "INFO"
-            )
+            self._log_message("🔴 Setting BAD styling: Fire Brick Red background", "INFO")
 
         elif status == "T.E.D.":  # Not Evaluable (Basic/Informative)
             # STRONG BLUE
             bg_color = self.colors["primary"]  # Strong Blue
             fg_color = self.colors["white"]  # Pure White
             tooltip = "ℹ️ T.E.D. - Theoretical exact dimension is not evaluable (Basic|Informative dimension)"
-            self._log_message(
-                "🔵 Setting T.E.D. styling: Strong Blue background", "INFO"
-            )
+            self._log_message("🔵 Setting T.E.D. styling: Strong Blue background", "INFO")
 
         else:  # WARNING/UNKNOWN status
             # STRONG YELLOW/ORANGE
             bg_color = self.colors["warning"]  # Dark Orange
             fg_color = self.colors["black"]  # Black text for contrast
             tooltip = f"⚠️ WARNING - Status: {status}"
-            self._log_message(
-                "🟡 Setting WARNING styling: Dark Orange background", "INFO"
-            )
+            self._log_message("🟡 Setting WARNING styling: Dark Orange background", "INFO")
 
         # Apply the styling with FORCE - using setData to ensure it sticks
         try:
@@ -806,17 +268,10 @@ class DimensionalTableManager:
             item.setForeground(fg_color)
             item.setToolTip(tooltip)
 
-            self._log_message(
-                f"✅ Applied colors - BG: RGB({bg_color.red()}, {bg_color.green()}, {bg_color.blue()})",
-                "INFO",
-            )
-            self._log_message(
-                f"                  - FG: RGB({fg_color.red()}, {fg_color.green()}, {fg_color.blue()})",
-                "INFO",
-            )
+            self._log_message(f"✅ Applied colors - BG: RGB({bg_color.red()}, {bg_color.green()}, {bg_color.blue()})", "INFO")
+            self._log_message(f"- FG: RGB({fg_color.red()}, {fg_color.green()}, {fg_color.blue()})", "INFO")
 
-            # CRITICAL: Restore original flags AFTER styling
-            item.setFlags(original_flags)
+            item.setFlags(original_flags)     # CRITICAL: Restore original flags AFTER styling
 
             # Force immediate visual update
             if hasattr(item, "tableWidget") and item.tableWidget():
@@ -833,8 +288,7 @@ class DimensionalTableManager:
 
         except Exception as e:
             self._log_message(f"❌ Error applying styling: {str(e)}", "ERROR")
-            # Restore flags even if styling failed
-            item.setFlags(original_flags)
+            item.setFlags(original_flags)   # Restore flags even if styling failed
 
     def _highlight_measurement_violations(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str = "Normal"):
         """Highlight measurement violations - unified logic for GD&T and Normal, tracks original/edited values"""
@@ -878,23 +332,19 @@ class DimensionalTableManager:
                 if not is_edited:
                     # Original value
                     if is_violation:
-                        item.setForeground(QColor(220, 53, 69))  # Red
-                        item.setBackground(QColor(255, 255, 255))
+                        item.setForeground(self.colors["bad"])  # Red
                         item.setToolTip("Original measurement violates tolerance")
                         violations_found += 1
                     else:
-                        item.setForeground(QColor(34, 159, 34))  # Green
-                        item.setBackground(QColor(255, 255, 255))
+                        item.setForeground(self.colors["good"])  # Green
                         item.setToolTip("Original measurement within tolerance")
                 else:
                     # Edited value
                     if was_violation:
                         item.setForeground(QColor(128, 0, 128))  # Purple
-                        item.setBackground(QColor(255, 255, 255))
                         item.setToolTip("Edited value (was out of spec)")
                     else:
-                        item.setForeground(QColor(52, 152, 219))  # Blue
-                        item.setBackground(QColor(255, 255, 255))
+                        item.setForeground(self.colors["primary"])  # Blue
                         item.setToolTip("Edited value (was in spec or newly added)")
 
                 # Font logic
@@ -909,133 +359,6 @@ class DimensionalTableManager:
 
         if violations_found > 0:
             self._log_message(f"🚨 {violations_found} measurement violations found for {result.element_id}", "WARNING")
-
-    def _clear_calculated_columns(self, table: QTableWidget, row: int):
-        """Clear calculated columns when measurements are removed - ENHANCED"""
-        calculated_cols = [17, 18, 19, 20, 21]  # min, max, mean, std, status
-
-        self._log_message(f"🧹 CLEARING calculated columns for row {row + 1}", "INFO")
-
-        for col in calculated_cols:
-            item = table.item(row, col)
-            if not item:
-                item = QTableWidgetItem()
-                if col != 21:  # Don't make status read-only initially
-                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                table.setItem(row, col, item)
-
-            # Clear the text
-            item.setText("")
-
-            if col == 21:  # status column - CLEAR STYLING COMPLETELY
-                self._log_message(
-                    f"🎨 Clearing status cell styling for row {row + 1}", "INFO"
-                )
-
-                # FORCE clear all styling data
-                item.setData(Qt.BackgroundRole, None)
-                item.setData(Qt.ForegroundRole, None)
-                item.setData(Qt.FontRole, None)
-                item.setData(Qt.ToolTipRole, None)
-
-                # Also clear using direct methods
-                item.setBackground(QColor())  # Default/transparent
-                item.setForeground(QColor())  # Default
-                item.setToolTip("")
-
-                # Set default font
-                font = QFont("Segoe UI", 9)  # Normal weight
-                item.setFont(font)
-
-                # Make it read-only after clearing
-                item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-
-                self._log_message(
-                    "✅ Status cell cleared and reset to neutral styling", "INFO"
-                )
-            else:
-                # Statistics columns - light styling
-                item.setBackground(QColor(248, 249, 250))  # Very light gray
-                item.setForeground(QColor(52, 58, 64))  # Dark gray text
-                font = QFont("Segoe UI", 9)
-                item.setFont(font)
-
-        # Force table update after clearing
-        table.viewport().update()
-        table.repaint()
-        self._log_message("🔄 Table viewport updated after clearing columns", "INFO")
-
-    def _on_cell_changed(self, row: int, col: int):
-        """Enhanced cell change handler with measurement clearing detection"""
-        if self.parent_window:
-            self.parent_window._mark_unsaved_changes()
-
-        current_table = (
-            self.parent_window.results_tabs.currentWidget()
-            if self.parent_window
-            else None
-        )
-        if not isinstance(current_table, QTableWidget):
-            return
-
-        item = current_table.item(row, col)
-        if item:
-            # Check if measurement column was cleared/modified
-            if col in [12, 13, 14, 15, 16]:  # measurement columns
-                self._log_message(
-                    f"📝 Measurement column {col} changed in row {row + 1}: '{item.text()}'",
-                    "DEBUG",
-                )
-
-                # Check if all measurements are empty
-                all_measurements_empty = True
-                measurement_count = 0
-                for meas_col in [12, 13, 14, 15, 16]:
-                    meas_item = current_table.item(row, meas_col)
-                    if meas_item and meas_item.text().strip():
-                        all_measurements_empty = False
-                        measurement_count += 1
-
-                self._log_message(
-                    f"📊 Measurement status: {measurement_count}/5 measurements, all_empty={all_measurements_empty}",
-                    "DEBUG",
-                )
-
-                # If all measurements are empty, clear calculated columns
-                if all_measurements_empty:
-                    self._log_message(
-                        " 🧹 All measurements empty - clearing calculated columns",
-                        "INFO",
-                    )
-                    self._clear_calculated_columns(current_table, row)
-                    return
-
-            # Auto-formatting for numeric columns (3 decimal places max)
-            if col in [
-                9,
-                10,
-                11,
-                12,
-                13,
-                14,
-                15,
-                16,
-            ]:  # nominal, tolerances, measurements
-                try:
-                    if item.text().strip():  # Only format non-empty values
-                        value = float(item.text())
-                        formatted = f"{value:.3f}"
-                        if item.text() != formatted:  # Avoid infinite loop
-                            item.setText(formatted)
-                            self._log_message(
-                                f"  📐 Formatted value: {item.text()} -> {formatted}",
-                                "DEBUG",
-                            )
-                except ValueError:
-                    self._log_message(
-                        f"⚠️ Invalid numeric value in row {row + 1}, col {col}: '{item.text()}'",
-                        "WARNING",
-                    )
 
     def _get_dataframe_from_tables(self) -> pd.DataFrame:
         """Enhanced dataframe extraction with comprehensive logging - FIXED VERSION"""
@@ -1242,378 +565,6 @@ class DimensionalTableManager:
         self._log_message("✅ Validation passed", "DEBUG")
         return True
 
-    def _mark_unsaved_changes(self):
-        """Mark unsaved changes"""
-        if self.parent_window:
-            self.parent_window._mark_unsaved_changes()
-
-    def _add_manual_row(self):
-        """Add manual row - delegated to parent window"""
-        if self.parent_window:
-            self.parent_window._add_manual_row()
-
-    def _copy_row(self, table: QTableWidget):
-        """Enhanced copy row with dropdown support"""
-        current_row = table.currentRow()
-        if current_row < 0:
-            return
-
-        row_data = []
-        for col in range(table.columnCount()):
-            cell_widget = table.cellWidget(current_row, col)
-            if isinstance(cell_widget, QComboBox):
-                row_data.append(cell_widget.currentText())
-            else:
-                item = table.item(current_row, col)
-                row_data.append(item.text() if item else "")
-
-        self._copied_row_data = row_data
-        if self.parent_window:
-            self.parent_window._log_message(f"📋 Copied row {current_row + 1}")
-
-    def _paste_row(self, table: QTableWidget):
-        """Enhanced paste row with dropdown support"""
-        if not hasattr(self, "_copied_row_data") or not self._copied_row_data:
-            QMessageBox.information(
-                self.parent_window, "No Data", "No row data copied."
-            )
-            return
-
-        current_row = table.currentRow()
-        if current_row < 0:
-            return
-
-        for col, value in enumerate(self._copied_row_data):
-            if col < 14:  # Only paste input columns, not calculated ones
-                if col in [3, 5, 19]:  # Dropdown columns
-                    cell_widget = table.cellWidget(current_row, col)
-                    if isinstance(cell_widget, QComboBox):
-                        if value in [
-                            cell_widget.itemText(i) for i in range(cell_widget.count())
-                        ]:
-                            cell_widget.setCurrentText(value)
-                else:
-                    item = table.item(current_row, col)
-                    if not item:
-                        item = QTableWidgetItem()
-                        table.setItem(current_row, col, item)
-                    item.setText(value)
-
-        self._mark_unsaved_changes()
-        if self.parent_window:
-            self.parent_window._log_message(f"📋 Pasted data to row {current_row + 1}")
-
-    def _show_gdt_helper(self, table: QTableWidget):
-        """Enhanced GD&T helper dialog with professional styling"""
-        current_row = table.currentRow()
-        if current_row < 0:
-            QMessageBox.information(
-                self.parent_window, "No Selection", "Please select a row first."
-            )
-            return
-
-        dialog = QDialog(self.parent_window)
-        dialog.setWindowTitle("🔧 GD&T Helper")
-        dialog.setModal(True)
-        dialog.resize(450, 350)
-        dialog.setStyleSheet("""
-            QDialog {
-                background-color: #f8f9fa;
-                color: #2c3e50;
-                font-family: 'Segoe UI', sans-serif;
-            }
-            QLabel {
-                color: #495057;
-            }
-            QTextEdit {
-                background-color: #ffffff;
-                border: 2px solid #e9ecef;
-                border-radius: 6px;
-                padding: 8px;
-                font-family: 'Consolas', monospace;
-                font-size: 12px;
-            }
-            QTextEdit:focus {
-                border-color: #3498db;
-            }
-            QPushButton {
-                background-color: #3498db;
-                color: white;
-                border: none;
-                padding: 10px 20px;
-                border-radius: 6px;
-                font-weight: 600;
-                min-width: 100px;
-            }
-            QPushButton:hover {
-                background-color: #2980b9;
-            }
-            QPushButton:pressed {
-                background-color: #21618c;
-            }
-        """)
-
-        layout = QVBoxLayout()
-
-        # Enhanced instructions
-        instructions = QLabel("""
-        <div style='background-color: #ffffff; padding: 15px; border-radius: 6px; border: 1px solid #e9ecef;'>
-        <h3 style='color: #2c3e50; margin-top: 0;'>🎯 GD&T Input Examples:</h3>
-        <table style='width: 100%; color: #495057;'>
-        <tr><td><b>Position:</b></td><td>⌖ 0.5(M) A B C</td></tr>
-        <tr><td><b>Parallelism:</b></td><td>∥ 0.1 A</td></tr>
-        <tr><td><b>Flatness:</b></td><td>⏸ 0.05</td></tr>
-        <tr><td><b>Circularity:</b></td><td>○ 0.02</td></tr>
-        <tr><td><b>Profile:</b></td><td>⌓ 0.2 A B</td></tr>
-        </table>
-        <br>
-        <h4 style='color: #2c3e50;'>📏 Material Conditions:</h4>
-        <ul style='color: #6c757d; margin: 0;'>
-        <li><b>(M)</b> = Maximum Material Condition</li>
-        <li><b>(L)</b> = Least Material Condition</li>
-        <li><b>(S)</b> = Regardless of Feature Size</li>
-        </ul>
-        </div>
-        """)
-        layout.addWidget(instructions)
-
-        # Enhanced text input
-        layout.addWidget(QLabel("<b>Enter GD&T Description:</b>"))
-        text_input = QTextEdit()
-        text_input.setMaximumHeight(80)
-        text_input.setPlaceholderText("Example: position 0.5(M) A B C")
-        layout.addWidget(text_input)
-
-        # Enhanced buttons
-        button_layout = QHBoxLayout()
-
-        apply_btn = QPushButton("✅ Apply to Row")
-        apply_btn.clicked.connect(
-            lambda: self._apply_gdt_to_row(
-                table, current_row, text_input.toPlainText(), dialog
-            )
-        )
-        button_layout.addWidget(apply_btn)
-
-        cancel_btn = QPushButton("❌ Cancel")
-        cancel_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #6c757d;
-                color: white;
-            }
-            QPushButton:hover {
-                background-color: #5a6268;
-            }
-        """)
-        cancel_btn.clicked.connect(dialog.reject)
-        button_layout.addWidget(cancel_btn)
-
-        layout.addLayout(button_layout)
-        dialog.setLayout(layout)
-        dialog.exec_()
-
-    def _apply_gdt_to_row(self, table: QTableWidget, row: int, gdt_text: str, dialog):
-        """Apply GD&T text to table row with enhanced formatting"""
-        if not gdt_text.strip():
-            dialog.accept()
-            return
-
-        try:
-            gdt_interpreter = GDTInterpreter()
-            formatted_text = gdt_interpreter.format_gdt_display(gdt_text)
-
-            # Apply to description column
-            desc_item = table.item(row, 4)
-            if not desc_item:
-                desc_item = QTableWidgetItem()
-                table.setItem(row, 4, desc_item)
-
-            desc_item.setText(formatted_text)
-
-            # Enhanced GD&T parsing and tolerance application
-            gdt_info = gdt_interpreter.parse_gdt_description(formatted_text)
-            if gdt_info.get("has_gdt") and gdt_info.get("tolerance_value"):
-                lower_item = table.item(row, 7)
-                upper_item = table.item(row, 8)
-
-                if (not lower_item or not lower_item.text()) and (
-                    not upper_item or not upper_item.text()
-                ):
-                    nominal_item = table.item(row, 6)
-                    nominal = (
-                        float(nominal_item.text())
-                        if nominal_item and nominal_item.text()
-                        else 0.0
-                    )
-
-                    lower_tol, upper_tol = (
-                        gdt_interpreter.convert_gdt_to_tolerance_range(
-                            gdt_info, nominal
-                        )
-                    )
-
-                    if not lower_item:
-                        lower_item = QTableWidgetItem()
-                        table.setItem(row, 7, lower_item)
-                    if not upper_item:
-                        upper_item = QTableWidgetItem()
-                        table.setItem(row, 8, upper_item)
-
-                    lower_item.setText(f"{lower_tol:.3f}")
-                    upper_item.setText(f"{upper_tol:.3f}")
-
-            self._mark_unsaved_changes()
-            if self.parent_window:
-                self.parent_window._log_message(f"🔧 Applied GD&T: {formatted_text}")
-
-        except ImportError:
-            QMessageBox.warning(
-                self.parent_window, "GD&T Helper", "GD&T interpreter not available."
-            )
-        except Exception as e:
-            if self.parent_window:
-                self.parent_window._log_message(
-                    f"❌ GD&T application error: {str(e)}", "ERROR"
-                )
-
-        dialog.accept()
-
-    def _on_evaluation_type_changed(
-        self, table: QTableWidget, row: int, evaluation_type: str
-    ):
-        """Handle evaluation type change - auto-fill GD&T values"""
-        self._log_message(
-            f"🔧 Evaluation type changed to '{evaluation_type}' for row {row + 1}",
-            "INFO",
-        )
-
-        if evaluation_type == "GD&T":
-            # Auto-fill nominal with 0.00001
-            nominal_item = table.item(row, 9)  # nominal column
-            if not nominal_item:
-                nominal_item = QTableWidgetItem()
-                table.setItem(row, 9, nominal_item)
-            nominal_item.setText("0.001")
-
-            # Auto-fill lower tolerance with 0.000
-            lower_tol_item = table.item(row, 10)  # lower_tolerance column
-            if not lower_tol_item:
-                lower_tol_item = QTableWidgetItem()
-                table.setItem(row, 10, lower_tol_item)
-            lower_tol_item.setText("0.000")
-
-            self._log_message(
-                "✅ Auto-filled GD&T values: nominal=0.00001, lower_tolerance=0.000",
-                "INFO",
-            )
-
-            # Mark changes
-            self._mark_unsaved_changes()
-
-    def clear_all_tables(self):
-        """Enhanced clear all tables with better error handling"""
-        if not self.parent_window:
-            return
-
-        try:
-            # Clear all tabs
-            while self.parent_window.results_tabs.count():
-                widget = self.parent_window.results_tabs.widget(0)
-                self.parent_window.results_tabs.removeTab(0)
-                if widget and not sip.isdeleted(widget):
-                    widget.deleteLater()
-
-            # Reset data structures
-            self.results = []
-            self._copied_row_data = None
-
-            if self.parent_window:
-                self.parent_window._log_message("🧹 All tables cleared")
-
-        except Exception as e:
-            if self.parent_window:
-                self.parent_window._log_message(
-                    f"❌ Error clearing tables: {str(e)}", "ERROR"
-                )
-
-    def _safe_clear_layout(self, layout):
-        """Safely clear layout without SIP errors"""
-        if not layout or sip.isdeleted(layout):
-            return
-
-        try:
-            for i in reversed(range(layout.count())):
-                item = layout.itemAt(i)
-                if item:
-                    widget = item.widget()
-                    if widget and not sip.isdeleted(widget):
-                        widget.setParent(None)
-                        widget.deleteLater()
-        except RuntimeError:
-            pass  # Widget already deleted
-
-    def get_table_statistics(self) -> Dict[str, Any]:
-        """Get comprehensive table statistics for summary display"""
-        if not self.parent_window or not hasattr(self.parent_window, "results_tabs"):
-            return {}
-
-        stats = {
-            "total_rows": 0,
-            "total_measurements": 0,
-            "cavities": set(),
-            "classes": set(),
-            "instruments": set(),
-            "good_count": 0,
-            "bad_count": 0,
-            "warning_count": 0,
-        }
-
-        for tab_idx in range(self.parent_window.results_tabs.count()):
-            table = self.parent_window.results_tabs.widget(tab_idx)
-            if not isinstance(table, QTableWidget):
-                continue
-
-            stats["total_rows"] += table.rowCount()
-
-            for row in range(table.rowCount()):
-                # Count measurements
-                measurement_count = 0
-                for col in range(9, 14):  # measurement columns
-                    item = table.item(row, col)
-                    if item and item.text().strip():
-                        measurement_count += 1
-                stats["total_measurements"] += measurement_count
-
-                # Track cavities, classes, instruments
-                cavity_item = table.item(row, 2)
-                if cavity_item and cavity_item.text():
-                    stats["cavities"].add(cavity_item.text())
-
-                class_widget = table.cellWidget(row, 3)
-                if isinstance(class_widget, QComboBox) and class_widget.currentText():
-                    stats["classes"].add(class_widget.currentText())
-
-                instrument_widget = table.cellWidget(row, 5)
-                if (
-                    isinstance(instrument_widget, QComboBox)
-                    and instrument_widget.currentText()
-                ):
-                    stats["instruments"].add(instrument_widget.currentText())
-
-                # Count status
-                status_item = table.item(row, 18)
-                if status_item and status_item.text():
-                    status = status_item.text()
-                    if status == "GOOD":
-                        stats["good_count"] += 1
-                    elif status == "BAD":
-                        stats["bad_count"] += 1
-                    else:
-                        stats["warning_count"] += 1
-
-        return stats
-
-    # Add method to filter dimensions based on evaluation type:
     def _filter_dimensions_for_evaluation(self, df: pd.DataFrame) -> pd.DataFrame:
         """Filter dataframe to only include dimensions that should be evaluated"""
         if "evaluation_type" not in df.columns:
@@ -1712,7 +663,7 @@ class DimensionalTableManager:
                     # These types are not evaluable
                     status = (
                         DimensionalStatus.GOOD
-                    )  # Placeholder, will be overridden with "N.E."
+                    )  # Placeholder, will be overridden with "T.E.D."
                 elif force_status == "GOOD":
                     status = DimensionalStatus.GOOD
                 elif force_status == "BAD":
@@ -1758,8 +709,6 @@ class DimensionalTableManager:
                 continue
 
         return all_results
-
-    # Update the method that calls processing to use filtering:
 
     def _get_processed_dataframe(self) -> pd.DataFrame:
         """Get dataframe ready for processing with proper filtering"""
