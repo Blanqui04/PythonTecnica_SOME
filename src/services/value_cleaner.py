@@ -8,6 +8,8 @@ Utilitzat per NetworkScanner i ProjectScanner per gestionar:
 - Valors null/buits/¿¿¿???
 - Problemes de format decimal (coma vs punt)
 - Valors fora de rang
+- Problemes d'encoding Unicode (caràcters grecs, etc.)
+- Preservació de precisió decimal
 
 Autor: Sistema Automàtic
 Data: Juliol 2025
@@ -15,23 +17,88 @@ Data: Juliol 2025
 
 import logging
 import pandas as pd
+import re
 from typing import Any, Union, Optional
+from decimal import Decimal, InvalidOperation
+import unicodedata
 
 logger = logging.getLogger(__name__)
 
 class ValueCleaner:
     """
-    Utilitat per netejar i convertir valors problemàtics
+    Utilitat per netejar i convertir valors problemàtics amb suport Unicode complet
     """
     
     # Patrons de valors invàlids
     INVALID_PATTERNS = ['nan', 'none', '', 'null', '#N/A', '#ERROR', 'error', 'unknown']
     TEMPLATE_PATTERNS = ['¿¿¿???', '¿¿¿', '???']
     
+    # Mapatge de caràcters Unicode problemàtics a ASCII
+    UNICODE_REPLACEMENTS = {
+        'Δ': 'Delta',  # Caràcter grec Delta
+        'α': 'alpha',
+        'β': 'beta', 
+        'γ': 'gamma',
+        'δ': 'delta',
+        'ε': 'epsilon',
+        'θ': 'theta',
+        'λ': 'lambda',
+        'μ': 'mu',
+        'π': 'pi',
+        'σ': 'sigma',
+        'φ': 'phi',
+        'ω': 'omega',
+        'Ω': 'Omega',
+        '°': 'deg',  # Símbol de grau
+        '±': '+/-',  # Més o menys
+        '≤': '<=',   # Menor o igual
+        '≥': '>=',   # Major o igual
+        '≠': '!=',   # No igual
+        '≈': '~',    # Aproximadament igual
+        '×': 'x',    # Multiplicació
+        '÷': '/',    # Divisió
+        '–': '-',    # Guió en dash
+        '—': '-',    # Guió em dash
+        '"': '"',    # Cometes dobles curvades
+        '"': '"',    # Cometes dobles curvades
+        ''': "'",    # Cometes simples curvades
+        ''': "'",    # Cometes simples curvades
+    }
+    
+    @staticmethod
+    def normalize_unicode_text(text: str) -> str:
+        """
+        Normalitza text Unicode per evitar problemes d'encoding
+        
+        Args:
+            text: Text a normalitzar
+            
+        Returns:
+            str: Text normalitzat sense caràcters problemàtics
+        """
+        if not text or pd.isna(text):
+            return ""
+            
+        text_str = str(text)
+        
+        # Aplicar reemplaçaments específics
+        for unicode_char, replacement in ValueCleaner.UNICODE_REPLACEMENTS.items():
+            text_str = text_str.replace(unicode_char, replacement)
+        
+        # Normalitzar Unicode (NFD = Normalization Form Decomposed)
+        # Això separa caràcters amb accents en lletra base + accent
+        text_str = unicodedata.normalize('NFD', text_str)
+        
+        # Eliminar tots els caràcters que no són ASCII
+        # Mantenim només caràcters del rang ASCII estàndard
+        text_str = ''.join(char for char in text_str if ord(char) < 128)
+        
+        return text_str.strip()
+    
     @staticmethod
     def clean_element_value(element: Any) -> str:
         """
-        Neteja un valor d'element/nom de mesura
+        Neteja un valor d'element/nom de mesura amb suport Unicode
         
         Args:
             element: Valor d'element a netejar
@@ -56,21 +123,26 @@ class ValueCleaner:
                 cleaned = cleaned.replace(pattern, '')
             cleaned = cleaned.strip()
             
-            return cleaned if cleaned else "NULL"
-            
-        return element_str
+            if cleaned:
+                # Normalitzar Unicode abans de retornar
+                return ValueCleaner.normalize_unicode_text(cleaned)
+            else:
+                return "NULL"
+        
+        # Normalitzar Unicode
+        return ValueCleaner.normalize_unicode_text(element_str)
     
     @staticmethod
     def clean_numeric_value(value: Any, default_value: float = 0.000) -> float:
         """
-        Neteja i converteix un valor numèric
+        Neteja i converteix un valor numèric amb màxima precisió
         
         Args:
             value: Valor a convertir
             default_value: Valor per defecte si no es pot convertir
             
         Returns:
-            float: Valor numèric net
+            float: Valor numèric net amb precisió preservada
         """
         if not value or pd.isna(value):
             return default_value
@@ -84,38 +156,61 @@ class ValueCleaner:
         # Verificar si té patrons de plantilla
         if any(pattern in value_str for pattern in ValueCleaner.TEMPLATE_PATTERNS):
             return default_value
+        
+        # Normalitzar caràcters Unicode problemàtics abans del processament numèric
+        value_str = ValueCleaner.normalize_unicode_text(value_str)
             
-        # Intentar convertir valor real
+        # Intentar convertir valor real amb màxima precisió
         try:
             # Eliminar espais en blanc
             value_str = value_str.replace(' ', '')
             
-            # Gestió de format numèric europeu
+            # Eliminar caràcters no numèrics excepte punto, coma i signe negatiu
+            value_str = re.sub(r'[^\d.,+-]', '', value_str)
+            
+            if not value_str or value_str in ['+', '-', '.', ',']:
+                return default_value
+            
+            # Gestió de format numèric europeu amb alta precisió
             if ',' in value_str and '.' not in value_str:
-                # Format: "123,45" -> "123.45"
+                # Format: "123,45678" -> "123.45678"
                 value_str = value_str.replace(',', '.')
             elif ',' in value_str and '.' in value_str:
-                # Format: "1.234,56" -> "1234.56"
-                parts = value_str.split(',')
-                if len(parts) == 2 and len(parts[1]) <= 3:  # Decimal part <= 3 digits
-                    integer_part = parts[0].replace('.', '')
-                    decimal_part = parts[1]
-                    value_str = f"{integer_part}.{decimal_part}"
+                # Format: "1.234,56789" -> "1234.56789"
+                # O format: "1,234.56789" -> "1234.56789"
+                if value_str.rfind(',') > value_str.rfind('.'):
+                    # Última coma és el separador decimal
+                    parts = value_str.rsplit(',', 1)
+                    if len(parts) == 2:
+                        integer_part = parts[0].replace('.', '').replace(',', '')
+                        decimal_part = parts[1]
+                        value_str = f"{integer_part}.{decimal_part}"
                 else:
-                    # Si no és format estàndard, intentar només eliminar comes
-                    value_str = value_str.replace(',', '')
+                    # Última punt és el separador decimal
+                    parts = value_str.rsplit('.', 1)
+                    if len(parts) == 2:
+                        integer_part = parts[0].replace('.', '').replace(',', '')
+                        decimal_part = parts[1]
+                        value_str = f"{integer_part}.{decimal_part}"
             
-            numeric_value = float(value_str)
+            # Utilitzar Decimal per preservar precisió màxima
+            try:
+                decimal_value = Decimal(value_str)
+                numeric_value = float(decimal_value)
+            except InvalidOperation:
+                # Si Decimal falla, intentar conversió directa
+                numeric_value = float(value_str)
             
             # Verificar que el valor és raonable (no infinit o NaN)
             if not (float('-inf') < numeric_value < float('inf')) or pd.isna(numeric_value):
+                logger.debug(f"Valor fora de rang: {value_str}")
                 return default_value
                 
             return numeric_value
             
-        except (ValueError, OverflowError, TypeError):
+        except (ValueError, OverflowError, TypeError, InvalidOperation) as e:
             # Si no es pot convertir, usar valor per defecte
-            logger.debug(f"Valor '{value_str}' convertit a {default_value}")
+            logger.debug(f"Valor '{value_str}' no convertible: {e}, usant {default_value}")
             return default_value
     
     @staticmethod
