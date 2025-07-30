@@ -46,16 +46,55 @@ class SessionManager:
         # getattr(self.logger, level.lower())(message)
 
     def _save_session(self):
-        """Save current session to file"""
-        file_path, _ = QFileDialog.getSaveFileName(
-            self._parent,
-            "Save Session",
-            f"{self.client_name}_{self.project_ref}_{self.batch_number}_session.json",
-            "JSON Files (*.json)",
-        )
+        """Save current session to file - WITH SUMMARY"""
+        try:
+            file_path, _ = QFileDialog.getSaveFileName(
+                self._parent,
+                "Save Session",
+                f"{self.client_name}_{self.project_ref}_{self.batch_number}_session.json",
+                "JSON Files (*.json)",
+            )
 
-        if file_path:
-            self._save_session_to_file(file_path)
+            if file_path:
+                self._save_session_to_file(file_path)
+                
+                # Save summary metrics efficiently
+                if hasattr(self._parent, 'summary_widget') and self._parent.summary_widget:
+                    self._save_summary_metrics()
+            
+            # Mark as saved
+            self.unsaved_changes = False
+            if hasattr(self._parent, 'setWindowTitle'):
+                title = self._parent.windowTitle()
+                if "*" in title:
+                    self._parent.setWindowTitle(title.replace(" *", ""))
+            
+        except Exception as e:
+            self._log_message(f"❌ Error saving session: {str(e)}", "ERROR")
+
+    def _save_summary_metrics(self):
+        """Save summary metrics efficiently"""
+        try:
+            summary_widget = self._parent.summary_widget
+            session_data = {
+                'metrics': summary_widget.metrics,
+                'study_history': summary_widget.study_history[-5:],  # Only last 5 for performance
+                'edit_history': summary_widget.edit_history[-10:],   # Only last 10 for performance
+                'session_start_time': summary_widget.session_start_time.isoformat(),
+            }
+            
+            # Save to file
+            session_file = f"sessions/{self.client_name}_{self.project_ref}_{self.batch_number}_summary.json"
+            os.makedirs("sessions", exist_ok=True)
+            
+            with open(session_file, 'w') as f:
+                json.dump(session_data, f, indent=2, default=str)
+            
+            self._log_message("💾 Summary metrics saved efficiently", "INFO")
+            
+        except Exception as e:
+            self._log_message(f"❌ Error saving summary metrics: {str(e)}", "ERROR")
+        
 
     def _save_session_to_file(self, file_path: str):
         """Save session data to file with dropdown support"""
@@ -120,12 +159,55 @@ class SessionManager:
 
     def _load_session(self):
         """Load session from file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self._parent, "Load Session", "", "JSON Files (*.json)"
-        )
+        try:
+            file_path, _ = QFileDialog.getOpenFileName(
+                self._parent, "Load Session", "", "JSON Files (*.json)"
+            )
 
-        if file_path:
-            self._load_session_from_file(file_path)
+            if file_path:
+                self._load_session_from_file(file_path)
+            
+            # Load summary metrics
+            session_file = f"sessions/{self.client_name}_{self.project_ref}_{self.batch_number}_summary.json"
+            
+            if os.path.exists(session_file) and hasattr(self, 'summary_widget'):
+                import json
+                with open(session_file, 'r') as f:
+                    session_data = json.load(f)
+                
+                # Restore summary metrics
+                self.summary_widget.metrics = session_data.get('metrics', {})
+                self.summary_widget.study_history = session_data.get('study_history', [])
+                self.summary_widget.edit_history = session_data.get('edit_history', [])
+                self.summary_widget.original_data = session_data.get('original_data', {})
+                
+                # Restore session start time
+                if 'session_start_time' in session_data:
+                    from datetime import datetime
+                    self.summary_widget.session_start_time = datetime.fromisoformat(session_data['session_start_time'])
+                
+                # Update summary display
+                self.summary_widget.update_summary(force_refresh=True)
+                
+                self._log_message("📂 Summary metrics loaded successfully", "INFO")
+            
+            # Update tables and summary from loaded data
+            self._update_summary_from_tables()
+            
+        except Exception as e:
+            self._log_message(f"❌ Error loading session: {str(e)}", "ERROR")
+
+    def _update_summary_from_tables(self):
+        """Update summary widget with current table data"""
+        if not hasattr(self, 'summary_widget'):
+            return
+        
+        try:
+            df = self.table_manager._get_dataframe_from_tables()
+            if not df.empty:
+                self.summary_widget.update_summary(table_data=df)
+        except Exception as e:
+            self._log_message(f"❌ Error updating summary: {str(e)}", "ERROR")
 
     def _load_last_session(self):
         """Load the most recent auto-saved session"""
@@ -168,6 +250,84 @@ class SessionManager:
 
         except Exception as e:
             self._log_message(f"Failed to load last session: {str(e)}", "WARNING")
+
+    def closeEvent(self, event):
+        """Handle window close event - ENHANCED with summary saving"""
+        if self.unsaved_changes:
+            reply = QMessageBox.question(
+                self, "Unsaved Changes",
+                "You have unsaved changes. Do you want to save before closing?",
+                QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                QMessageBox.Save
+            )
+            
+            if reply == QMessageBox.Save:
+                self._save_session()
+                event.accept()
+            elif reply == QMessageBox.Discard:
+                event.accept()
+            else:
+                event.ignore()
+                return
+        
+        # Clean up summary widget timer
+        if hasattr(self, 'summary_widget') and hasattr(self.summary_widget, 'refresh_timer'):
+            self.summary_widget.refresh_timer.stop()
+        
+        # Clean up processing thread if running
+        if self.processing_thread and self.processing_thread.isRunning():
+            self.processing_thread.terminate()
+            self.processing_thread.wait()
+        
+        event.accept()
+
+    def _update_status_from_summary(self):
+        """Update status bar with summary information"""
+        if not hasattr(self, 'summary_widget'):
+            return
+        
+        try:
+            total_dims = self.summary_widget.metrics.get('total_dimensions', 0)
+            studies_run = self.summary_widget.metrics.get('total_studies_run', 0)
+            edits_made = self.summary_widget.metrics.get('dimensions_edited', 0)
+            
+            # Calculate success rate from latest study
+            success_rate = 0
+            if self.summary_widget.study_history:
+                latest = self.summary_widget.study_history[-1]
+                if latest['total_dimensions'] > 0:
+                    success_rate = (latest['good'] / latest['total_dimensions']) * 100
+            
+            status_text = f"📊 {total_dims} dims | {studies_run} studies | {success_rate:.1f}% success"
+            if edits_made > 0:
+                status_text += f" | {edits_made} edits"
+            
+            self.stats_label.setText(status_text)
+            
+        except Exception as e:
+            self._log_message(f"❌ Error updating status from summary: {str(e)}", "ERROR")
+
+    def _store_original_values(self, table_data: pd.DataFrame):
+        """Store original values for comparison tracking"""
+        if not hasattr(self, 'summary_widget'):
+            return
+        
+        for _, row in table_data.iterrows():
+            element_id = row.get('element_id')
+            if element_id and element_id not in self.summary_widget.original_data:
+                # Store original measurements and key values
+                original_values = {
+                    'measurements': {
+                        f'measurement_{i}': row.get(f'measurement_{i}') 
+                        for i in range(1, 6)
+                    },
+                    'nominal': row.get('nominal'),
+                    'lower_tolerance': row.get('lower_tolerance'),
+                    'upper_tolerance': row.get('upper_tolerance'),
+                    'description': row.get('description'),
+                    'stored_at': datetime.now().isoformat()
+                }
+                self.summary_widget.original_data[element_id] = original_values
 
     def _clear_unsaved_changes(self):
         """Clear the unsaved changes flag"""

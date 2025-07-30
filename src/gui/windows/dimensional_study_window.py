@@ -24,11 +24,11 @@ import pandas as pd
 import os
 import logging
 from typing import List
-import datetime
+from datetime import datetime
 from .base_dimensional_window import BaseDimensionalWindow
 from .components.dimensional_table_manager import DimensionalTableManager
 from .components.dimensional_session_manager import SessionManager
-#from .components.dimensional_summary_widget import SummaryWidget
+from .components.dimensional_summary_widget import SummaryWidget
 from src.models.dimensional.dimensional_result import DimensionalResult
 from ..workers.dimensional_processing_thread import ProcessingThread
 from ..utils.styles import global_style, get_color_palette
@@ -175,6 +175,30 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         except Exception as e:
             self._log_message(f"Failed to initialize session manager: {str(e)}", "ERROR")
             raise
+
+    def _init_summary_widget(self):
+        """Initialize the enhanced summary widget - FIXED VERSION"""
+        self.logger.debug("Initializing Enhanced Summary Widget")
+        try:
+            # Always create a fresh summary widget
+            if hasattr(self, 'summary_widget') and self.summary_widget:
+                # Clean up existing widget
+                self.summary_widget.cleanup()
+                self.summary_widget.deleteLater()
+            
+            self.summary_widget = SummaryWidget(parent=self)    # Create new enhanced summary widget
+            self.summary_widget.update_complete.connect(self._on_summary_update_complete)  # Connect signals for better performance
+
+            self.logger.info("Enhanced summary widget initialized successfully")
+            
+        except Exception as e:
+            self._log_message(f"Failed to initialize summary widget: {str(e)}", "ERROR")
+            # Create a fallback simple widget
+            self.summary_widget = QWidget()
+            fallback_layout = QVBoxLayout()
+            fallback_layout.addWidget(QLabel("📊 Summary Widget Error - Please restart application"))
+            self.summary_widget.setLayout(fallback_layout)
+
 
     def _init_ui(self):
         """Initialize enhanced professional UI"""
@@ -422,7 +446,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         return control_frame
 
     def _create_content_area(self) -> QSplitter:
-        """Create enhanced content area with splitter"""
+        """Create enhanced content area with splitter - UPDATED with enhanced summary"""
         splitter = QSplitter(Qt.Vertical)
 
         # Enhanced results tabs
@@ -431,9 +455,9 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.results_tabs.tabCloseRequested.connect(self._remove_tab)
         self.results_tabs.setMinimumHeight(400)
 
-        # Add summary tab by default
-        summary_widget = self.table_manager._create_summary_widget()
-        self.results_tabs.addTab(summary_widget, "📊 Summary")
+        # Initialize and add enhanced summary tab
+        self._init_summary_widget()
+        self.results_tabs.addTab(self.summary_widget, "📊 Enhanced Summary")
 
         splitter.addWidget(self.results_tabs)
 
@@ -496,8 +520,12 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.logger.info("="*60)
         self.logger.info("STARTING DIMENSIONAL STUDY ANALYSIS")
         self.logger.info("="*60)
-        
+
         try:
+            # Ensure summary widget is initialized
+            if not hasattr(self, 'summary_widget') or not self.summary_widget:
+                self._init_summary_widget()
+
             # Step 1: Get all data from tables (including Notes)
             all_df = self.table_manager._get_dataframe_from_tables()
             self.logger.info(f"📊 Total records extracted from tables: {len(all_df)}")
@@ -507,11 +535,19 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                 self.logger.error(f"❌ {msg}")
                 QMessageBox.warning(self, "No Data", msg)
                 return
+            
+            # Step 2: Update summary with table data SAFELY
+            try:
+                if hasattr(self, 'summary_widget') and self.summary_widget:
+                    self.summary_widget.update_summary(results=None, table_data=all_df)
+                    self._log_message("📊 Summary updated with table data", "INFO")
+            except Exception as e:
+                self._log_message(f"⚠️ Warning: Could not update summary with table data: {str(e)}", "WARNING")
 
-            # Step 2: Log data composition
+            # Step 3: Log data composition
             self._log_data_composition(all_df)
             
-            # Step 3: Process ALL data (including Notes)
+            # Step 4: Process ALL data (including Notes)
             self.logger.info(f"🚀 Starting analysis on {len(all_df)} total records")
 
             # Disable UI during processing
@@ -531,6 +567,74 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.logger.error(f"❌ {error_msg}", exc_info=True)
             QMessageBox.critical(self, "Processing Error", error_msg)
             self._set_ui_enabled(True)
+
+    def _handle_results(self, results: List[DimensionalResult]):
+        """Handle analysis results and update summary - OPTIMIZED VERSION"""  
+        try:
+            self._log_message(f"✅ Analysis completed with {len(results)} results", "INFO")
+            
+            # Store results
+            self.results = results
+            
+            # Update tables with results FIRST (this is the heavy operation)
+            self.table_manager._update_tables_with_results(results)
+            
+            # Update summary with results (optimized with throttling)
+            if hasattr(self, 'summary_widget') and self.summary_widget:
+                # Use non-blocking update
+                QTimer.singleShot(100, lambda: self.summary_widget.update_summary(results=results))
+                self._log_message("📊 Summary update scheduled", "INFO")
+            
+            # Update status immediately (lightweight)
+            good_count = sum(1 for r in results if r.status.value == 'GOOD')
+            success_rate = (good_count / len(results)) * 100 if results else 0
+            
+            self.stats_label.setText(f"📊 Analysis Complete: {len(results)} dimensions, {success_rate:.1f}% success rate")
+            
+            # Log completion
+            self._log_message(f"🎯 Success Rate: {success_rate:.1f}% ({good_count}/{len(results)})", "INFO")
+            
+            # Mark as saved (results don't need saving until user modifies)
+            self.unsaved_changes = False
+            
+        except Exception as e:
+            self._log_message(f"❌ Error handling results: {str(e)}", "ERROR")
+        finally:
+            self._reset_ui_state()
+
+    def _on_summary_update_complete(self):
+        """Handle summary update completion"""
+        self._log_message("📊 Summary update completed", "DEBUG")
+
+    def _reset_ui_state(self):
+        """Reset UI state after operations"""
+        self.run_study_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.progress_bar.setRange(0, 100)
+
+    def _validate_input(self) -> bool:
+        """Validate input data before processing"""
+        df = self.table_manager._get_dataframe_from_tables()
+        if df.empty:
+            QMessageBox.warning(self, "No Data", "Please load data or add manual entries before running the study.")
+            return False
+        
+        # Check for required fields
+        required_fields = ['element_id', 'description']
+        missing_fields = []
+        
+        for field in required_fields:
+            if field not in df.columns or df[field].isna().all():
+                missing_fields.append(field)
+        
+        if missing_fields:
+            QMessageBox.warning(
+                self, "Missing Data", 
+                f"Required fields are missing or empty: {', '.join(missing_fields)}"
+            )
+            return False
+        
+        return True
 
     def _log_data_composition(self, df):
         """Log detailed data composition for debugging"""
@@ -574,7 +678,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
 
     def _on_processing_finished(self, results: List[DimensionalResult]):
-        """Handle completion of processing with enhanced logging - FIXED VERSION"""
+        """Handle completion of processing with enhanced logging - ENHANCED VERSION"""
         self.logger.info("="*60)
         self.logger.info("PROCESSING COMPLETED - ANALYZING RESULTS")
         self.logger.info("="*60)
@@ -595,14 +699,39 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         # Log detailed results analysis
         self._log_results_analysis(results)
         
-        # Update tables with results
+        # Update tables with results FIRST (this is the heavy operation)
         self.logger.info("🔄 Updating tables with results...")
         self.table_manager._update_tables_with_results(results)
         
+        # Update summary with results (with error handling)
+        try:
+            if hasattr(self, 'summary_widget') and self.summary_widget:
+                # Use delayed update for better performance
+                QTimer.singleShot(200, lambda: self._safe_update_summary_with_results(results))
+                self._log_message("📊 Summary update scheduled", "INFO")
+        except Exception as e:
+            self._log_message(f"⚠️ Warning: Could not schedule summary update: {str(e)}", "WARNING")
+        
+        # Update status immediately (lightweight)
+        good_count = sum(1 for r in results if r.status.value == 'GOOD')
+        success_rate = (good_count / len(results)) * 100 if results else 0
+        
+        self.stats_label.setText(f"📊 Analysis Complete: {len(results)} dimensions, {success_rate:.1f}% success rate")
+        
+        # Enable export and auto-save
         self.export_button.setEnabled(True)
         self.session_manager._auto_save_session()
         
         self.logger.info("✅ Processing completed successfully")
+
+    def _safe_update_summary_with_results(self, results: List[DimensionalResult]):
+        """Safely update summary with results"""
+        try:
+            if hasattr(self, 'summary_widget') and self.summary_widget:
+                self.summary_widget.update_summary(results=results)
+                self._log_message("✅ Summary updated with analysis results", "INFO")
+        except Exception as e:
+            self._log_message(f"❌ Error updating summary with results: {str(e)}", "ERROR")
 
     def _log_results_analysis(self, results):
         """Log detailed analysis of results"""
@@ -661,11 +790,10 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         QMessageBox.critical(self, "Processing Error", f"Analysis failed:\n{error_msg}")
 
     def _clear_all(self):
-        """Clear all UI elements with confirmation and logging"""
+        """Clear all UI elements with confirmation and logging - ENHANCED VERSION"""
         self.logger.debug("Clear all requested")
         reply = QMessageBox.question(
-            self,
-            "Clear All?",
+            self, "Clear All?", 
             "Are you sure you want to clear all data, results, and logs?",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
@@ -674,23 +802,35 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         if reply == QMessageBox.Yes:
             try:
                 self.logger.info("Clearing all data")
-                # Clear result tabs
-                while self.results_tabs.count():
-                    widget = self.results_tabs.widget(0)
-                    self.results_tabs.removeTab(0)
-                    widget.deleteLater()
+                
+                # Clear result tabs efficiently (except summary)
+                while self.results_tabs.count() > 1:
+                    widget = self.results_tabs.widget(1)  # Keep summary tab (index 0)
+                    self.results_tabs.removeTab(1)
+                    if widget:
+                        widget.deleteLater()
 
-                # Clear the log area
+                # Reset summary widget efficiently
+                if hasattr(self, 'summary_widget') and self.summary_widget:
+                    self.summary_widget.reset_widget()
+                    self._log_message("📊 Summary widget reset", "INFO")
+                else:
+                    self._init_summary_widget()
+                    # Re-add summary tab if needed
+                    if self.results_tabs.count() == 0:
+                        self.results_tabs.addTab(self.summary_widget, "📊 Enhanced Summary")
+                
+                # Clear other components
                 self.log_area.clear()
-
-                # Reset any data structures
                 self.results = []
-
-                # Call table manager reset
-                self.table_manager.clear_all_tables()
+                
+                # Clear table manager
+                if hasattr(self, 'table_manager'):
+                    self.table_manager.clear_all_tables()
 
                 self._clear_unsaved_changes()
                 self.logger.info("All data cleared successfully")
+                
             except Exception as e:
                 self._handle_error("Clear All", e)
 
@@ -760,6 +900,10 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self._mark_unsaved_changes()
         self.run_study_button.setEnabled(True)  # Enable run button when data exists
 
+        if hasattr(self, 'summary_widget'):
+            self.summary_widget.record_edit("Added new dimension row")
+            self.summary_widget.metrics['dimensions_added'] += 1
+
     def _duplicate_row(self):
         """Duplicate the currently selected row"""
         current_table = self.results_tabs.currentWidget()
@@ -773,8 +917,6 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             )
             return
 
-        # Use table manager's enhanced duplicate method
-        self.table_manager._duplicate_row(current_table)
 
     def _delete_row(self):
         """Delete the currently selected row"""
@@ -795,6 +937,25 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         if reply == QMessageBox.Yes:
             current_table.removeRow(current_row)
             self._mark_unsaved_changes()
+
+        if hasattr(self, 'summary_widget'):
+            self.summary_widget.record_edit("Deleted dimension row")
+            self.summary_widget.metrics['dimensions_deleted'] += 1
+
+    def _update_summary_from_tables(self):
+        """Update summary widget with current table data - OPTIMIZED"""
+        if not hasattr(self, 'summary_widget') or not self.summary_widget:
+            return
+        
+        try:
+            # Get current table data (this can be expensive, so we throttle it)
+            df = self.table_manager._get_dataframe_from_tables()
+            if not df.empty:
+                # Use throttled update
+                self.summary_widget.update_summary(table_data=df)
+                self._log_message("📊 Summary updated with table changes", "DEBUG")
+        except Exception as e:
+            self._log_message(f"❌ Error updating summary: {str(e)}", "ERROR")
 
     def _load_file(self):
         """Load measurement data from file"""
@@ -825,12 +986,37 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self._log_message(error_msg, "ERROR")
             QMessageBox.critical(self, "File Load Error", error_msg)
 
+        if hasattr(self, 'summary_widget'):
+            self.summary_widget.record_edit(f"Loaded data file: {os.path.basename(file_path)}")
+            self._update_summary_from_tables()
+
     def _mark_unsaved_changes(self):
-        """Mark that there are unsaved changes"""
+        """Mark unsaved changes and update summary - OPTIMIZED VERSION"""
         self.unsaved_changes = True
-        title = self.windowTitle()
-        if not title.endswith(" *"):
-            self.setWindowTitle(title + " *")
+        
+        # Update window title to show unsaved changes
+        if "*" not in self.windowTitle():
+            self.setWindowTitle(f"{self.windowTitle()} *")
+        
+        # Record edit in summary widget
+        if hasattr(self, 'summary_widget') and self.summary_widget:
+            try:
+                self.summary_widget.record_edit("Table data modified")
+            except Exception as e:
+                self._log_message(f"Could not record edit: {str(e)}", "DEBUG")
+        
+        # Update summary with throttling (non-blocking)
+        QTimer.singleShot(500, self._delayed_summary_update)
+
+    def _delayed_summary_update(self):
+        """Delayed summary update to avoid performance issues"""
+        try:
+            if hasattr(self, 'summary_widget') and hasattr(self, 'table_manager'):
+                df = self.table_manager._get_dataframe_from_tables()
+                if not df.empty:
+                    self.summary_widget.update_summary(table_data=df)
+        except Exception as e:
+            self._log_message(f"Delayed summary update failed: {str(e)}", "DEBUG")
 
     def _clear_unsaved_changes(self):
         """Clear the unsaved changes flag"""
@@ -917,13 +1103,49 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                 tab_name = f"📋 All Data ({len(cavity_df)} items)"
             self.results_tabs.addTab(table, tab_name)
 
-    def _should_evaluate_dimension(self, table: QTableWidget, row: int) -> bool:
-        """Check if dimension should be evaluated based on evaluation type"""
-        eval_combo = table.cellWidget(row, 8)  # evaluation_type column
-        if isinstance(eval_combo, QComboBox):
-            eval_type = eval_combo.currentText()
-            return eval_type in ["Normal"]  # Only evaluate Normal dimensions
-        return True  # Default to evaluate if no dropdown
+    def closeEvent(self, event):
+        """Handle window close event - ENHANCED with summary cleanup"""
+        try:
+            if hasattr(self, 'unsaved_changes') and self.unsaved_changes:
+                reply = QMessageBox.question(
+                    self, "Unsaved Changes",
+                    "You have unsaved changes. Do you want to save before closing?",
+                    QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel,
+                    QMessageBox.Save
+                )
+                
+                if reply == QMessageBox.Save:
+                    if hasattr(self, 'session_manager'):
+                        self.session_manager._save_session()
+                    event.accept()
+                elif reply == QMessageBox.Discard:
+                    event.accept()
+                else:
+                    event.ignore()
+                    return
+            
+            # Clean up summary widget
+            if hasattr(self, 'summary_widget') and self.summary_widget:
+                try:
+                    self.summary_widget.cleanup()
+                    self._log_message("Summary widget cleaned up", "DEBUG")
+                except Exception as e:
+                    self._log_message(f"Summary widget cleanup error: {str(e)}", "DEBUG")
+            
+            # Clean up processing thread if running
+            if hasattr(self, 'processing_thread') and self.processing_thread and self.processing_thread.isRunning():
+                self.processing_thread.terminate()
+                self.processing_thread.wait()
+            
+            # Log window closing
+            self._log_message(f"Window closing - client: {getattr(self, 'client_name', 'Unknown')}, project: {getattr(self, 'project_ref', 'Unknown')}, batch: {getattr(self, 'batch_number', 'Unknown')}", "INFO")
+            
+            event.accept()
+            
+        except Exception as e:
+            self._log_message(f"Error during window close: {str(e)}", "ERROR")
+            event.accept()  # Close anyway to prevent hanging
+
 
     def _set_ui_enabled(self, enabled: bool):
         """Enable/disable UI during processing"""

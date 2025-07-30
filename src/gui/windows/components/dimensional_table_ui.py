@@ -931,10 +931,19 @@ class DimensionalTableUI:
                                 "DEBUG",
                             )
                 except ValueError:
-                    self._log_message(
-                        f"⚠️ Invalid numeric value in row {row + 1}, col {col}: '{item.text()}'",
-                        "WARNING",
-                    )
+                    self._log_message(f"⚠️ Invalid numeric value in row {row + 1}, col {col}: '{item.text()}'", "WARNING")
+        # Track the edit in summary
+        if hasattr(self, 'summary_widget'):
+            current_table = self.results_tabs.currentWidget()
+            if hasattr(current_table, 'item'):
+                item = current_table.item(row, 0)  # Get element ID
+                element_id = item.text() if item else f"Row {row+1}"
+                
+                # Get column name
+                col_name = self.table_manager.column_headers[col] if col < len(self.table_manager.column_headers) else f"Col {col}"
+                
+                self.summary_widget.record_edit(f"Modified {col_name} in {element_id}")
+                self._update_summary_from_tables()
 
     def _clear_calculated_columns(self, table: QTableWidget, row: int):
         """Clear calculated columns when measurements are removed - ENHANCED with better styling"""
@@ -1037,21 +1046,14 @@ class DimensionalTableUI:
     def _apply_styling_to_item(self, item: QTableWidgetItem, col: int):
         """Apply consistent styling to table items"""
         centered_columns = [2, 9, 10, 11, 17, 18, 19, 20, 21]
-        bold_columns = [9, 10, 11]
         
         # Apply centering
         if col in centered_columns:
             item.setTextAlignment(Qt.AlignCenter)
-        
-        # Apply font styling
-        if col in bold_columns:
-            font = QFont("Segoe UI", 9, QFont.Bold)
-        else:
-            font = QFont("Segoe UI", 9)
+
+        font = QFont("Segoe UI", 9)
         item.setFont(font)
-        
-        # Apply text color for better contrast
-        item.setForeground(self.colors["text_dark"])
+        item.setForeground(self.colors["text_dark"])    # Apply text color for better contrast
 
     def get_table_statistics(self) -> Dict[str, Any]:
         """Get comprehensive table statistics for summary display"""
