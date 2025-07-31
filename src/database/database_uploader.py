@@ -14,12 +14,14 @@ class DatabaseUploader:
     def __init__(self, client, ref_project, db_key="primary",
                  mapping_path="config/column_mappings/table_mappings.json",
                  export_path="data/processed/exports/",
-                 db_config_path="config/database/db_config.json"):
+                 db_config_path="config/database/db_config.json",
+                 csv_mappings_path="config/column_mappings/csv_to_db_mappings.json"):
         self.client = client
         self.ref_project = ref_project
         self.mapping_path = mapping_path
         self.export_path = export_path
         self.db_config_path = db_config_path
+        self.csv_mappings_path = csv_mappings_path
         self.db_key = db_key
         self.conn = self._connect()
 
@@ -33,6 +35,28 @@ class DatabaseUploader:
     def _load_mappings(self):
         with open(self.mapping_path, encoding='utf-8') as f:
             return json.load(f)
+
+    def _load_csv_mappings(self):
+        """Load CSV to database column mappings"""
+        try:
+            with open(self.csv_mappings_path, encoding='utf-8') as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logger.warning(f"CSV mappings file not found: {self.csv_mappings_path}")
+            return {}
+
+    def _rename_dataframe_columns(self, df: pd.DataFrame, table_name: str) -> pd.DataFrame:
+        """Rename CSV columns to match database column names"""
+        csv_mappings = self._load_csv_mappings()
+        if table_name in csv_mappings:
+            column_mapping = csv_mappings[table_name]
+            # Only rename columns that exist in both the DataFrame and the mapping
+            columns_to_rename = {csv_col: db_col for csv_col, db_col in column_mapping.items() 
+                               if csv_col in df.columns}
+            if columns_to_rename:
+                df = df.rename(columns=columns_to_rename)
+                logger.info(f"Renamed columns for {table_name}: {columns_to_rename}")
+        return df
 
     def _get_dataframes(self):
         """Llegeix els fitxers CSV d'exportació per a cada taula del mapping."""
@@ -78,6 +102,9 @@ class DatabaseUploader:
             if df.empty:
                 logger.warning(f"⚠️ La taula '{table}' està buida. S'omet.")
                 continue
+
+            # Rename CSV columns to match database column names
+            df = self._rename_dataframe_columns(df, table)
 
             if table in mappings:
                 expected_cols = set(mappings[table])

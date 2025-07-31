@@ -1,14 +1,109 @@
 {
-    "material": ["id_material", "dimensiox", "dimensioy", "dimensioz", "proveidor", "pes", "preu"],
-    "eines": ["nom_matriu", "num_picades", "volum_anual", "volum_projecte", "cavitats", "responsable", "matricer"],
-    "peca": ["nom_client", "planta", "nom_projecte", "facturacio", "quantitats", "descripcio", "costos", "pes", "id_tipus", "id_embalatge", "id_tractament", "id_referencia_client"],
-    "embalatge": ["regio", "peces_caixa", "caixa_codi", "caixa_descripcio", "pallet_codi", "pallet_descripcio", "tapa_altres", "caixes_pallet", "id_referencia_client"],
-    "tractament": ["ordre_oferta", "ordre", "descripcio", "proveidor", "preu", "id_referencia_client"],
-    "planol": ["num_planol", "id_referencia_client"],
-    "infoproduccio": ["id_referencia_some", "id_referencia_client", "id_matriu", "id_material"],
-    "escandalloferta": ["num_escandall", "preuvenda"],
-    "oferta": ["num_oferta", "num_processos", "id_referencia_client", "num_escandall", "id_client"],
-    "ctoferta": ["num_oferta", "centretreball", "oee", "cicles"],
-    "lifetime": ["num_oferta", "datainici", "datafinal", "dataentregamatriu"],
-    "element": ["id_referencia_client", "id_element", "tolerancia_superior", "tolerancia_inferior", "descripcio", "valor_nominal", "classe", "lim_sup", "lim_inf", "propietat"]
+    "material": [
+        "id_material",
+        "dimensiox",
+        "dimensioy",
+        "dimensioz",
+        "proveidor",
+        "pes",
+        "preu"
+    ],
+    "eines": [
+        "nom_matriu",
+        "num_picades",
+        "volum_anual",
+        "volum_projecte",
+        "cavitats",
+        "responsable",
+        "matricer"
+    ],
+    "peca": [
+        "nom_client",
+        "planta",
+        "nom_projecte",
+        "facturacio",
+        "quantitats",
+        "descripcio",
+        "costos",
+        "pes",
+        "id_tipus",
+        "id_embalatge",
+        "id_tractament",
+        "id_referencia_client"
+    ],
+    "embalatge": [
+        "regio",
+        "peces_caixa",
+        "caixa_codi",
+        "caixa_descripcio",
+        "pallet_codi",
+        "pallet_descripcio",
+        "tapa_altres",
+        "caixes_pallet",
+        "id_referencia_client"
+    ],
+    "tractament": [
+        "ordre_oferta",
+        "ordre",
+        "descripcio",
+        "proveidor",
+        "preu",
+        "id_referencia_client"
+    ],
+    "planol": [
+        "num_planol",
+        "id_referencia_client"
+    ],
+    "infoproduccio": [
+        "id_referencia_some",
+        "id_referencia_client",
+        "id_matriu",
+        "id_material"
+    ],
+    "escandalloferta": [
+        "num_escandall",
+        "preuvenda"
+    ],
+    "oferta": [
+        "num_oferta",
+        "num_processos",
+        "id_referencia_client",
+        "num_escandall",
+        "id_client"
+    ],
+    "ctoferta": [
+        "num_oferta",
+        "centretreball",
+        "oee",
+        "cicles"
+    ],
+    "lifetime": [
+        "num_oferta",
+        "datainici",
+        "datafinal",
+        "dataentregamatriu"
+    ],
+    "element": [
+        "id_referencia_client",
+        "id_element",
+        "tolerancia_superior",
+        "tolerancia_inferior",
+        "descripcio",
+        "valor_nominal",
+        "classe",
+        "lim_sup",
+        "lim_inf",
+        "propietat"
+    ],
+    "mesuresqualitat": [
+        "id_referencia_some",
+        "id_element",
+        "client",
+        "element",
+        "actual",
+        "nominal",
+        "tolerancia_negativa",
+        "tolerancia_positiva",
+        "data_hora"
+    ]
 }
