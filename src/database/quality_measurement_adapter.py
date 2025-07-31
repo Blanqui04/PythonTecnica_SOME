@@ -80,10 +80,18 @@ class QualityMeasurementDBAdapter:
                 port=config['port'],
                 database=config['database'],
                 user=config['user'],
-                password=config['password']
+                password=config['password'],
+                # Assegurar encoding UTF-8 per suportar Unicode correctament
+                client_encoding='utf8'
             )
             self.connection.autocommit = True
-            logger.info(f"Connexió a la base de dades establerta: {config['host']}:{config['port']}")
+            
+            # Configurar la connexió per treballar amb UTF-8
+            with self.connection.cursor() as cursor:
+                cursor.execute("SET CLIENT_ENCODING TO 'UTF8'")
+                cursor.execute("SET DateStyle TO 'ISO, DMY'")
+                
+            logger.info(f"Connexió a la base de dades establerta amb UTF-8: {config['host']}:{config['port']}")
             return True
         except Exception as e:
             logger.error(f"Error connectant a la base de dades: {e}")
@@ -144,7 +152,7 @@ class QualityMeasurementDBAdapter:
             str: SQL per crear la taula
         """
         sql = """
-        -- Taula mesuresqualitat adaptada per mesures de qualitat GOMPC
+        -- Taula mesuresqualitat adaptada per mesures de qualitat GOMPC amb suport Unicode i precisió millorada
         DROP TABLE IF EXISTS mesuresqualitat CASCADE;
         
         CREATE TABLE mesuresqualitat (
@@ -152,8 +160,8 @@ class QualityMeasurementDBAdapter:
             id_referencia_some character varying(100) NOT NULL,
             id_element character varying(100) NOT NULL,
             
-            -- Camps originals
-            valor real,
+            -- Camps originals amb tipus millorats
+            valor numeric(15,6),  -- Precisió millorada per preservar decimals
             ok boolean,
             id_referencia_client character varying(100),
             id_lot character varying(100),
@@ -166,16 +174,16 @@ class QualityMeasurementDBAdapter:
             rivets_type character varying(100),  -- Nova columna específica per PTCOVER (4 RIVETS, 5 RIVETS)
             cavitat character varying(100),  -- Nova columna específica per PTCOVER (nom de la cavitat)
             
-            -- Camps detallats de la mesura
+            -- Camps detallats de la mesura amb tipus millorats per suportar Unicode i precisió
             element character varying(200),
             pieza character varying(200),
             datum character varying(200),
             property character varying(200),
-            nominal real,
-            actual real,
-            tolerancia_negativa real,
-            tolerancia_positiva real,
-            desviacio real,
+            nominal numeric(15,6),  -- Precisió millorada
+            actual numeric(15,6),   -- Precisió millorada
+            tolerancia_negativa numeric(15,6),  -- Precisió millorada
+            tolerancia_positiva numeric(15,6),  -- Precisió millorada
+            desviacio numeric(15,6),  -- Precisió millorada
             check_value character varying(100),
             out_value character varying(100),
             alignment character varying(200),
@@ -328,15 +336,15 @@ class QualityMeasurementDBAdapter:
     
     def prepare_dataset_for_insertion(self, df: pd.DataFrame) -> pd.DataFrame:
         """
-        Prepara el dataset per a la inserció a la BBDD
+        Prepara el dataset per a la inserció a la BBDD amb suport Unicode millorat
         
         Args:
             df: DataFrame amb les dades del CSV
             
         Returns:
-            DataFrame preparat per la inserció
+            DataFrame preparat per la inserció amb encoding correcte
         """
-        logger.info(f"Preparant dataset de {len(df)} files per inserció")
+        logger.info(f"Preparant dataset de {len(df)} files per inserció amb suport Unicode")
         
         # Crear còpia del dataset
         prepared_df = df.copy()
@@ -344,8 +352,8 @@ class QualityMeasurementDBAdapter:
         # Neteja inicial - eliminar columnes duplicades
         prepared_df = prepared_df.loc[:, ~prepared_df.columns.duplicated()]
         
-        # Neteja de caràcters especials per evitar problemes d'encoding
-        prepared_df = self._clean_encoding_issues(prepared_df)
+        # Neteja de caràcters especials i normalització Unicode millorada
+        prepared_df = self._clean_encoding_issues_enhanced(prepared_df)
         
         # Verificar que tenim les columnes essencials
         required_cols = ['CLIENT', 'REFERENCIA', 'LOT']
@@ -354,20 +362,20 @@ class QualityMeasurementDBAdapter:
                 logger.error(f"Columna essencial {col} no trobada al dataset")
                 return pd.DataFrame()  # Retornar dataset buit
         
-        # Generar claus primàries
+        # Generar claus primàries amb normalització Unicode
         prepared_df['id_referencia_some'] = (
-            prepared_df['CLIENT'].astype(str) + '_' + 
-            prepared_df['REFERENCIA'].astype(str) + '_' + 
-            prepared_df['LOT'].astype(str)
+            self._normalize_text_for_db(prepared_df['CLIENT'].astype(str)) + '_' + 
+            self._normalize_text_for_db(prepared_df['REFERENCIA'].astype(str)) + '_' + 
+            self._normalize_text_for_db(prepared_df['LOT'].astype(str))
         )
         
-        # Generar id_element amb més seguretat
+        # Generar id_element amb més seguretat i normalització
         element_col = prepared_df.get('Element', pd.Series(['UNKNOWN'] * len(prepared_df)))
         property_col = prepared_df.get('Property', pd.Series(['UNKNOWN'] * len(prepared_df)))
         
         prepared_df['id_element'] = (
-            element_col.fillna('UNKNOWN').astype(str) + '_' + 
-            property_col.fillna('UNKNOWN').astype(str)
+            self._normalize_text_for_db(element_col.fillna('UNKNOWN').astype(str)) + '_' + 
+            self._normalize_text_for_db(property_col.fillna('UNKNOWN').astype(str))
         )
         
         # Mapear columnes - només les que existeixen
@@ -385,9 +393,9 @@ class QualityMeasurementDBAdapter:
         if 'data_hora' in prepared_df.columns:
             prepared_df['data_hora'] = pd.to_datetime(prepared_df['data_hora'], errors='coerce')
         
-        # Assignar valor i ok basant-se en 'actual'
+        # Assignar valor i ok basant-se en 'actual' amb precisió millorada
         if 'actual' in prepared_df.columns:
-            prepared_df['valor'] = pd.to_numeric(prepared_df['actual'], errors='coerce')
+            prepared_df['valor'] = self._convert_to_numeric_with_precision(prepared_df['actual'])
             # Determinar OK basant-se en si està dins de toleràncies
             prepared_df['ok'] = self._calculate_ok_status(prepared_df)
         else:
@@ -403,23 +411,23 @@ class QualityMeasurementDBAdapter:
         prepared_df['id_referencia_some'] = prepared_df['id_referencia_some'].fillna('UNKNOWN')
         prepared_df['id_element'] = prepared_df['id_element'].fillna('UNKNOWN')
         
-        # Convertir camps numèrics amb gestió de formats europeus
+        # Convertir camps numèrics amb gestió millorada de precisió
         numeric_cols = ['nominal', 'actual', 'tolerancia_negativa', 'tolerancia_positiva', 'desviacio', 'valor']
         for col in numeric_cols:
             if col in prepared_df.columns:
-                prepared_df[col] = self._convert_to_numeric_european(prepared_df[col])
+                prepared_df[col] = self._convert_to_numeric_with_precision(prepared_df[col])
         
-        # Convertir camps de text i limitar longitud
+        # Convertir camps de text amb normalització Unicode i limitar longitud
         text_cols = ['client', 'element', 'pieza', 'datum', 'property', 'check_value', 'out_value', 'alignment', 'fase']
         for col in text_cols:
             if col in prepared_df.columns:
-                prepared_df[col] = prepared_df[col].astype(str).str[:200]  # Limitar a 200 caràcters
+                prepared_df[col] = prepared_df[col].apply(self._normalize_text_for_db).str[:200]
         
         # Per clients regulars sense fase, afegir columna buida
         if 'fase' not in prepared_df.columns:
             prepared_df['fase'] = None
         
-        logger.info(f"Dataset preparat: {len(prepared_df)} files, {len(prepared_df.columns)} columnes")
+        logger.info(f"Dataset preparat amb suport Unicode: {len(prepared_df)} files, {len(prepared_df.columns)} columnes")
         return prepared_df
     
     def _calculate_ok_status(self, df: pd.DataFrame) -> pd.Series:
@@ -1091,3 +1099,66 @@ class QualityMeasurementDBAdapter:
             if self.connection:
                 self.connection.rollback()
             return False
+
+    def _normalize_text_for_db(self, text_series_or_value) -> str:
+        """
+        Normalitza text per a la base de dades (reemplaça caràcters Unicode problemàtics)
+        
+        Args:
+            text_series_or_value: Text o sèrie de pandas a normalitzar
+            
+        Returns:
+            str o sèrie: Text normalitzat
+        """
+        from src.services.value_cleaner import ValueCleaner
+        
+        if pd.isna(text_series_or_value):
+            return ""
+        
+        if isinstance(text_series_or_value, pd.Series):
+            return text_series_or_value.apply(lambda x: ValueCleaner.normalize_unicode_text(str(x)) if not pd.isna(x) else "")
+        else:
+            return ValueCleaner.normalize_unicode_text(str(text_series_or_value))
+    
+    def _convert_to_numeric_with_precision(self, numeric_series) -> pd.Series:
+        """
+        Converteix una sèrie a numèric amb màxima precisió preservada
+        
+        Args:
+            numeric_series: Sèrie de pandas amb valors numèrics
+            
+        Returns:
+            pd.Series: Sèrie amb valors numèrics nets
+        """
+        from src.services.value_cleaner import ValueCleaner
+        
+        if isinstance(numeric_series, pd.Series):
+            return numeric_series.apply(ValueCleaner.clean_numeric_value)
+        else:
+            return ValueCleaner.clean_numeric_value(numeric_series)
+    
+    def _clean_encoding_issues_enhanced(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Neteja problemes d'encoding amb suport Unicode millorat
+        
+        Args:
+            df: DataFrame a netejar
+            
+        Returns:
+            DataFrame: DataFrame amb encoding net
+        """
+        from src.services.value_cleaner import ValueCleaner
+        
+        df_clean = df.copy()
+        
+        # Netejar totes les columnes de text
+        for col in df_clean.select_dtypes(include=['object']).columns:
+            try:
+                df_clean[col] = df_clean[col].apply(
+                    lambda x: ValueCleaner.normalize_unicode_text(str(x)) if not pd.isna(x) else x
+                )
+            except Exception as e:
+                logger.warning(f"Error netejant columna {col}: {e}")
+                continue
+        
+        return df_clean
