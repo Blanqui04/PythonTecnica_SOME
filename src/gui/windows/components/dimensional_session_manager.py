@@ -1,5 +1,4 @@
 # src/gui/windows/components/dimensional_session_manager.py
-from tkinter import E
 from PyQt5.QtWidgets import (
     QWidget,
     QTableWidget,
@@ -723,7 +722,7 @@ class SessionManager:
                         self._parent, "No Data", "No data available to export."
                     )
                     return
-            except:
+            except Exception:
                 QMessageBox.warning(
                     self._parent, "No Data", "No data available to export."
                 )

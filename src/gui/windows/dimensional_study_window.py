@@ -888,7 +888,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.progress_bar.setVisible(False)
         self._set_ui_enabled(True)
         QMessageBox.critical(self, "Processing Error", f"Analysis failed:\n{error_msg}")
-
+    # src/gui/windows/dimensional_study_window.py - function of the class:
     def _clear_all(self):
         """Clear all data but preserve summary widget - ENHANCED"""
         self.logger.debug("Clear all requested")
