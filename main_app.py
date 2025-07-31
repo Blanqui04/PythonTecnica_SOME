@@ -2,7 +2,6 @@ import sys
 import os  # noqa: F401
 from pathlib import Path
 from src.gui.main_window import run_app
-
 # Afegir el directori de deployment al path si existeix
 deployment_dir = Path(__file__).parent / "deployment"
 if deployment_dir.exists():
@@ -12,7 +11,7 @@ if deployment_dir.exists():
 src_dir = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_dir))
 
-from src.gui.main_window import run_app
+
 #from src.services.gompc_sync_service import GompcSyncService
 #from src.services.gompc_backup_scheduler import GompcBackupScheduler
 #from src.services.project_backup_scheduler import ProjectBackupScheduler
