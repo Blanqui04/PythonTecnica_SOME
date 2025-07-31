@@ -15,8 +15,6 @@ from pathlib import Path
 from typing import List, Dict, Optional, Tuple
 from datetime import datetime
 
-from .special_clients_processor import SpecialClientsProcessor
-from .ptcover_processor import PTCOVERProcessor
 from .value_cleaner import ValueCleaner
 
 logger = logging.getLogger(__name__)
@@ -47,11 +45,8 @@ class NetworkScanner:
         self.last_scan_results = {}
         self.global_dataset = pd.DataFrame()  # Dataset global per tots els CSV
         
-        # Inicialitzar processador especial per clients amb fases
-        self.special_processor = SpecialClientsProcessor(self.network_path)
         
         # Inicialitzar processador específic per PTCOVER
-        self.ptcover_processor = PTCOVERProcessor(self.network_path)
         
     def scan_main_directory(self) -> Dict:
         """
@@ -793,52 +788,14 @@ class NetworkScanner:
                 
                 # Verificar si és un client especial amb estructura de fases
                 if client_name in self.SPECIAL_PHASE_CLIENTS:
-                    try:
-                        logger.info(f"Processant client especial amb fases: {client_name}")
-                        special_df = self.special_processor.process_special_client_csvs(client_name)
-                        
-                        if not special_df.empty:
-                            # Afegir al dataset global
-                            if self.global_dataset.empty:
-                                self.global_dataset = special_df
-                            else:
-                                self.global_dataset = pd.concat([self.global_dataset, special_df], ignore_index=True)
-                            
-                            stats['csv_files_processed'] += len(special_df)
-                            stats['total_rows'] += len(special_df)
-                            logger.info(f"Client especial {client_name} processat: {len(special_df)} files")
-                        
-                    except Exception as e:
-                        error_msg = f"Error processant client especial {client_name}: {e}"
-                        logger.error(error_msg)
-                        stats['processing_errors'].append(error_msg)
-                        stats['csv_files_failed'] += 1
-                    
+                    logger.info(f"Saltant client especial amb fases (sense processador especial): {client_name}")
+                    stats['clients_skipped'].append(client_name)
                     continue  # Saltar processament normal per clients especials
                 
                 # Verificar si és el client PTCOVER amb estructura ultra-especial
                 if client_name == self.PTCOVER_CLIENT:
-                    try:
-                        logger.info(f"Processant client PTCOVER amb estructura de 3 nivells: {client_name}")
-                        ptcover_df = self.ptcover_processor.process_ptcover_csvs()
-                        
-                        if not ptcover_df.empty:
-                            # Afegir al dataset global
-                            if self.global_dataset.empty:
-                                self.global_dataset = ptcover_df
-                            else:
-                                self.global_dataset = pd.concat([self.global_dataset, ptcover_df], ignore_index=True)
-                            
-                            stats['csv_files_processed'] += len(ptcover_df)
-                            stats['total_rows'] += len(ptcover_df)
-                            logger.info(f"Client PTCOVER processat: {len(ptcover_df)} files")
-                        
-                    except Exception as e:
-                        error_msg = f"Error processant client PTCOVER: {e}"
-                        logger.error(error_msg)
-                        stats['processing_errors'].append(error_msg)
-                        stats['csv_files_failed'] += 1
-                    
+                    logger.info(f"Saltant client PTCOVER (sense processador especial): {client_name}")
+                    stats['clients_skipped'].append(client_name)
                     continue  # Saltar processament normal per PTCOVER
                 
                 # Processament normal per clients regulars
