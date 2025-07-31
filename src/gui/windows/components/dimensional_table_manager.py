@@ -195,6 +195,10 @@ class DimensionalTableManager(DimensionalTableUI):
                     tooltip = "One or more measurements out of tolerance"
                     color = self.colors["bad"]
                     text_color = self.colors["white"]
+                elif final_status == "WARNING":
+                    tooltip = "Measurements may be borderline, check!"
+                    color = self.colors["warning"]
+                    text_color = self.colors["black"]
                 else:
                     tooltip = f"Status: {final_status}"
                     color = self.colors["warning"]
