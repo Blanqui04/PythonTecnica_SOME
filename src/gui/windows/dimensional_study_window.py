@@ -398,42 +398,9 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.load_file_button.setMinimumSize(140, 40)
         self.load_file_button.clicked.connect(self.session_manager._load_file)
 
-        self.load_db_button = ModernButton("From DataBase")
-        self.load_db_button.setMinimumSize(140, 40)
-        self.load_db_button.clicked.connect(self._load_from_database_dialog)
-
         mode_layout.addWidget(self.mode_toggle)
         mode_layout.addWidget(self.load_file_button)
-        mode_layout.addWidget(self.load_db_button)
         mode_group.setLayout(mode_layout)
-
-    def _load_from_database_dialog(self):
-        """Open a file dialog to select a database, load data, and populate the table."""
-        mode_layout.addWidget(self.load_db_button)
-        db_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Database File",
-            "",
-            "Database Files (*.db *.sqlite);;All Files (*)",
-        )
-        if not db_path:
-            return
-        try:
-            self._log_message(f"Loading database: {db_path}")
-            df = self.session_manager._load_from_database(db_path)
-            if df is not None and not df.empty:
-                self._populate_table_from_dataframe(df)
-                self._log_message(f"Successfully loaded {len(df)} rows from database")
-                self.run_study_button.setEnabled(True)
-                if hasattr(self, "summary_widget"):
-                    self.summary_widget.record_edit(f"Loaded database: {os.path.basename(db_path)}")
-                    self._update_summary_from_tables()
-            else:
-                QMessageBox.information(self, "No Data", "No data loaded from the selected database.")
-        except Exception as e:
-            error_msg = f"Failed to load database: {str(e)}"
-            self._log_message(error_msg, "ERROR")
-            QMessageBox.critical(self, "Database Load Error", error_msg)
 
         # Manual mode controls (initially hidden)
         manual_group = QGroupBox("✏️ Manual Controls")
