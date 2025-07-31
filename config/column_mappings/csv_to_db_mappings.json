@@ -1,0 +1,13 @@
+{
+    "mesuresqualitat": {
+        "Client": "client",
+        "Element": "element",
+        "Actual": "actual",
+        "Nominal": "nominal",
+        "Tol -": "tolerancia_negativa",
+        "Tol +": "tolerancia_positiva",
+        "Data Mesura": "data_hora",
+        "id_referencia_some": "id_referencia_some",
+        "id_element": "id_element"
+    }
+}
