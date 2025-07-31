@@ -1,0 +1,44 @@
+# requirements.txt
+# 1 - Python 3
+# 2 - pip (Python package installer)
+# 3 - Virtual environment (VSCode or Pycharm)
+# 4 - PostgreSQL
+# Core dependencies for the project
+pandas>=1.5.0          # Data manipulation and analysis
+numpy>=1.21.0          # Numerical operations (used by pandas and possibly elsewhere)
+scipy>=1.9.0           # Scientific computing (if used in calculations)
+openpyxl>=3.0.0        # Excel file reading/writing (if working with .xlsx files)
+PyQt5>=5.15.0          # GUI framework for the application
+Flask>=2.0.0           # Web framework for building the application (if needed)
+pytest>=7.0.0          # For testing the application
+schedule>=1.2.0        # Task scheduling for automatic backups
+# Database dependencies
+psycopg2-binary>=2.9.0 # PostgreSQL adapter for Python
+SQLAlchemy>=1.4.0      # ORM for database interactions (if needed)
+# PDF handling dependencies
+PyMuPDF>=1.23.0        # Primary PDF handling library (fitz)
+PyPDF2>=3.0.0          # Alternative PDF library for specific operations
+# GUI and visualization dependencies
+matplotlib>=3.5.0      # For plotting and visualizations
+# Utility dependencies
+requests>=2.28.0       # For making HTTP requests (if needed)
+Statsmodels     # For statistical modeling
+plotly          # For interactive visualizations
+Reportlab       # For PDF generation
+Requests        # For making HTTP requests
+scikit-learn    # For machine learning
+seaborn         # For statistical data visualization
+sip
+#
+cx-freeze
+pyinstaller
+setuptools>=65.0.0
+wheel>=0.38.0
+build>=0.10.0
+# Additional packaging tools
+auto-py-to-exe>=2.32.0  # GUI per PyInstaller (opcional)
+nuitka>=1.5.0           # Compilador alternatiu (opcional)
+# TensorFlow      # For deep learning tasks
+# Keras           # High-level neural networks API
+# ---------- Logging is part of Python stdlib, no need to list
+
