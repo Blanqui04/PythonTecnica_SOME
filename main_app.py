@@ -13,12 +13,11 @@ src_dir = Path(__file__).parent / "src"
 sys.path.insert(0, str(src_dir))
 
 from src.gui.main_window import run_app
-from src.services.gompc_sync_service import GompcSyncService
-from src.services.gompc_backup_scheduler import GompcBackupScheduler
-from src.services.project_backup_scheduler import ProjectBackupScheduler
-
+#from src.services.gompc_sync_service import GompcSyncService
+#from src.services.gompc_backup_scheduler import GompcBackupScheduler
+#from src.services.project_backup_scheduler import ProjectBackupScheduler
+"""
 def start_project_backup_scheduler():
-    """Inicia el programador de backup automàtic Scanner Projectes cada 24h"""
     try:
         print("\n" + "=" * 60)
         print("CONFIGURANT BACKUP AUTOMÀTIC SCANNER PROJECTES CADA 24 HORES")
@@ -40,13 +39,13 @@ def start_project_backup_scheduler():
         return None
 
 def sync_gompc_data():
-    """Sincronitza automàticament les dades del GOMPC a l'inici"""
+    Sincronitza automàticament les dades del GOMPC a l'inici
     print("\n" + "=" * 60)
     print("SINCRONITZACIÓ AUTOMÀTICA DE DADES GOMPC")
     print("=" * 60)
     
     try:
-        sync_service = GompcSyncService()
+        #sync_service = GompcSyncService()
         result = sync_service.sync_data_on_startup()
         
         if result['success']:
@@ -67,7 +66,6 @@ def sync_gompc_data():
         return {'success': False, 'error': str(e)}
 
 def start_backup_scheduler():
-    """Inicia el programador de backup automàtic cada 24h"""
     try:
         print("\n" + "=" * 60)
         print("CONFIGURANT BACKUP AUTOMÀTIC CADA 24 HORES")
@@ -87,18 +85,11 @@ def start_backup_scheduler():
     except Exception as e:
         print(f"❌ Error configurant backup automàtic: {e}")
         return None
-
+"""
 def main():
     """Punt d'entrada principal de l'aplicació"""
-    backup_scheduler = None
-    project_scheduler = None
     
     try:
-        # Configurar backup automàtic GOMPC cada 24 hores (sense sincronització inicial)
-        backup_scheduler = start_backup_scheduler()
-        
-        # Configurar backup automàtic Scanner Projectes cada 24 hores
-        project_scheduler = start_project_backup_scheduler()
         
         # Configurar entorn empresarial si estem en mode deployment
         if deployment_dir.exists():
@@ -134,21 +125,6 @@ def main():
         print(f"Error starting application: {e}")
         sys.exit(1)
         
-    finally:
-        # Aturar schedulers en sortir
-        if backup_scheduler:
-            try:
-                backup_scheduler.stop_scheduler()
-                print("Backup GOMPC scheduler aturat.")
-            except:
-                pass
-        
-        if project_scheduler:
-            try:
-                project_scheduler.stop_scheduler()
-                print("Backup Scanner Projectes scheduler aturat.")
-            except:
-                pass
 
 if __name__ == "__main__":
     main()

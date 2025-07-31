@@ -25,7 +25,7 @@ from src.gui.utils.element_input_styles import (
 )
 from .buttons import ModernButton, ActionButton, CompactButton
 from .inputs import ModernLineEdit, ModernComboBox
-from src.services.measurement_history_service import MeasurementHistoryService
+#from src.services.measurement_history_service import MeasurementHistoryService
 import logging
 
 logger = logging.getLogger(__name__)
