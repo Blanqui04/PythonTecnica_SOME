@@ -528,12 +528,12 @@ class SessionManager:
         try:
             # Find and preserve summary tab
             summary_widget = None
-            summary_tab_index = -1
+            #summary_tab_index = -1
 
             for i in range(self._parent.results_tabs.count()):
                 if "Summary" in self._parent.results_tabs.tabText(i):
                     summary_widget = self._parent.results_tabs.widget(i)
-                    summary_tab_index = i
+                    #summary_tab_index = i
                     break
 
             # Remove all tabs
@@ -704,14 +704,14 @@ class SessionManager:
                         f"🗑️ Cleaned up old auto-save: {os.path.basename(old_file)}",
                         "DEBUG",
                     )
-                except:
+                except Exception:
                     pass
 
         except Exception as e:
             self._log(f"⚠️ Auto-save cleanup failed: {str(e)}", "DEBUG")
 
     def _export_data(self):
-        """Export results to files - ENHANCED with summary and cavity separation"""
+        """Export results to files - ENHANCED with comprehensive Excel reports"""
         # Check for data to export
         if not hasattr(self._parent, "results") or not self._parent.results:
             # Try to get current table data instead
@@ -738,30 +738,56 @@ class SessionManager:
 
             # Generate base filename with report type
             report_type = self._parent.report_type_combo.currentText().replace(" ", "_")
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             base_filename = f"{self.client_name}_{self.project_ref}_{self.batch_number}_{report_type}"
 
-            self._log(f"📤 Starting export to {export_dir}")
+            self._log(f"📤 Starting comprehensive export to {export_dir}")
 
-            # Export analysis results if available
-            if hasattr(self._parent, "results") and self._parent.results:
-                export_service = DataExportService()
-                json_path, csv_path = export_service.export_results(
-                    self._parent.results, export_dir, f"{base_filename}_results"
-                )
-                self._log(
-                    f"📊 Analysis results exported: {os.path.basename(json_path)}"
-                )
+            # Gather all metadata for the report
+            metadata = self._gather_export_metadata()
 
-            # NEW: Export original vs current data comparison
+            # Get summary data if available
+            summary_data = None
             if hasattr(self._parent, "summary_widget") and self._parent.summary_widget:
-                self._export_summary_data(export_dir, base_filename, timestamp)
+                summary_data = self._parent.summary_widget.get_summary_data()
 
-            # NEW: Export by cavity
-            self._export_by_cavity(export_dir, base_filename, timestamp)
+            # Get current table data
+            table_data = None
+            try:
+                table_data = self._parent.table_manager._get_dataframe_from_tables()
+            except Exception as e:
+                self._log(f"⚠️ Could not get table data: {str(e)}", "WARNING")
 
-            success_msg = f"Export completed successfully to:\n{export_dir}"
-            self._log("✅ Export completed successfully")
+            # Use enhanced export service
+            export_service = DataExportService()
+            export_paths = export_service.export_comprehensive_results(
+                results=self._parent.results,
+                export_dir=export_dir,
+                base_filename=base_filename,
+                metadata=metadata,
+                summary_data=summary_data,
+                table_data=table_data
+            )
+
+            # Generate and save export summary
+            export_summary = export_service.generate_export_summary(export_paths, metadata)
+            summary_path = os.path.join(export_dir, f"{base_filename}_export_summary.txt")
+            with open(summary_path, 'w', encoding='utf-8') as f:
+                f.write(export_summary)
+
+            # Show success message with file count
+            file_count = len(export_paths)
+            success_msg = (
+                f"✅ EXPORT COMPLETED SUCCESSFULLY\n\n"
+                f"📁 Location: {export_dir}\n"
+                f"📊 Files Created: {file_count}\n\n"
+                f"Key Files:\n"
+                f"• Excel Report: {os.path.basename(export_paths.get('excel_report', 'N/A'))}\n"
+                f"• Metadata: {os.path.basename(export_paths.get('metadata', 'N/A'))}\n"
+                f"• Export Summary: {os.path.basename(summary_path)}\n\n"
+                f"✨ Professional Excel report ready for client presentation!"
+            )
+
+            self._log(f"✅ Export completed successfully - {file_count} files created")
             QMessageBox.information(self._parent, "Export Successful", success_msg)
 
         except Exception as e:
@@ -769,84 +795,230 @@ class SessionManager:
             self._log(error_msg, "ERROR")
             QMessageBox.critical(self._parent, "Export Error", error_msg)
 
-    def _export_summary_data(self, export_dir: str, base_filename: str, timestamp: str):
-        """Export comprehensive summary data - NEW FUNCTION"""
+    def _gather_export_metadata(self) -> dict:
+        """Gather all metadata for export - ENHANCED with comprehensive data collection"""
         try:
+            # Base metadata
+            metadata = {
+                'client_name': self.client_name,
+                'project_ref': self.project_ref,
+                'batch_number': self.batch_number,
+                'report_type': self._parent.report_type_combo.currentText(),
+                'manual_mode': getattr(self._parent, 'manual_mode', False),
+                'export_timestamp': datetime.now().isoformat(),
+                'software_version': '2.0',
+            }
+
+            # Get additional metadata through dialogs
+            metadata.update(self._collect_project_metadata())
+            metadata.update(self._collect_quality_metadata())
+            metadata.update(self._collect_technical_metadata())
+
+            return metadata
+
+        except Exception as e:
+            self._log(f"❌ Error gathering metadata: {str(e)}", "ERROR")
+            # Return basic metadata as fallback
+            return {
+                'client_name': self.client_name,
+                'project_ref': self.project_ref,
+                'batch_number': self.batch_number,
+                'export_timestamp': datetime.now().isoformat(),
+            }
+        
+    def _collect_project_metadata(self) -> dict:
+        """Collect project-related metadata through user dialogs"""
+        metadata = {}
+        
+        try:
+            # Part information
+            part_number, ok = QInputDialog.getText(
+                self._parent, 
+                'Export Setup - Part Information', 
+                'Part Number:'
+            )
+            if ok:
+                metadata['part_number'] = part_number.strip()
+
+            drawing_number, ok = QInputDialog.getText(
+                self._parent, 
+                'Export Setup - Drawing Information', 
+                'Drawing Number:'
+            )
+            if ok:
+                metadata['drawing_number'] = drawing_number.strip()
+
+            # Project details
+            quotation_number, ok = QInputDialog.getText(
+                self._parent, 
+                'Export Setup - Quotation', 
+                'Quotation Number (optional):'
+            )
+            if ok:
+                metadata['quotation_number'] = quotation_number.strip()
+
+        except Exception as e:
+            self._log(f"⚠️ Error collecting project metadata: {str(e)}", "WARNING")
+
+        return metadata
+    
+    def _collect_quality_metadata(self) -> dict:
+        """Collect quality-related metadata"""
+        metadata = {}
+        
+        try:
+            # Quality personnel
+            project_leader, ok = QInputDialog.getText(
+                self._parent, 
+                'Export Setup - Quality Team', 
+                'Project Leader:'
+            )
+            if ok:
+                metadata['project_leader'] = project_leader.strip()
+
+            inspector, ok = QInputDialog.getText(
+                self._parent, 
+                'Export Setup - Quality Team', 
+                'Inspector:'
+            )
+            if ok:
+                metadata['inspector'] = inspector.strip()
+
+            quality_facility, ok = QInputDialog.getText(
+                self._parent, 
+                'Export Setup - Facility', 
+                'Quality Facility:'
+            )
+            if ok:
+                metadata['quality_facility'] = quality_facility.strip()
+
+        except Exception as e:
+            self._log(f"⚠️ Error collecting quality metadata: {str(e)}", "WARNING")
+
+        return metadata
+
+    def _collect_technical_metadata(self) -> dict:
+        """Collect technical metadata"""
+        metadata = {}
+        
+        try:
+            # Technical standards
+            normative_options = [
+                'ISO 1101', 'ASME Y14.5', 'DIN 7167', 'JIS B 0621', 
+                'ISO 5459', 'ASME Y14.5M', 'Custom'
+            ]
+            
+            normative, ok = QInputDialog.getItem(
+                self._parent,
+                'Export Setup - Standards',
+                'Normative Standard:',
+                normative_options,
+                0,
+                False
+            )
+            if ok:
+                metadata['normative'] = normative
+
+                # If custom, ask for specification
+                if normative == 'Custom':
+                    custom_norm, ok = QInputDialog.getText(
+                        self._parent,
+                        'Custom Normative',
+                        'Specify custom standard:'
+                    )
+                    if ok:
+                        metadata['normative'] = custom_norm.strip()
+
+            # Company logo path (optional)
+            use_logo = QMessageBox.question(
+                self._parent,
+                'Company Logo',
+                'Do you want to include a company logo in the report?',
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if use_logo == QMessageBox.Yes:
+                logo_path, _ = QFileDialog.getOpenFileName(
+                    self._parent,
+                    'Select Company Logo',
+                    '',
+                    'Image Files (*.png *.jpg *.jpeg *.bmp)'
+                )
+                if logo_path:
+                    metadata['company_logo_path'] = logo_path
+
+        except Exception as e:
+            self._log(f"⚠️ Error collecting technical metadata: {str(e)}", "WARNING")
+
+        return metadata
+
+
+
+    def _export_summary_data(self, export_dir: str, base_filename: str, timestamp: str):
+        """Export comprehensive summary data - ENHANCED VERSION"""
+        try:
+            if not hasattr(self._parent, "summary_widget") or not self._parent.summary_widget:
+                return
+
             summary_data = self._parent.summary_widget.get_summary_data()
 
-            # Export summary as JSON
+            # Export comprehensive summary as JSON
             summary_file = os.path.join(
-                export_dir, f"{base_filename}_summary_{timestamp}.json"
+                export_dir, f"{base_filename}_complete_summary_{timestamp}.json"
             )
             with open(summary_file, "w", encoding="utf-8") as f:
                 json.dump(summary_data, f, indent=2, ensure_ascii=False, default=str)
 
-            # Export summary as readable text
+            # Export summary as formatted text report
             summary_text_file = os.path.join(
-                export_dir, f"{base_filename}_summary_{timestamp}.txt"
+                export_dir, f"{base_filename}_summary_report_{timestamp}.txt"
             )
-            self._generate_summary_report(summary_data, summary_text_file)
+            self._generate_enhanced_summary_report(summary_data, summary_text_file)
 
-            self._log(f"📋 Summary data exported: {os.path.basename(summary_file)}")
-
-        except Exception as e:
-            self._log(f"⚠️ Summary export failed: {str(e)}", "WARNING")
-
-    def _export_by_cavity(self, export_dir: str, base_filename: str, timestamp: str):
-        """Export data separated by cavity - NEW FUNCTION"""
-        try:
-            df = self._parent.table_manager._get_dataframe_from_tables()
-            if df.empty:
-                return
-
-            # Create cavity subdirectory
-            cavity_dir = os.path.join(export_dir, "by_cavity")
-            os.makedirs(cavity_dir, exist_ok=True)
-
-            # Group by cavity
-            if "cavity" in df.columns:
-                cavities = sorted(df["cavity"].unique())
-                for cavity in cavities:
-                    cavity_df = df[df["cavity"] == cavity]
-                    cavity_file = os.path.join(
-                        cavity_dir, f"{base_filename}_cavity_{cavity}_{timestamp}.csv"
-                    )
-                    cavity_df.to_csv(cavity_file, index=False, encoding="utf-8")
-                    self._log(
-                        f"🏭 Cavity {cavity} data exported: {os.path.basename(cavity_file)}"
-                    )
-            else:
-                # Export as single file if no cavity column
-                single_file = os.path.join(
-                    cavity_dir, f"{base_filename}_all_data_{timestamp}.csv"
+            # Export comparison data if available
+            if summary_data.get("comparison_data"):
+                comparison_file = os.path.join(
+                    export_dir, f"{base_filename}_data_changes_{timestamp}.json"
                 )
-                df.to_csv(single_file, index=False, encoding="utf-8")
-                self._log(f"📊 All data exported: {os.path.basename(single_file)}")
+                with open(comparison_file, "w", encoding="utf-8") as f:
+                    json.dump(
+                        summary_data["comparison_data"], 
+                        f, 
+                        indent=2, 
+                        ensure_ascii=False, 
+                        default=str
+                    )
+
+            self._log("📊 Enhanced summary data exported", "INFO")
 
         except Exception as e:
-            self._log(f"⚠️ Cavity export failed: {str(e)}", "WARNING")
+            self._log(f"⚠️ Enhanced summary export failed: {str(e)}", "WARNING")
 
-    def _generate_summary_report(self, summary_data: dict, filepath: str):
-        """Generate human-readable summary report - NEW FUNCTION"""
+    def _generate_enhanced_summary_report(self, summary_data: dict, filepath: str):
+        """Generate comprehensive human-readable summary report"""
         try:
             with open(filepath, "w", encoding="utf-8") as f:
-                f.write("DIMENSIONAL ANALYSIS SESSION SUMMARY\n")
-                f.write("=" * 50 + "\n\n")
+                f.write("DIMENSIONAL ANALYSIS - COMPREHENSIVE SUMMARY REPORT\n")
+                f.write("=" * 65 + "\n\n")
 
-                # Session info
+                # Executive Summary
+                f.write("EXECUTIVE SUMMARY\n")
+                f.write("-" * 20 + "\n")
+                f.write(f"Client: {self.client_name}\n")
+                f.write(f"Project: {self.project_ref}\n")
+                f.write(f"Batch: {self.batch_number}\n")
+                f.write(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
+
+                # Session Information
                 if "session_info" in summary_data:
                     session_info = summary_data["session_info"]
                     f.write("SESSION INFORMATION\n")
                     f.write("-" * 20 + "\n")
-                    f.write(f"Client: {self.client_name}\n")
-                    f.write(f"Project: {self.project_ref}\n")
-                    f.write(f"Batch: {self.batch_number}\n")
                     f.write(f"Duration: {session_info.get('duration', 'Unknown')}\n")
-                    f.write(
-                        f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-                    )
+                    f.write(f"Start Time: {session_info.get('start_time', 'Unknown')}\n")
+                    f.write(f"Last Update: {session_info.get('last_update', 'Unknown')}\n\n")
 
-                # Metrics
+                # Analysis Metrics
                 if "metrics" in summary_data:
                     metrics = summary_data["metrics"]
                     f.write("ANALYSIS METRICS\n")
@@ -857,33 +1029,111 @@ class SessionManager:
                     f.write(f"Passed: {metrics.get('passed', 0)}\n")
                     f.write(f"Failed: {metrics.get('failed', 0)}\n")
                     f.write(f"Warnings: {metrics.get('warning', 0)}\n")
-                    f.write(f"Edits Made: {metrics.get('edits_made', 0)}\n")
-                    f.write(f"Completeness: {metrics.get('completeness', 0):.1f}%\n\n")
+                    f.write(f"Data Completeness: {metrics.get('completeness', 0):.1f}%\n")
+                    f.write(f"Total Edits Made: {metrics.get('edits_made', 0)}\n\n")
 
-                # Data changes
+                    # Cavity Breakdown
+                    if metrics.get('cavity_breakdown'):
+                        f.write("CAVITY PERFORMANCE BREAKDOWN\n")
+                        f.write("-" * 28 + "\n")
+                        for cavity, stats in metrics['cavity_breakdown'].items():
+                            success_rate = (stats['passed'] / stats['total']) * 100 if stats['total'] > 0 else 0
+                            f.write(f"Cavity {cavity}: {stats['passed']}/{stats['total']} passed ({success_rate:.1f}%)\n")
+                        f.write("\n")
+
+                # Data Quality Analysis
                 if "comparison_data" in summary_data:
                     comp_data = summary_data["comparison_data"]
-                    f.write("DATA CHANGES\n")
-                    f.write("-" * 12 + "\n")
-                    f.write(
-                        f"Modifications: {len(comp_data.get('modifications', []))}\n"
-                    )
+                    f.write("DATA QUALITY ANALYSIS\n")
+                    f.write("-" * 21 + "\n")
+                    f.write(f"Modifications: {len(comp_data.get('modifications', []))}\n")
                     f.write(f"Additions: {len(comp_data.get('additions', []))}\n")
                     f.write(f"Deletions: {len(comp_data.get('deletions', []))}\n\n")
 
-                    # Show recent modifications
+                    # Show significant modifications
                     modifications = comp_data.get("modifications", [])
                     if modifications:
-                        f.write("RECENT MODIFICATIONS\n")
-                        f.write("-" * 20 + "\n")
-                        for mod in modifications[-10:]:  # Last 10
-                            f.write(
-                                f"• {mod['element_id']}: {'; '.join(mod['changes'][:3])}\n"
-                            )
+                        f.write("SIGNIFICANT MODIFICATIONS\n")
+                        f.write("-" * 24 + "\n")
+                        for mod in modifications[-15:]:  # Last 15 modifications
+                            f.write(f"• {mod['element_id']}: {len(mod['changes'])} changes\n")
+                            for change in mod['changes'][:3]:  # Show first 3 changes
+                                f.write(f"  - {change}\n")
+                            if len(mod['changes']) > 3:
+                                f.write(f"  ... and {len(mod['changes']) - 3} more changes\n")
                         f.write("\n")
 
+                # Recommendations
+                f.write("QUALITY RECOMMENDATIONS\n")
+                f.write("-" * 23 + "\n")
+                recommendations = self._generate_export_recommendations(summary_data)
+                for rec in recommendations:
+                    f.write(f"• {rec}\n")
+                f.write("\n")
+
+                # Technical Notes
+                f.write("TECHNICAL NOTES\n")
+                f.write("-" * 15 + "\n")
+                f.write("• This report was generated automatically by the Dimensional Analysis System\n")
+                f.write("• All measurements and calculations follow the specified normative standards\n")
+                f.write("• Data integrity and traceability are maintained throughout the analysis process\n")
+                f.write("• For technical questions, contact the project quality team\n\n")
+
+                f.write("END OF REPORT\n")
+                f.write("=" * 65 + "\n")
+
         except Exception as e:
-            self._log(f"❌ Error generating summary report: {str(e)}", "ERROR")
+            self._log(f"❌ Error generating enhanced summary report: {str(e)}", "ERROR")
+
+    def _generate_export_recommendations(self, summary_data: dict) -> list:
+        """Generate intelligent recommendations for export report"""
+        recommendations = []
+        
+        try:
+            metrics = summary_data.get("metrics", {})
+            
+            # Success rate recommendations
+            success_rate = metrics.get("success_rate", 0)
+            if success_rate >= 98:
+                recommendations.append("Excellent quality performance - maintain current processes")
+            elif success_rate >= 95:
+                recommendations.append("Good quality performance - monitor failed dimensions for trends")
+            elif success_rate >= 85:
+                recommendations.append("Quality performance needs attention - investigate failed dimensions")
+            else:
+                recommendations.append("CRITICAL: Poor quality performance - immediate process review required")
+
+            # Completeness recommendations
+            completeness = metrics.get("completeness", 0)
+            if completeness < 80:
+                recommendations.append("Increase measurement sampling for better statistical confidence")
+
+            # Cavity-specific recommendations
+            cavity_breakdown = metrics.get("cavity_breakdown", {})
+            poor_cavities = []
+            for cavity, stats in cavity_breakdown.items():
+                if stats.get("total", 0) > 0:
+                    cavity_rate = (stats.get("passed", 0) / stats["total"]) * 100
+                    if cavity_rate < 90:
+                        poor_cavities.append(f"Cavity {cavity} ({cavity_rate:.1f}%)")
+            
+            if poor_cavities:
+                recommendations.append(f"Review tooling and parameters for: {', '.join(poor_cavities)}")
+
+            # Edit tracking recommendations
+            edits_made = metrics.get("edits_made", 0)
+            if edits_made > 20:
+                recommendations.append("High number of manual edits - review data collection procedures")
+
+            # Default recommendation
+            if not recommendations:
+                recommendations.append("Quality analysis complete - all metrics within acceptable ranges")
+
+        except Exception as e:
+            self._log(f"⚠️ Error generating recommendations: {str(e)}", "WARNING")
+            recommendations.append("Detailed recommendations unavailable - contact quality team for analysis")
+
+        return recommendations
 
     def _clear_unsaved_changes(self):
         """Clear the unsaved changes flag"""
