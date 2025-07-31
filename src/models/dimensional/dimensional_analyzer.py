@@ -1,6 +1,6 @@
 # src/models/dimensional/dimensional_analyzer.py - OPTIMIZED VERSION
 import logging
-from typing import List, Optional, Dict, Any
+from typing import List, Dict, Any
 from statistics import mean, stdev
 from .dimensional_result import DimensionalResult, DimensionalStatus
 from .gdt_interpreter import GDTInterpreter, create_enhanced_gdt_flags

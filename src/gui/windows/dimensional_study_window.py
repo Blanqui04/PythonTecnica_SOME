@@ -228,33 +228,16 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             raise
 
     def _init_summary_widget(self):
-        """Initialize the enhanced summary widget - FIXED VERSION"""
-        self.logger.debug("Initializing Enhanced Summary Widget")
-        try:
-            # Always create a fresh summary widget
-            if hasattr(self, "summary_widget") and self.summary_widget:
-                # Clean up existing widget
-                self.summary_widget.cleanup()
-                self.summary_widget.deleteLater()
-
-            self.summary_widget = SummaryWidget(
-                parent=self
-            )  # Create new enhanced summary widget
-            self.summary_widget.update_complete.connect(
-                self._on_summary_update_complete
-            )  # Connect signals for better performance
-
-            self.logger.info("Enhanced summary widget initialized successfully")
-
-        except Exception as e:
-            self._log_message(f"Failed to initialize summary widget: {str(e)}", "ERROR")
-            # Create a fallback simple widget
-            self.summary_widget = QWidget()
-            fallback_layout = QVBoxLayout()
-            fallback_layout.addWidget(
-                QLabel("📊 Summary Widget Error - Please restart application")
-            )
-            self.summary_widget.setLayout(fallback_layout)
+        """Initialize optimized summary widget"""
+        if not hasattr(self, 'summary_widget') or not self.summary_widget:
+            self.summary_widget = SummaryWidget(parent=self)
+            self.summary_widget.update_complete.connect(self._on_summary_update_complete)
+            
+            # Add to tabs if not already present
+            self.results_tabs.insertTab(0, self.summary_widget, "📊 Enhanced Summary")
+            self.results_tabs.setCurrentIndex(0)
+            
+            self._log_message("📊 Optimized summary widget initialized", "INFO")
 
     def _init_ui(self):
         """Initialize enhanced professional UI"""
@@ -888,7 +871,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.progress_bar.setVisible(False)
         self._set_ui_enabled(True)
         QMessageBox.critical(self, "Processing Error", f"Analysis failed:\n{error_msg}")
-    # src/gui/windows/dimensional_study_window.py - function of the class:
+    # src/gui/windows/dimensional_study_window.py - function of the class - MODIFY TO NOT ELIMINATE THE SUMMARY WIDGET:
     def _clear_all(self):
         """Clear all data but preserve summary widget - ENHANCED"""
         self.logger.debug("Clear all requested")
