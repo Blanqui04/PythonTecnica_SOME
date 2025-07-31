@@ -149,16 +149,20 @@ class DimensionalAnalyzer:
             return DimensionalStatus.GOOD, 0
         elif force_status == "BAD":
             return DimensionalStatus.BAD, len(measurements)
-        
+        elif force_status == "TED":
+            return DimensionalStatus.TED, len(measurements)
+        elif force_status == "WARNING":
+            return DimensionalStatus.WARNING, len(measurements)
+
         # Handle different evaluation types
         if evaluation_type == "Note":
-            return DimensionalStatus.GOOD, 0
+            return DimensionalStatus.WARNING, 0
         
         if evaluation_type in ["Basic", "Informative"]:
-            return DimensionalStatus.GOOD, 0  # Will be displayed as T.E.D. in UI
+            return DimensionalStatus.TED, 0  # Will be displayed as T.E.D. in UI
         
         if not measurements:
-            return DimensionalStatus.GOOD, 0
+            return DimensionalStatus.WARNING, 0
         
         # AUTO evaluation for Normal and GD&T
         if lower_tol == 0.0 and upper_tol == 0.0:

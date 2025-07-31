@@ -1,6 +1,7 @@
-# src/services/enhanced_data_export_service.py
+# src/services/dim_data_export_service.py
 import json
 import os
+import re
 import logging
 from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
@@ -358,23 +359,26 @@ class DataExportService:
         return current_row
 
     def _add_data_row(self, ws: Worksheet, row: int, result: DimensionalResult, num_columns: int):
-        """Add optimized data row with proper formatting"""
+        """Add optimized data row with proper formatting and TED/alternate-row support"""
+        # Determine if it's a TED row
+        is_ted = self._get_status_display_safe(result) == 'T.E.D'
+
         # Calculate statistics
         measurements = [m for m in result.measurements if m is not None]
         stats = self._calculate_statistics(measurements)
-        
-        # Get spec limits
-        lower_spec, upper_spec = self._get_spec_limits_safe(result)
-        
-        # Prepare row data
+
+        # Get spec limits (unless TED)
+        lower_spec, upper_spec = (None, None) if is_ted else self._get_spec_limits_safe(result)
+
+        # Format values
         data = [
             result.element_id,
             getattr(result, 'description', ''),
-            self._format_number(getattr(result, 'nominal', None)),
-            self._format_number(lower_spec),
-            self._format_number(upper_spec),
-            getattr(result, 'unit', 'mm'),
-            getattr(result, 'measuring_instrument', 'ScanBox'),
+            '' if is_ted else self._format_number(getattr(result, 'nominal', None)),
+            '' if is_ted else self._format_number(lower_spec),
+            '' if is_ted else self._format_number(upper_spec),
+            self._format_unit(getattr(result, 'unit', '')),
+            self._format_instrument(getattr(result, 'measuring_instrument', '')),
             *[self._format_number(m) for m in (result.measurements + [None] * 5)[:5]],
             self._format_number(stats['min']),
             self._format_number(stats['max']),
@@ -382,17 +386,23 @@ class DataExportService:
             self._format_number(stats['std']),
             self._get_status_display_safe(result)
         ]
-        
-        # Write data with formatting
+
+        # Alternate row fill (only for non-status cells)
+        alt_fill = PatternFill(start_color='FBFBFB', end_color='FBFBFB', fill_type='solid') if row % 2 == 0 else None
+        ted_font = Font(name='Arial', size=9, italic=True, color='7F8C8D') if is_ted else self.DATA_FONT
+
         for col, value in enumerate(data, 1):
             cell = ws.cell(row=row, column=col, value=value)
-            cell.font = self.DATA_FONT
+            cell.font = ted_font if col < num_columns else self.DATA_FONT  # Apply TED color except to status cell
             cell.border = self.THIN_BORDER
             cell.alignment = Alignment(horizontal='center', vertical='center')
-            
-            # Apply status formatting for last column
+
+            # Status cell (last)
             if col == num_columns:
                 self._apply_status_formatting(cell, data[-1])
+            elif not is_ted and alt_fill:
+                cell.fill = alt_fill
+
 
     def _calculate_statistics(self, measurements: List[float]) -> Dict[str, Optional[float]]:
         """Calculate statistics with error handling"""
@@ -435,29 +445,49 @@ class DataExportService:
             pass
         
         return None, None
+    
+    def _format_unit(self, unit: Optional[str]) -> str:
+        """Format unit consistently and smartly"""
+        if not unit:
+            return ''
+        u = str(unit).strip().lower()
+        if 'µ' in u or 'micro' in u or 'um' in u or 'μ' in u:
+            return 'μm'
+        if 'deg' in u or '°' in u or 'º' in u:
+            return 'º'
+        return unit
+
+    def _format_instrument(self, instrument: Optional[str]) -> str:
+        """Respect actual instrument name or leave blank"""
+        if not instrument:
+            return ''
+        i = str(instrument).strip()
+        return i.capitalize() if i.lower() == 'visual' else i
 
     def _get_status_display_safe(self, result: DimensionalResult) -> str:
-        """Get status display with robust error handling"""
+        """Get status display with robust error handling and TED detection"""
         try:
-            status = str(getattr(result, 'status', 'NOK')).upper()
+            raw_status = str(getattr(result, 'status', '')).strip().upper()
             if hasattr(result.status, 'value'):
-                status = str(result.status.value).upper()
+                raw_status = str(result.status.value).strip().upper()
         except AttributeError:
-            status = 'NOK'
-        
-        # Check for basic/informative dimensions
+            raw_status = ''
+
         description = str(getattr(result, 'description', '')).lower()
-        if any(keyword in description for keyword in ['basic', 'informative', 'reference', 'ref']):
+
+        if 'ted' in raw_status or 't.e.d' in raw_status:
             return 'T.E.D'
-        
-        # Status mapping
+        if any(keyword in description for keyword in ['basic', 'informative', 'reference', 'ref', 't.e.d']):
+            return 'T.E.D'
+
         status_map = {
             'GOOD': 'OK', 'PASS': 'OK', 'OK': 'OK',
             'BAD': 'NOK', 'FAIL': 'NOK', 'NOK': 'NOK', 'NG': 'NOK',
             'WARNING': 'WARNING', 'T.E.D.': 'T.E.D', 'TED': 'T.E.D'
         }
-        
-        return status_map.get(status, 'WARNING')
+
+        return status_map.get(raw_status, 'WARNING')
+
 
     def _format_number(self, value) -> str:
         """Format numbers consistently"""
@@ -720,25 +750,17 @@ class DataExportService:
         ws.print_title_rows = '1:1'
 
     def _sort_results_by_element_id(self, results: List[DimensionalResult]) -> List[DimensionalResult]:
-        """Sort results by element_id with proper numerical ordering"""
-        def sort_key(result):
-            element_id = str(result.element_id)
-            
-            # Handle 00X format (priority 0)
-            if element_id.startswith('00') and len(element_id) == 3:
-                try:
-                    return (0, int(element_id))
-                except ValueError:
-                    return (0, element_id)
-            
-            # Handle purely numeric IDs (priority 1)
-            if element_id.isdigit():
-                return (1, int(element_id))
-            
-            # Handle mixed alphanumeric (priority 2)
-            return (2, element_id)
-        
-        return sorted(results, key=sort_key)
+        """Sort element_id with numeric awareness (e.g. Nº1000 > Nº200)"""
+        def parse_numeric(eid: str) -> Tuple[int, str]:
+            eid = str(eid)
+            # Remove prefix like 'Nº' or 'No.' etc.
+            cleaned = re.sub(r'^(Nº|No\.?)\s*', '', eid, flags=re.IGNORECASE)
+            try:
+                return (0, int(cleaned))  # numeric ID
+            except ValueError:
+                return (1, eid)  # fallback string
+
+        return sorted(results, key=lambda r: parse_numeric(r.element_id))
 
     def _group_results_by_cavity(self, results: List[DimensionalResult]) -> Dict[int, List[DimensionalResult]]:
         """Group results by cavity number with fallback"""
