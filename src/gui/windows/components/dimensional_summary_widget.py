@@ -10,17 +10,14 @@ from PyQt5.QtWidgets import (
     QProgressBar,
     QFrame,
     QGridLayout,
-    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
-    QHeaderView,
-    QSplitter,
 )
-from PyQt5.QtCore import pyqtSignal, Qt, QTimer
-from PyQt5.QtGui import QFont, QColor, QPalette
+from PyQt5.QtCore import pyqtSignal, Qt
+from PyQt5.QtGui import QFont, QColor
 from datetime import datetime
 import pandas as pd
-from typing import List, Dict, Optional
+from typing import List, Optional
 from src.models.dimensional.dimensional_result import DimensionalResult
 
 
