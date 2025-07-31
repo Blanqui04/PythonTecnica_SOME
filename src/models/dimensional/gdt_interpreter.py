@@ -214,7 +214,7 @@ class GDTInterpreter:
             "parallelism": "∥",
             "perpendicularity": "⊥",
             "angularity": "∠",
-            "flatness": "⏤",
+            "flatness": "⏥",
             "straightness": "⏤",
             "circularity": "○",
             "cylindricity": "⌭",
@@ -250,7 +250,7 @@ def create_enhanced_gdt_flags(description: str) -> Dict[str, bool]:
     # Fast keyword detection
     gdt_keywords = {
         "position": ["position", "true position", "tp", "⌖"],
-        "flatness": ["flatness", "⏤"],
+        "flatness": ["flatness", "⏥"],
         "parallelism": ["parallelism", "∥"],
         "perpendicularity": ["perpendicularity", "⊥"],
         "angularity": ["angularity", "∠"],

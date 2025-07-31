@@ -3,34 +3,41 @@ import json
 import os
 import logging
 from datetime import datetime
-from typing import List, Dict, Any, Optional
-import pandas as pd
+from typing import List, Dict, Any, Optional, Tuple
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-# from openpyxl.drawing.image import Image
-# from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.drawing.image import Image
 from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.page import PageMargins
 from src.models.dimensional.dimensional_result import DimensionalResult
+from src.database.database_connection import PostgresConn
 
 
 class DataExportService:
-    """Enhanced service for exporting dimensional analysis results with professional Excel reports"""
+    """Optimized professional dimensional analysis export service for automotive PPAP reports"""
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
+        self._init_styles()
         
-        # Report styling constants
-        self.HEADER_FONT = Font(name='Arial', size=12, bold=True, color='FFFFFF')
+    def _init_styles(self):
+        """Initialize Excel styling constants - optimized"""
+        # Fonts
+        self.HEADER_FONT = Font(name='Arial', size=10, bold=True, color='FFFFFF')
         self.TITLE_FONT = Font(name='Arial', size=16, bold=True, color='2C3E50')
         self.SUBTITLE_FONT = Font(name='Arial', size=11, bold=True, color='34495E')
-        self.DATA_FONT = Font(name='Arial', size=10)
+        self.DATA_FONT = Font(name='Arial', size=9)
         self.SMALL_FONT = Font(name='Arial', size=8)
         
+        # Fills
         self.HEADER_FILL = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
-        self.GOOD_FILL = PatternFill(start_color='D5F4E6', end_color='D5F4E6', fill_type='solid')
-        self.BAD_FILL = PatternFill(start_color='FADBD8', end_color='FADBD8', fill_type='solid')
-        self.WARNING_FILL = PatternFill(start_color='FCF3CF', end_color='FCF3CF', fill_type='solid')
+        self.OK_FILL = PatternFill(start_color='D5F4E6', end_color='D5F4E6', fill_type='solid')
+        self.NOK_FILL = PatternFill(start_color='FADBD8', end_color='FADBD8', fill_type='solid')
+        self.TED_FILL = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
+        self.INFO_FILL = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
         
+        # Borders
         self.THIN_BORDER = Border(
             left=Side(style='thin'), right=Side(style='thin'),
             top=Side(style='thin'), bottom=Side(style='thin')
@@ -40,686 +47,777 @@ class DataExportService:
             top=Side(style='thick'), bottom=Side(style='thick')
         )
 
-    def export_comprehensive_results(
+    def export_dimensional_report(
         self, 
         results: List[DimensionalResult],
         export_dir: str,
         base_filename: str,
         metadata: Dict[str, Any],
         summary_data: Optional[Dict] = None,
-        table_data: Optional[pd.DataFrame] = None
+        logo_path: Optional[str] = None,
+        db_config_path: Optional[str] = None,
+        db_key: str = "primary"
     ) -> Dict[str, str]:
-        """
-        Export comprehensive results including Excel report, JSON, CSV, and by-cavity analysis
-        
-        Args:
-            results: List of DimensionalResult objects
-            export_dir: Directory to save files
-            base_filename: Base filename without extension
-            metadata: Report metadata (client, project, batch, etc.)
-            summary_data: Summary widget data
-            table_data: Original table data
-            
-        Returns:
-            Dict with paths to created files
-        """
-        if not results:
-            raise ValueError("No results to export")
-
-        # Ensure export directory exists
-        os.makedirs(export_dir, exist_ok=True)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        
-        export_paths = {}
-        
+        """Main optimized export method"""
         try:
-            self.logger.info(f"🚀 Starting comprehensive export to {export_dir}")
+            os.makedirs(export_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            export_paths = {}
+
+            # Enhance metadata with database info
+            enhanced_metadata = self._enhance_metadata(metadata, db_config_path, db_key)
             
-            # 1. Create Excel Report (Priority)
-            excel_path = os.path.join(export_dir, f"{base_filename}_REPORT_{timestamp}.xlsx")
-            self._create_excel_report(excel_path, results, metadata, summary_data, table_data)
+            # Sort and group results
+            sorted_results = self._sort_results_by_element_id(results)
+            cavity_groups = self._group_results_by_cavity(sorted_results)
+
+            # Create Excel report
+            excel_path = os.path.join(export_dir, f"{base_filename}_PPAP_REPORT_{timestamp}.xlsx")
+            self._create_professional_excel_report(
+                excel_path, 
+                cavity_groups,
+                enhanced_metadata,
+                summary_data,
+                logo_path
+            )
             export_paths['excel_report'] = excel_path
-            
-            # 2. Export by Cavity (JSON and CSV)
-            cavity_paths = self._export_by_cavity(export_dir, base_filename, timestamp, results, table_data)
-            export_paths.update(cavity_paths)
-            
-            # 3. Export comprehensive JSON
-            json_path = os.path.join(export_dir, f"{base_filename}_complete_{timestamp}.json")
-            self._export_comprehensive_json(json_path, results, metadata, summary_data, table_data)
-            export_paths['comprehensive_json'] = json_path
-            
-            # 4. Export summary CSV
-            csv_path = os.path.join(export_dir, f"{base_filename}_summary_{timestamp}.csv")
-            self._export_summary_csv(csv_path, results, metadata)
-            export_paths['summary_csv'] = csv_path
-            
-            # 5. Export metadata sheet (separate)
-            metadata_path = os.path.join(export_dir, f"{base_filename}_metadata_{timestamp}.xlsx")
-            self._create_metadata_workbook(metadata_path, metadata, summary_data)
-            export_paths['metadata'] = metadata_path
-            
-            self.logger.info(f"✅ Comprehensive export completed - {len(export_paths)} files created")
+            self.logger.info(f"📊 Professional Excel PPAP report created: {os.path.basename(excel_path)}")
+
+            # Create comprehensive JSON
+            json_path = os.path.join(export_dir, f"{base_filename}_complete_data_{timestamp}.json")
+            self._export_comprehensive_json(
+                json_path, 
+                sorted_results, 
+                enhanced_metadata, 
+                summary_data,
+                cavity_groups
+            )
+            export_paths['json_data'] = json_path
+            self.logger.info(f"📁 Comprehensive JSON exported: {os.path.basename(json_path)}")
+
             return export_paths
-            
+
         except Exception as e:
             self.logger.error(f"❌ Export failed: {str(e)}", exc_info=True)
-            raise
+            raise RuntimeError(f"Export failed: {str(e)}") from e
 
-    def _create_excel_report(
-        self, 
-        filepath: str, 
-        results: List[DimensionalResult],
+    def _enhance_metadata(self, metadata: Dict[str, Any], db_config_path: Optional[str], db_key: str) -> Dict[str, Any]:
+        """Enhance metadata with database information and fallbacks"""
+        enhanced = {
+            'client_name': metadata.get('client_name', ''),
+            'project_ref': metadata.get('project_ref', ''),
+            'part_number': metadata.get('project_ref', ''),  # Part number = project_ref
+            'batch_number': metadata.get('batch_number', ''),
+            'report_type': metadata.get('report_type', 'PPAP'),
+            'drawing_number': '',
+            'quotation_number': '',
+            'project_leader_name': '',
+            'project_leader_title': 'Quality Engineer',
+            'quality_facility': '',
+            'normative': 'ISO 2768-m',
+            'inspector': '',
+            'report_date': datetime.now().strftime('%Y-%m-%d'),
+            'export_timestamp': datetime.now().isoformat()
+        }
+        
+        # Try to get database metadata
+        if db_config_path and os.path.exists(db_config_path):
+            try:
+                with open(db_config_path, 'r') as f:
+                    db_config = json.load(f)
+                
+                conn_config = db_config.get(db_key, {})
+                if conn_config:
+                    db_metadata = self._fetch_database_metadata(conn_config, enhanced)
+                    enhanced.update(db_metadata)
+            except Exception as e:
+                self.logger.warning(f"Could not enhance metadata from database: {e}")
+        
+        return enhanced
+
+    def _fetch_database_metadata(self, conn_config: Dict, base_metadata: Dict) -> Dict[str, Any]:
+        """Fetch metadata from database with error handling"""
+        try:
+            db = PostgresConn(
+                host=conn_config["host"],
+                database=conn_config["database"],
+                user=conn_config["user"],
+                password=conn_config["password"],
+                port=conn_config.get("port", 5432)
+            )
+
+            # Try multiple table structures
+            queries = [
+                """SELECT part_number, drawing_number, quotation_number, 
+                         project_leader_name, project_leader_title, quality_facility, 
+                         normative, inspector
+                  FROM project_metadata 
+                  WHERE project_ref = %s OR part_number = %s
+                  ORDER BY updated_at DESC LIMIT 1""",
+                
+                """SELECT part_number, drawing_number, quotation_number, 
+                         project_leader, '' as title, quality_facility, 
+                         normative, inspector
+                  FROM projects 
+                  WHERE project_ref = %s OR part_number = %s
+                  ORDER BY created_at DESC LIMIT 1"""
+            ]
+
+            project_ref = base_metadata.get('project_ref', '')
+            
+            for query in queries:
+                try:
+                    row = db.fetchone(query, (project_ref, project_ref))
+                    if row:
+                        return {
+                            'part_number': row[0] or base_metadata['part_number'],
+                            'drawing_number': row[1] or '',
+                            'quotation_number': row[2] or '',
+                            'project_leader_name': row[3] or '',
+                            'project_leader_title': row[4] or 'Quality Engineer',
+                            'quality_facility': row[5] or '',
+                            'normative': row[6] or 'ISO 2768-m',
+                            'inspector': row[7] or ''
+                        }
+                except Exception:
+                    continue
+
+            db.close()
+            
+        except Exception as e:
+            self.logger.warning(f"Database metadata fetch failed: {e}")
+        
+        return {}
+
+    def _create_professional_excel_report(
+        self,
+        filepath: str,
+        cavity_groups: Dict[int, List[DimensionalResult]],
         metadata: Dict[str, Any],
         summary_data: Optional[Dict] = None,
-        table_data: Optional[pd.DataFrame] = None
+        logo_path: Optional[str] = None
     ):
-        """Create professional Excel report with company header and cavity separation"""
+        """Create professional Excel workbook optimized for automotive PPAP"""
         wb = Workbook()
         
-        # Group results by cavity
-        cavity_groups = self._group_results_by_cavity(results)
-        
         # Remove default sheet
-        wb.remove(wb.active)
+        if wb.active:
+            wb.remove(wb.active)
         
-        # Create summary sheet first
-        self._create_summary_sheet(wb, results, metadata, summary_data)
+        # Create main report sheet
+        main_sheet = wb.create_sheet("PPAP Dimensional Report")
+        self._create_main_report_sheet(main_sheet, cavity_groups, metadata, logo_path)
         
-        # Create cavity sheets
-        for cavity_num in sorted(cavity_groups.keys()):
-            cavity_results = cavity_groups[cavity_num]
-            sheet_name = f"Cavity_{cavity_num}"
-            self._create_cavity_report_sheet(wb, sheet_name, cavity_results, metadata, cavity_num)
-        
-        # Create combined overview if multiple cavities
+        # Create cavity-specific sheets if multiple cavities
         if len(cavity_groups) > 1:
-            self._create_combined_overview_sheet(wb, results, metadata)
+            for cavity_num in sorted(cavity_groups.keys()):
+                cavity_sheet = wb.create_sheet(f"Cavity {cavity_num}")
+                self._create_cavity_specific_sheet(
+                    cavity_sheet, 
+                    cavity_groups[cavity_num], 
+                    cavity_num, 
+                    metadata, 
+                    logo_path
+                )
+        
+        # Create summary sheet
+        if summary_data:
+            summary_sheet = wb.create_sheet("Analysis Summary")
+            self._create_summary_sheet(summary_sheet, cavity_groups, metadata, summary_data)
+        
+        # Create metadata sheet
+        metadata_sheet = wb.create_sheet("Report Metadata")
+        self._create_metadata_sheet(metadata_sheet, metadata, summary_data)
+        
+        # Set print settings for all sheets
+        for sheet in wb.worksheets:
+            self._set_print_settings(sheet)
         
         wb.save(filepath)
-        self.logger.info(f"📊 Excel report created: {os.path.basename(filepath)}")
 
-    def _create_cavity_report_sheet(
-        self, 
-        wb: Workbook, 
-        sheet_name: str, 
-        cavity_results: List[DimensionalResult],
+    def _create_main_report_sheet(
+        self,
+        ws: Worksheet,
+        cavity_groups: Dict[int, List[DimensionalResult]],
         metadata: Dict[str, Any],
-        cavity_num: int
+        logo_path: Optional[str] = None
     ):
-        """Create individual cavity report sheet with professional formatting"""
-        ws = wb.create_sheet(sheet_name)
+        """Create main PPAP report sheet with professional header and data"""
         current_row = 1
         
-        # Company Header Section
-        current_row = self._add_company_header(ws, metadata, cavity_num, current_row)
+        # Add professional header
+        current_row = self._add_ppap_header(ws, metadata, current_row, logo_path)
         current_row += 2
         
-        # Data Table Header
-        headers = [
-            'Element ID', 'Description', 'Measuring Instrument', 
-            'Measure 1', 'Measure 2', 'Measure 3', 'Measure 4', 'Measure 5',
-            'Min', 'Max', 'Mean', 'Std Dev', 'Nominal', 'Lower Tol', 'Upper Tol', 'Status'
-        ]
+        # Add dimensional data table
+        all_results = []
+        for cavity_results in cavity_groups.values():
+            all_results.extend(cavity_results)
         
-        # Apply header styling
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=current_row, column=col, value=header)
-            cell.font = self.HEADER_FONT
-            cell.fill = self.HEADER_FILL
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = self.THIN_BORDER
-        
-        current_row += 1
-        
-        # Data rows
-        for result in cavity_results:
-            self._add_result_row(ws, current_row, result)
-            current_row += 1
-        
-        # Add spacing and comments section
+        current_row = self._add_dimensional_data_table(ws, all_results, current_row)
         current_row += 3
-        self._add_comments_section(ws, current_row, metadata)
         
-        # Auto-adjust column widths
-        self._adjust_column_widths(ws)
+        # Add professional footer
+        self._add_ppap_footer(ws, metadata, current_row)
         
-        # Add conditional formatting for status
-        self._apply_status_formatting(ws, len(cavity_results) + 1, len(headers))
+        # Apply formatting
+        self._apply_professional_formatting(ws)
 
-    def _add_company_header(self, ws: Worksheet, metadata: Dict[str, Any], cavity_num: int, start_row: int) -> int:
-        """Add professional company header with metadata"""
+    def _add_ppap_header(
+        self, 
+        ws: Worksheet, 
+        metadata: Dict[str, Any], 
+        start_row: int, 
+        logo_path: Optional[str] = None
+    ) -> int:
+        """Add professional PPAP header"""
         current_row = start_row
         
-        # Main title
-        title_cell = ws.cell(row=current_row, column=1, value="DIMENSIONAL ANALYSIS REPORT")
-        title_cell.font = self.TITLE_FONT
-        title_cell.alignment = Alignment(horizontal='center')
-        ws.merge_cells(f'A{current_row}:P{current_row}')
-        current_row += 2
+        # Logo and title row
+        if logo_path and os.path.exists(logo_path):
+            try:
+                img = Image(logo_path)
+                img.height = 50
+                img.width = 100
+                ws.add_image(img, f'A{current_row}')
+            except Exception as e:
+                self.logger.warning(f"Could not add logo: {e}")
         
-        # Company info section (2 columns layout)
+        # Main title
+        ws.merge_cells(f'E{current_row}:M{current_row}')
+        title_cell = ws.cell(row=current_row, column=5, value="DIMENSIONAL ANALYSIS REPORT")
+        title_cell.font = self.TITLE_FONT
+        title_cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        # Report type
+        ws.merge_cells(f'N{current_row}:Q{current_row}')
+        type_cell = ws.cell(row=current_row, column=14, value=f"{metadata.get('report_type', 'PPAP')} REPORT")
+        type_cell.font = Font(name='Arial', size=12, bold=True, color='E74C3C')
+        type_cell.alignment = Alignment(horizontal='center', vertical='center')
+        
+        current_row += 3
+        
+        # Information table
         info_data = [
-            ('Client:', metadata.get('client_name', 'N/A'), 'Project:', metadata.get('project_ref', 'N/A')),
-            ('Part Number:', metadata.get('part_number', 'N/A'), 'Drawing Number:', metadata.get('drawing_number', 'N/A')),
-            ('Batch Number:', metadata.get('batch_number', 'N/A'), 'Cavity Analyzed:', f"Cavity {cavity_num}"),
-            ('Project Leader:', metadata.get('project_leader', 'N/A'), 'Inspector:', metadata.get('inspector', 'N/A')),
-            ('Quality Facility:', metadata.get('quality_facility', 'N/A'), 'Date:', datetime.now().strftime('%Y-%m-%d')),
-            ('Normative:', metadata.get('normative', 'ISO 1101'), 'Report Type:', metadata.get('report_type', 'Standard')),
+            ('Client / Supplier:', metadata.get('client_name', ''), 'Part Number:', metadata.get('part_number', '')),
+            ('Drawing Number:', metadata.get('drawing_number', ''), 'Batch Number:', metadata.get('batch_number', '')),
+            ('Project Reference:', metadata.get('project_ref', ''), 'Report Date:', metadata.get('report_date', '')),
+            ('Quality Facility:', metadata.get('quality_facility', ''), 'Normative:', metadata.get('normative', 'ISO 2768-m')),
+            ('Project Leader:', metadata.get('project_leader_name', ''), 'Inspector:', metadata.get('inspector', ''))
         ]
         
         for left_label, left_value, right_label, right_value in info_data:
             # Left side
-            label_cell = ws.cell(row=current_row, column=1, value=left_label)
-            label_cell.font = self.SUBTITLE_FONT
-            value_cell = ws.cell(row=current_row, column=2, value=left_value)
-            value_cell.font = self.DATA_FONT
+            ws.cell(row=current_row, column=1, value=left_label).font = self.SUBTITLE_FONT
+            ws.merge_cells(f'B{current_row}:H{current_row}')
+            ws.cell(row=current_row, column=2, value=left_value).font = self.DATA_FONT
             
-            # Right side
-            label_cell_r = ws.cell(row=current_row, column=9, value=right_label)
-            label_cell_r.font = self.SUBTITLE_FONT
-            value_cell_r = ws.cell(row=current_row, column=10, value=right_value)
-            value_cell_r.font = self.DATA_FONT
+            # Right side  
+            ws.cell(row=current_row, column=10, value=right_label).font = self.SUBTITLE_FONT
+            ws.merge_cells(f'K{current_row}:Q{current_row}')
+            ws.cell(row=current_row, column=11, value=right_value).font = self.DATA_FONT
+            
+            # Apply borders
+            for col in range(1, 18):
+                ws.cell(row=current_row, column=col).border = self.THIN_BORDER
             
             current_row += 1
         
         return current_row
 
-    def _add_result_row(self, ws: Worksheet, row: int, result: DimensionalResult):
-        """Add a result data row to the worksheet"""
-        # Calculate statistics
-        measurements = [m for m in result.measurements if m is not None]
-        min_val = min(measurements) if measurements else None
-        max_val = max(measurements) if measurements else None
-        mean_val = sum(measurements) / len(measurements) if measurements else None
+    def _add_dimensional_data_table(self, ws: Worksheet, results: List[DimensionalResult], start_row: int) -> int:
+        """Add optimized dimensional data table"""
+        current_row = start_row
         
-        # Calculate standard deviation
-        std_val = None
-        if measurements and len(measurements) > 1:
-            variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
-            std_val = variance ** 0.5
-        
-        # Data values
-        data = [
-            result.element_id,
-            result.description,
-            getattr(result, 'measuring_instrument', 'N/A'),
-            *[f"{m:.4f}" if m is not None else '' for m in result.measurements[:5]],
-            f"{min_val:.4f}" if min_val is not None else '',
-            f"{max_val:.4f}" if max_val is not None else '',
-            f"{mean_val:.4f}" if mean_val is not None else '',
-            f"{std_val:.4f}" if std_val is not None else '',
-            f"{result.nominal:.4f}" if result.nominal is not None else '',
-            f"{result.lower_tolerance:.4f}" if result.lower_tolerance is not None else '',
-            f"{result.upper_tolerance:.4f}" if result.upper_tolerance is not None else '',
-            result.status.value if hasattr(result.status, 'value') else str(result.status)
+        # Table headers
+        headers = [
+            'Element ID', 'Description', 'Nominal', 'Lower Spec', 'Upper Spec',
+            'Unit', 'Instrument', 'M1', 'M2', 'M3', 'M4', 'M5',
+            'Min', 'Max', 'Mean', 'Std Dev', 'Status'
         ]
         
-        # Add data to cells
+        # Write headers with styling
+        for col, header in enumerate(headers, 1):
+            cell = ws.cell(row=current_row, column=col, value=header)
+            cell.font = self.HEADER_FONT
+            cell.fill = self.HEADER_FILL
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            cell.border = self.THICK_BORDER
+        
+        ws.row_dimensions[current_row].height = 35
+        current_row += 1
+        
+        # Write data rows
+        for result in results:
+            self._add_data_row(ws, current_row, result, len(headers))
+            current_row += 1
+        
+        # Auto-size columns
+        self._auto_size_columns(ws, len(headers))
+        
+        return current_row
+
+    def _add_data_row(self, ws: Worksheet, row: int, result: DimensionalResult, num_columns: int):
+        """Add optimized data row with proper formatting"""
+        # Calculate statistics
+        measurements = [m for m in result.measurements if m is not None]
+        stats = self._calculate_statistics(measurements)
+        
+        # Get spec limits
+        lower_spec, upper_spec = self._get_spec_limits_safe(result)
+        
+        # Prepare row data
+        data = [
+            result.element_id,
+            getattr(result, 'description', ''),
+            self._format_number(getattr(result, 'nominal', None)),
+            self._format_number(lower_spec),
+            self._format_number(upper_spec),
+            getattr(result, 'unit', 'mm'),
+            getattr(result, 'measuring_instrument', 'ScanBox'),
+            *[self._format_number(m) for m in (result.measurements + [None] * 5)[:5]],
+            self._format_number(stats['min']),
+            self._format_number(stats['max']),
+            self._format_number(stats['mean']),
+            self._format_number(stats['std']),
+            self._get_status_display_safe(result)
+        ]
+        
+        # Write data with formatting
         for col, value in enumerate(data, 1):
             cell = ws.cell(row=row, column=col, value=value)
             cell.font = self.DATA_FONT
             cell.border = self.THIN_BORDER
             cell.alignment = Alignment(horizontal='center', vertical='center')
             
-            # Apply status-based formatting for the status column
-            if col == len(data):  # Status column
-                status = result.status.value if hasattr(result.status, 'value') else str(result.status)
-                if status == 'GOOD':
-                    cell.fill = self.GOOD_FILL
-                elif status == 'BAD':
-                    cell.fill = self.BAD_FILL
-                elif status == 'WARNING':
-                    cell.fill = self.WARNING_FILL
+            # Apply status formatting for last column
+            if col == num_columns:
+                self._apply_status_formatting(cell, data[-1])
 
-    def _add_comments_section(self, ws: Worksheet, start_row: int, metadata: Dict[str, Any]):
-        """Add comments and signature section"""
+    def _calculate_statistics(self, measurements: List[float]) -> Dict[str, Optional[float]]:
+        """Calculate statistics with error handling"""
+        if not measurements:
+            return {'min': None, 'max': None, 'mean': None, 'std': None}
+        
+        try:
+            mean_val = sum(measurements) / len(measurements)
+            std_val = None
+            if len(measurements) > 1:
+                variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
+                std_val = variance ** 0.5
+            
+            return {
+                'min': min(measurements),
+                'max': max(measurements),
+                'mean': mean_val,
+                'std': std_val
+            }
+        except Exception:
+            return {'min': None, 'max': None, 'mean': None, 'std': None}
+
+    def _get_spec_limits_safe(self, result: DimensionalResult) -> Tuple[Optional[float], Optional[float]]:
+        """Get specification limits with comprehensive error handling"""
+        try:
+            # Try explicit tolerances first
+            lower = getattr(result, 'lower_tolerance', None)
+            upper = getattr(result, 'upper_tolerance', None)
+            if lower is not None and upper is not None:
+                return float(lower), float(upper)
+            
+            # Try nominal ± tolerance
+            nominal = getattr(result, 'nominal', None)
+            if nominal is not None:
+                plus_tol = getattr(result, 'plus_tolerance', 0) or 0
+                minus_tol = getattr(result, 'minus_tolerance', 0) or 0
+                return float(nominal) - abs(float(minus_tol)), float(nominal) + abs(float(plus_tol))
+            
+        except (ValueError, TypeError, AttributeError):
+            pass
+        
+        return None, None
+
+    def _get_status_display_safe(self, result: DimensionalResult) -> str:
+        """Get status display with robust error handling"""
+        try:
+            status = str(getattr(result, 'status', 'NOK')).upper()
+            if hasattr(result.status, 'value'):
+                status = str(result.status.value).upper()
+        except AttributeError:
+            status = 'NOK'
+        
+        # Check for basic/informative dimensions
+        description = str(getattr(result, 'description', '')).lower()
+        if any(keyword in description for keyword in ['basic', 'informative', 'reference', 'ref']):
+            return 'T.E.D'
+        
+        # Status mapping
+        status_map = {
+            'GOOD': 'OK', 'PASS': 'OK', 'OK': 'OK',
+            'BAD': 'NOK', 'FAIL': 'NOK', 'NOK': 'NOK', 'NG': 'NOK',
+            'WARNING': 'WARNING', 'T.E.D.': 'T.E.D', 'TED': 'T.E.D'
+        }
+        
+        return status_map.get(status, 'WARNING')
+
+    def _format_number(self, value) -> str:
+        """Format numbers consistently"""
+        try:
+            if value is None:
+                return ''
+            num = float(value)
+            return f"{num:.3f}" if abs(num) < 1 else f"{num:.2f}"
+        except (ValueError, TypeError):
+            return str(value) if value is not None else ''
+
+    def _apply_status_formatting(self, cell, status: str):
+        """Apply status-based formatting"""
+        status_formats = {
+            'OK': (self.OK_FILL, Font(name='Arial', size=9, bold=True, color='27AE60')),
+            'NOK': (self.NOK_FILL, Font(name='Arial', size=9, bold=True, color='E74C3C')),
+            'T.E.D': (self.TED_FILL, Font(name='Arial', size=9, bold=True, color='3498DB')),
+            'WARNING': (PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid'), 
+                       Font(name='Arial', size=9, bold=True, color='856404'))
+        }
+        
+        if status in status_formats:
+            fill, font = status_formats[status]
+            cell.fill = fill
+            cell.font = font
+
+    def _add_ppap_footer(self, ws: Worksheet, metadata: Dict[str, Any], start_row: int):
+        """Add professional PPAP footer with signatures"""
         current_row = start_row
         
-        # Comments header
-        comments_header = ws.cell(row=current_row, column=1, value="COMMENTS / OBSERVATIONS:")
-        comments_header.font = self.SUBTITLE_FONT
-        ws.merge_cells(f'A{current_row}:P{current_row}')
+        # Notes section
+        ws.merge_cells(f'A{current_row}:Q{current_row}')
+        notes_cell = ws.cell(row=current_row, column=1, value="NOTES / OBSERVATIONS:")
+        notes_cell.font = self.SUBTITLE_FONT
+        notes_cell.border = self.THIN_BORDER
         current_row += 1
         
-        # Comments box (merge several rows and columns)
-        for i in range(5):  # 5 rows for comments
-            ws.merge_cells(f'A{current_row}:P{current_row}')
-            comment_cell = ws.cell(row=current_row, column=1, value='')
-            comment_cell.border = self.THIN_BORDER
+        # Notes box (4 rows)
+        for i in range(4):
+            for col in range(1, 18):
+                cell = ws.cell(row=current_row, column=col, value='')
+                cell.border = self.THIN_BORDER
+            ws.row_dimensions[current_row].height = 20
             current_row += 1
         
-        current_row += 2
+        current_row += 1
         
         # Signature section
-        signature_data = [
-            ('Project Leader:', metadata.get('project_leader', ''), 'Signature:', ''),
-            ('Inspector:', metadata.get('inspector', ''), 'Date:', datetime.now().strftime('%Y-%m-%d')),
-        ]
+        # Project Leader
+        ws.cell(row=current_row, column=2, value="PROJECT LEADER:").font = self.SUBTITLE_FONT
+        ws.cell(row=current_row + 1, column=2, value=metadata.get('project_leader_name', '')).font = self.DATA_FONT
+        ws.cell(row=current_row + 2, column=2, value=metadata.get('project_leader_title', 'Quality Engineer')).font = self.SMALL_FONT
+        ws.cell(row=current_row + 3, column=2, value="Signature: _________________").font = self.DATA_FONT
         
-        for left_label, left_value, right_label, right_value in signature_data:
-            # Left side
-            label_cell = ws.cell(row=current_row, column=1, value=left_label)
-            label_cell.font = self.SUBTITLE_FONT
-            value_cell = ws.cell(row=current_row, column=4, value=left_value)
-            value_cell.font = self.DATA_FONT
-            
-            # Right side
-            label_cell_r = ws.cell(row=current_row, column=9, value=right_label)
-            label_cell_r.font = self.SUBTITLE_FONT
-            value_cell_r = ws.cell(row=current_row, column=12, value=right_value)
-            value_cell_r.font = self.DATA_FONT
-            
-            current_row += 1
+        # Date
+        ws.cell(row=current_row, column=12, value="DATE:").font = self.SUBTITLE_FONT
+        ws.cell(row=current_row + 1, column=12, value=metadata.get('report_date', '')).font = self.DATA_FONT
 
-    def _create_summary_sheet(self, wb: Workbook, results: List[DimensionalResult], metadata: Dict[str, Any], summary_data: Optional[Dict]):
-        """Create executive summary sheet"""
-        ws = wb.create_sheet("Executive Summary", 0)
+    def _create_cavity_specific_sheet(
+        self,
+        ws: Worksheet,
+        cavity_results: List[DimensionalResult],
+        cavity_num: int,
+        metadata: Dict[str, Any],
+        logo_path: Optional[str] = None
+    ):
+        """Create cavity-specific sheet"""
+        cavity_metadata = {**metadata, 'title_suffix': f" - Cavity {cavity_num}"}
+        
+        current_row = 1
+        current_row = self._add_ppap_header(ws, cavity_metadata, current_row, logo_path)
+        current_row += 2
+        current_row = self._add_dimensional_data_table(ws, cavity_results, current_row)
+        current_row += 3
+        self._add_ppap_footer(ws, metadata, current_row)
+        self._apply_professional_formatting(ws)
+
+    def _create_summary_sheet(
+        self,
+        ws: Worksheet,
+        cavity_groups: Dict[int, List[DimensionalResult]],
+        metadata: Dict[str, Any],
+        summary_data: Dict[str, Any]
+    ):
+        """Create professional summary sheet"""
         current_row = 1
         
         # Title
-        title = ws.cell(row=current_row, column=1, value="DIMENSIONAL ANALYSIS - EXECUTIVE SUMMARY")
+        ws.merge_cells(f'A{current_row}:H{current_row}')
+        title = ws.cell(row=current_row, column=1, value="DIMENSIONAL ANALYSIS SUMMARY")
         title.font = self.TITLE_FONT
         title.alignment = Alignment(horizontal='center')
-        ws.merge_cells(f'A{current_row}:H{current_row}')
         current_row += 3
         
-        # Key statistics
-        total_results = len(results)
-        good_count = sum(1 for r in results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'GOOD')
-        bad_count = sum(1 for r in results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'BAD')
-        warning_count = sum(1 for r in results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'WARNING')
-        success_rate = (good_count / total_results) * 100 if total_results > 0 else 0
+        # Calculate overall statistics
+        all_results = []
+        for cavity_results in cavity_groups.values():
+            all_results.extend(cavity_results)
         
-        summary_stats = [
-            ('Total Dimensions Analyzed:', total_results),
-            ('Passed (GOOD):', good_count),
-            ('Failed (BAD):', bad_count),
-            ('Warnings:', warning_count),
+        total_dims = len(all_results)
+        ok_count = sum(1 for r in all_results if self._get_status_display_safe(r) == 'OK')
+        nok_count = sum(1 for r in all_results if self._get_status_display_safe(r) == 'NOK')
+        ted_count = sum(1 for r in all_results if self._get_status_display_safe(r) == 'T.E.D')
+        success_rate = (ok_count / (ok_count + nok_count)) * 100 if (ok_count + nok_count) > 0 else 0
+        
+        # Overall statistics
+        stats = [
+            ('Total Dimensions:', total_dims),
+            ('Passed (OK):', ok_count),
+            ('Failed (NOK):', nok_count),
+            ('Basic/Info (T.E.D):', ted_count),
             ('Success Rate:', f"{success_rate:.1f}%"),
-            ('Analysis Date:', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            ('Analysis Date:', metadata.get('report_date', ''))
         ]
         
-        for label, value in summary_stats:
-            label_cell = ws.cell(row=current_row, column=1, value=label)
-            label_cell.font = self.SUBTITLE_FONT
-            value_cell = ws.cell(row=current_row, column=3, value=value)
-            value_cell.font = self.DATA_FONT
+        for label, value in stats:
+            ws.cell(row=current_row, column=1, value=label).font = self.SUBTITLE_FONT
+            ws.cell(row=current_row, column=3, value=value).font = self.DATA_FONT
             current_row += 1
         
-        current_row += 2
-        
-        # Cavity breakdown
-        cavity_groups = self._group_results_by_cavity(results)
+        # Cavity breakdown if multiple cavities
         if len(cavity_groups) > 1:
-            cavity_header = ws.cell(row=current_row, column=1, value="CAVITY BREAKDOWN:")
-            cavity_header.font = self.SUBTITLE_FONT
+            current_row += 2
+            ws.cell(row=current_row, column=1, value="CAVITY BREAKDOWN:").font = self.SUBTITLE_FONT
             current_row += 1
             
             for cavity_num in sorted(cavity_groups.keys()):
                 cavity_results = cavity_groups[cavity_num]
-                cavity_good = sum(1 for r in cavity_results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'GOOD')
-                cavity_rate = (cavity_good / len(cavity_results)) * 100 if cavity_results else 0
+                cavity_ok = sum(1 for r in cavity_results if self._get_status_display_safe(r) == 'OK')
+                cavity_nok = sum(1 for r in cavity_results if self._get_status_display_safe(r) == 'NOK')
+                cavity_rate = (cavity_ok / (cavity_ok + cavity_nok)) * 100 if (cavity_ok + cavity_nok) > 0 else 0
                 
-                cavity_info = f"Cavity {cavity_num}: {cavity_good}/{len(cavity_results)} passed ({cavity_rate:.1f}%)"
-                cavity_cell = ws.cell(row=current_row, column=1, value=cavity_info)
-                cavity_cell.font = self.DATA_FONT
+                ws.cell(row=current_row, column=1, value=f"Cavity {cavity_num}:").font = self.DATA_FONT
+                ws.cell(row=current_row, column=3, value=f"{cavity_ok}/{cavity_ok + cavity_nok} passed ({cavity_rate:.1f}%)").font = self.DATA_FONT
                 current_row += 1
 
-    def _create_combined_overview_sheet(self, wb: Workbook, results: List[DimensionalResult], metadata: Dict[str, Any]):
-        """Create combined overview sheet with all cavities"""
-        ws = wb.create_sheet("Combined Overview")
+    def _create_metadata_sheet(self, ws: Worksheet, metadata: Dict[str, Any], summary_data: Optional[Dict]):
+        """Create metadata sheet"""
         current_row = 1
         
-        # Title
-        title = ws.cell(row=current_row, column=1, value="COMBINED CAVITY OVERVIEW")
-        title.font = self.TITLE_FONT
-        title.alignment = Alignment(horizontal='center')
-        ws.merge_cells(f'A{current_row}:Q{current_row}')
-        current_row += 2
-        
-        # Headers
-        headers = [
-            'Cavity', 'Element ID', 'Description', 'Measuring Instrument', 
-            'Measure 1', 'Measure 2', 'Measure 3', 'Measure 4', 'Measure 5',
-            'Min', 'Max', 'Mean', 'Std Dev', 'Nominal', 'Lower Tol', 'Upper Tol', 'Status'
-        ]
-        
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=current_row, column=col, value=header)
-            cell.font = self.HEADER_FONT
-            cell.fill = self.HEADER_FILL
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = self.THIN_BORDER
-        
-        current_row += 1
-        
-        # Group by cavity and add data
-        cavity_groups = self._group_results_by_cavity(results)
-        for cavity_num in sorted(cavity_groups.keys()):
-            for result in cavity_groups[cavity_num]:
-                # Add cavity number as first column
-                cavity_cell = ws.cell(row=current_row, column=1, value=cavity_num)
-                cavity_cell.font = self.DATA_FONT
-                cavity_cell.border = self.THIN_BORDER
-                cavity_cell.alignment = Alignment(horizontal='center', vertical='center')
-                
-                # Add result data (shifted by one column due to cavity column)
-                self._add_result_row_with_offset(ws, current_row, result, 1)
-                current_row += 1
-        
-        self._adjust_column_widths(ws)
-
-    def _add_result_row_with_offset(self, ws: Worksheet, row: int, result: DimensionalResult, col_offset: int = 0):
-        """Add result row with column offset"""
-        # Calculate statistics
-        measurements = [m for m in result.measurements if m is not None]
-        min_val = min(measurements) if measurements else None
-        max_val = max(measurements) if measurements else None
-        mean_val = sum(measurements) / len(measurements) if measurements else None
-        
-        std_val = None
-        if measurements and len(measurements) > 1:
-            variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
-            std_val = variance ** 0.5
-        
-        data = [
-            result.element_id,
-            result.description,
-            getattr(result, 'measuring_instrument', 'N/A'),
-            *[f"{m:.4f}" if m is not None else '' for m in result.measurements[:5]],
-            f"{min_val:.4f}" if min_val is not None else '',
-            f"{max_val:.4f}" if max_val is not None else '',
-            f"{mean_val:.4f}" if mean_val is not None else '',
-            f"{std_val:.4f}" if std_val is not None else '',
-            f"{result.nominal:.4f}" if result.nominal is not None else '',
-            f"{result.lower_tolerance:.4f}" if result.lower_tolerance is not None else '',
-            f"{result.upper_tolerance:.4f}" if result.upper_tolerance is not None else '',
-            result.status.value if hasattr(result.status, 'value') else str(result.status)
-        ]
-        
-        for col, value in enumerate(data, 2 + col_offset):  # Start from column 2 due to cavity column
-            cell = ws.cell(row=row, column=col, value=value)
-            cell.font = self.DATA_FONT
-            cell.border = self.THIN_BORDER
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            
-            if col == len(data) + 1 + col_offset:  # Status column
-                status = result.status.value if hasattr(result.status, 'value') else str(result.status)
-                if status == 'GOOD':
-                    cell.fill = self.GOOD_FILL
-                elif status == 'BAD':
-                    cell.fill = self.BAD_FILL
-                elif status == 'WARNING':
-                    cell.fill = self.WARNING_FILL
-
-    def _create_metadata_workbook(self, filepath: str, metadata: Dict[str, Any], summary_data: Optional[Dict]):
-        """Create separate metadata workbook for internal use"""
-        wb = Workbook()
-        ws = wb.active
-        ws.title = "Analysis Metadata"
-        
-        current_row = 1
-        
-        # Title
-        title = ws.cell(row=current_row, column=1, value="DIMENSIONAL ANALYSIS METADATA")
+        ws.merge_cells(f'A{current_row}:B{current_row}')
+        title = ws.cell(row=current_row, column=1, value="REPORT METADATA")
         title.font = self.TITLE_FONT
         current_row += 3
         
         # Metadata sections
         sections = [
             ("Project Information", [
-                ("Client Name", metadata.get('client_name', 'N/A')),
-                ("Project Reference", metadata.get('project_ref', 'N/A')),
-                ("Batch Number", metadata.get('batch_number', 'N/A')),
-                ("Part Number", metadata.get('part_number', 'N/A')),
-                ("Drawing Number", metadata.get('drawing_number', 'N/A')),
-                ("Report Type", metadata.get('report_type', 'N/A')),
+                ("Client Name", metadata.get('client_name', '')),
+                ("Project Reference", metadata.get('project_ref', '')),
+                ("Part Number", metadata.get('part_number', '')),
+                ("Drawing Number", metadata.get('drawing_number', '')),
+                ("Batch Number", metadata.get('batch_number', '')),
+                ("Report Type", metadata.get('report_type', 'PPAP'))
             ]),
             ("Quality Information", [
-                ("Project Leader", metadata.get('project_leader', 'N/A')),
-                ("Inspector", metadata.get('inspector', 'N/A')),
-                ("Quality Facility", metadata.get('quality_facility', 'N/A')),
-                ("Normative", metadata.get('normative', 'ISO 1101')),
-                ("Analysis Date", datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                ("Project Leader", metadata.get('project_leader_name', '')),
+                ("Project Leader Title", metadata.get('project_leader_title', '')),
+                ("Quality Facility", metadata.get('quality_facility', '')),
+                ("Inspector", metadata.get('inspector', '')),
+                ("Normative Standard", metadata.get('normative', 'ISO 2768-m'))
             ]),
+            ("Export Information", [
+                ("Export Date", metadata.get('report_date', '')),
+                ("Export Timestamp", metadata.get('export_timestamp', '')),
+                ("Software Version", "2.0")
+            ])
         ]
         
-        if summary_data:
-            sections.append(("Session Summary", [
-                ("Session Duration", summary_data.get('session_info', {}).get('duration', 'N/A')),
-                ("Studies Run", summary_data.get('metrics', {}).get('studies_run', 0)),
-                ("Total Edits", summary_data.get('metrics', {}).get('edits_made', 0)),
-                ("Data Completeness", f"{summary_data.get('metrics', {}).get('completeness', 0):.1f}%"),
-                ("Modifications Made", len(summary_data.get('comparison_data', {}).get('modifications', []))),
-            ]))
-        
         for section_title, section_data in sections:
-            # Section header
-            header = ws.cell(row=current_row, column=1, value=section_title)
-            header.font = self.SUBTITLE_FONT
+            ws.cell(row=current_row, column=1, value=section_title).font = self.SUBTITLE_FONT
             current_row += 1
             
-            # Section data
             for label, value in section_data:
-                label_cell = ws.cell(row=current_row, column=1, value=label)
-                label_cell.font = self.DATA_FONT
-                value_cell = ws.cell(row=current_row, column=2, value=value)
-                value_cell.font = self.DATA_FONT
+                ws.cell(row=current_row, column=1, value=label).font = self.DATA_FONT
+                ws.cell(row=current_row, column=2, value=value).font = self.DATA_FONT
                 current_row += 1
             
             current_row += 1
-        
-        wb.save(filepath)
-        self.logger.info(f"📋 Metadata workbook created: {os.path.basename(filepath)}")
 
-    def _export_by_cavity(self, export_dir: str, base_filename: str, timestamp: str, results: List[DimensionalResult], table_data: Optional[pd.DataFrame]) -> Dict[str, str]:
-        """Export results separated by cavity"""
-        cavity_dir = os.path.join(export_dir, "by_cavity")
-        os.makedirs(cavity_dir, exist_ok=True)
-        
-        cavity_groups = self._group_results_by_cavity(results)
-        export_paths = {}
-        
-        for cavity_num, cavity_results in cavity_groups.items():
-            # JSON export
-            json_path = os.path.join(cavity_dir, f"{base_filename}_cavity_{cavity_num}_{timestamp}.json")
-            cavity_data = {
-                "metadata": {
-                    "cavity_number": cavity_num,
-                    "total_dimensions": len(cavity_results),
-                    "export_timestamp": datetime.now().isoformat(),
-                },
-                "results": [r.to_dict() for r in cavity_results]
-            }
-            
-            with open(json_path, 'w', encoding='utf-8') as f:
-                json.dump(cavity_data, f, indent=2, ensure_ascii=False, default=str)
-            
-            # CSV export
-            csv_path = os.path.join(cavity_dir, f"{base_filename}_cavity_{cavity_num}_{timestamp}.csv")
-            cavity_df = self._results_to_dataframe(cavity_results)
-            cavity_df.to_csv(csv_path, index=False, encoding='utf-8')
-            
-            export_paths[f'cavity_{cavity_num}_json'] = json_path
-            export_paths[f'cavity_{cavity_num}_csv'] = csv_path
-            
-            self.logger.info(f"🏭 Cavity {cavity_num} exported: {len(cavity_results)} dimensions")
-        
-        return export_paths
-
-    def _export_comprehensive_json(self, filepath: str, results: List[DimensionalResult], metadata: Dict[str, Any], summary_data: Optional[Dict], table_data: Optional[pd.DataFrame]):
-        """Export comprehensive JSON with all data"""
+    def _export_comprehensive_json(
+        self,
+        filepath: str,
+        results: List[DimensionalResult],
+        metadata: Dict[str, Any],
+        summary_data: Optional[Dict] = None,
+        cavity_groups: Optional[Dict] = None
+    ):
+        """Export comprehensive JSON data"""
         export_data = {
-            "metadata": {
-                **metadata,
-                "export_timestamp": datetime.now().isoformat(),
-                "total_results": len(results),
-                "export_format_version": "2.0",
-            },
-            "results": [r.to_dict() for r in results],
-            "cavity_breakdown": self._get_cavity_statistics(results),
+            "metadata": metadata,
+            "results": [self._result_to_dict(r) for r in results],
+            "cavity_groups": {str(k): [self._result_to_dict(r) for r in v] for k, v in (cavity_groups or {}).items()},
+            "summary": summary_data or {},
+            "statistics": self._calculate_overall_statistics(results),
+            "export_timestamp": datetime.now().isoformat(),
+            "version": "2.0"
         }
-        
-        if summary_data:
-            export_data["summary_data"] = summary_data
-        
-        if table_data is not None:
-            export_data["original_table_data"] = table_data.to_dict('records')
         
         with open(filepath, 'w', encoding='utf-8') as f:
             json.dump(export_data, f, indent=2, ensure_ascii=False, default=str)
-        
-        self.logger.info(f"📄 Comprehensive JSON exported: {os.path.basename(filepath)}")
 
-    def _export_summary_csv(self, filepath: str, results: List[DimensionalResult], metadata: Dict[str, Any]):
-        """Export summary CSV with key metrics"""
-        summary_df = self._results_to_dataframe(results)
+    def _calculate_overall_statistics(self, results: List[DimensionalResult]) -> Dict[str, Any]:
+        """Calculate overall statistics for JSON export"""
+        if not results:
+            return {}
         
-        # Add metadata as header comments
-        with open(filepath, 'w', newline='', encoding='utf-8') as f:
-            f.write("# Dimensional Analysis Summary Report\n")
-            f.write(f"# Client: {metadata.get('client_name', 'N/A')}\n")
-            f.write(f"# Project: {metadata.get('project_ref', 'N/A')}\n")
-            f.write(f"# Batch: {metadata.get('batch_number', 'N/A')}\n")
-            f.write(f"# Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-            f.write("#\n")
-            
-            # Write the actual CSV data
-            summary_df.to_csv(f, index=False)
+        statuses = [self._get_status_display_safe(r) for r in results]
         
-        self.logger.info(f"📊 Summary CSV exported: {os.path.basename(filepath)}")
+        return {
+            "total_dimensions": len(results),
+            "passed": statuses.count('OK'),
+            "failed": statuses.count('NOK'),
+            "basic_info": statuses.count('T.E.D'),
+            "warnings": statuses.count('WARNING'),
+            "success_rate": (statuses.count('OK') / (statuses.count('OK') + statuses.count('NOK'))) * 100 if (statuses.count('OK') + statuses.count('NOK')) > 0 else 0
+        }
 
-    def _group_results_by_cavity(self, results: List[DimensionalResult]) -> Dict[int, List[DimensionalResult]]:
-        """Group results by cavity number"""
-        cavity_groups = {}
-        for result in results:
-            cavity = getattr(result, 'cavity', 1) or 1
-            if cavity not in cavity_groups:
-                cavity_groups[cavity] = []
-            cavity_groups[cavity].append(result)
-        return cavity_groups
-
-    def _get_cavity_statistics(self, results: List[DimensionalResult]) -> Dict[int, Dict[str, Any]]:
-        """Get statistics for each cavity"""
-        cavity_groups = self._group_results_by_cavity(results)
-        cavity_stats = {}
-        
-        for cavity_num, cavity_results in cavity_groups.items():
-            total = len(cavity_results)
-            good = sum(1 for r in cavity_results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'GOOD')
-            bad = sum(1 for r in cavity_results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'BAD')
-            warning = sum(1 for r in cavity_results if (r.status.value if hasattr(r.status, 'value') else str(r.status)) == 'WARNING')
-            
-            cavity_stats[cavity_num] = {
-                'total_dimensions': total,
-                'passed': good,
-                'failed': bad,
-                'warnings': warning,
-                'success_rate': (good / total) * 100 if total > 0 else 0
-            }
-        
-        return cavity_stats
-
-    def _results_to_dataframe(self, results: List[DimensionalResult]) -> pd.DataFrame:
-        """Convert results to DataFrame for CSV export"""
-        data = []
-        for result in results:
-            # Calculate statistics
-            measurements = [m for m in result.measurements if m is not None]
-            min_val = min(measurements) if measurements else None
-            max_val = max(measurements) if measurements else None
-            mean_val = sum(measurements) / len(measurements) if measurements else None
-            
-            std_val = None
-            if measurements and len(measurements) > 1:
-                variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
-                std_val = variance ** 0.5
-            
-            row_data = {
-                'element_id': result.element_id,
-                'description': result.description,
-                'cavity': getattr(result, 'cavity', 1),
-                'measuring_instrument': getattr(result, 'measuring_instrument', 'N/A'),
-                'nominal': result.nominal,
-                'lower_tolerance': result.lower_tolerance,
-                'upper_tolerance': result.upper_tolerance,
-                'measurement_1': result.measurements[0] if len(result.measurements) > 0 else None,
-                'measurement_2': result.measurements[1] if len(result.measurements) > 1 else None,
-                'measurement_3': result.measurements[2] if len(result.measurements) > 2 else None,
-                'measurement_4': result.measurements[3] if len(result.measurements) > 3 else None,
-                'measurement_5': result.measurements[4] if len(result.measurements) > 4 else None,
-                'min_value': min_val,
-                'max_value': max_val,
-                'mean_value': mean_val,
-                'std_deviation': std_val,
-                'status': result.status.value if hasattr(result.status, 'value') else str(result.status),
-                'out_of_spec_count': getattr(result, 'out_of_spec_count', 0),
-                'warnings': '; '.join(getattr(result, 'warnings', [])),
-            }
-            data.append(row_data)
-        
-        return pd.DataFrame(data)
-
-    def _adjust_column_widths(self, ws: Worksheet):
-        """Auto-adjust column widths for better readability"""
+    def _apply_professional_formatting(self, ws: Worksheet):
+        """Apply professional formatting to worksheet"""
+        # Set column widths for readability
         column_widths = {
-            'A': 12,  # Element ID
-            'B': 25,  # Description
-            'C': 15,  # Measuring Instrument
-            'D': 10, 'E': 10, 'F': 10, 'G': 10, 'H': 10,  # Measurements
-            'I': 8, 'J': 8,   # Min/Max
-            'K': 10, 'L': 10,  # Mean/Std
-            'M': 10, 'N': 10, 'O': 10,  # Nominal/Tolerances
-            'P': 12,  # Status
-            'Q': 8,   # Extra column if needed
+            'A': 12, 'B': 25, 'C': 10, 'D': 10, 'E': 10, 'F': 8, 'G': 15,
+            'H': 8, 'I': 8, 'J': 8, 'K': 8, 'L': 8, 'M': 8, 'N': 8, 'O': 8, 'P': 10, 'Q': 10
         }
         
         for col, width in column_widths.items():
             ws.column_dimensions[col].width = width
 
-    def _apply_status_formatting(self, ws: Worksheet, data_start_row: int, num_columns: int):
-        """Apply conditional formatting based on status column"""
-        # This would typically use openpyxl's conditional formatting
-        # For now, formatting is applied during data insertion
-        pass
+    def _auto_size_columns(self, ws: Worksheet, num_columns: int):
+        """Auto-size columns with limits"""
+        for col_num in range(1, num_columns + 1):
+            column_letter = get_column_letter(col_num)
+            max_length = 8  # Minimum width
+            
+            for row in ws.iter_rows(min_col=col_num, max_col=col_num):
+                for cell in row:
+                    if cell.value:
+                        max_length = max(max_length, len(str(cell.value)))
+            
+            # Set width with reasonable limits
+            adjusted_width = min(max_length + 2, 30)  # Max 30 characters
+            ws.column_dimensions[column_letter].width = adjusted_width
+
+    def _set_print_settings(self, ws: Worksheet):
+        """Set professional print settings"""
+        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+        ws.page_setup.paperSize = ws.PAPERSIZE_A4
+        ws.page_setup.fitToPage = True
+        ws.page_setup.fitToHeight = False
+        ws.page_setup.fitToWidth = 1
+        
+        # Set margins
+        ws.page_margins = PageMargins(
+            left=0.5, right=0.5, top=0.75, bottom=0.75, 
+            header=0.3, footer=0.3
+        )
+        
+        # Print titles (repeat first row on each page)
+        ws.print_title_rows = '1:1'
+
+    def _sort_results_by_element_id(self, results: List[DimensionalResult]) -> List[DimensionalResult]:
+        """Sort results by element_id with proper numerical ordering"""
+        def sort_key(result):
+            element_id = str(result.element_id)
+            
+            # Handle 00X format (priority 0)
+            if element_id.startswith('00') and len(element_id) == 3:
+                try:
+                    return (0, int(element_id))
+                except ValueError:
+                    return (0, element_id)
+            
+            # Handle purely numeric IDs (priority 1)
+            if element_id.isdigit():
+                return (1, int(element_id))
+            
+            # Handle mixed alphanumeric (priority 2)
+            return (2, element_id)
+        
+        return sorted(results, key=sort_key)
+
+    def _group_results_by_cavity(self, results: List[DimensionalResult]) -> Dict[int, List[DimensionalResult]]:
+        """Group results by cavity number with fallback"""
+        cavity_groups = {}
+        
+        for result in results:
+            cavity = getattr(result, 'cavity', 1) or 1  # Default to cavity 1
+            if cavity not in cavity_groups:
+                cavity_groups[cavity] = []
+            cavity_groups[cavity].append(result)
+        
+        return cavity_groups
+
+    def _result_to_dict(self, result: DimensionalResult) -> Dict[str, Any]:
+        """Convert result to dictionary with comprehensive data"""
+        measurements = list(result.measurements) if result.measurements else []
+        stats = self._calculate_statistics([m for m in measurements if m is not None])
+        
+        return {
+            "element_id": result.element_id,
+            "description": getattr(result, 'description', ''),
+            "class": getattr(result, 'class', ''),
+            "nominal": getattr(result, 'nominal', None),
+            "lower_tolerance": getattr(result, 'lower_tolerance', None),
+            "upper_tolerance": getattr(result, 'upper_tolerance', None),
+            "plus_tolerance": getattr(result, 'plus_tolerance', None),
+            "minus_tolerance": getattr(result, 'minus_tolerance', None),
+            "measuring_instrument": getattr(result, 'measuring_instrument', 'ScanBox'),
+            "unit": getattr(result, 'unit', 'mm'),
+            "status": str(getattr(result, 'status', 'NOK')),
+            "status_display": self._get_status_display_safe(result),
+            "measurements": measurements,
+            "statistics": stats,
+            "cavity": getattr(result, 'cavity', 1),
+            "spec_limits": {
+                "lower": self._get_spec_limits_safe(result)[0],
+                "upper": self._get_spec_limits_safe(result)[1]
+            }
+        }
 
     def generate_export_summary(self, export_paths: Dict[str, str], metadata: Dict[str, Any]) -> str:
-        """Generate a summary of exported files"""
-        summary_lines = [
-            "EXPORT SUMMARY",
-            "=" * 50,
-            f"Client: {metadata.get('client_name', 'N/A')}",
-            f"Project: {metadata.get('project_ref', 'N/A')}",
-            f"Batch: {metadata.get('batch_number', 'N/A')}",
-            f"Export Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            "",
-            "EXPORTED FILES:",
-            "-" * 20,
-        ]
-        
-        file_descriptions = {
-            'excel_report': '📊 Main Excel Report (for client)',
-            'comprehensive_json': '📄 Complete JSON data',
-            'summary_csv': '📈 Summary CSV data',
-            'metadata': '📋 Metadata workbook (internal)',
-        }
-        
-        for key, path in export_paths.items():
-            if key in file_descriptions:
-                summary_lines.append(f"{file_descriptions[key]}: {os.path.basename(path)}")
-            elif 'cavity' in key:
-                cavity_num = key.split('_')[1]
-                file_type = key.split('_')[-1].upper()
-                summary_lines.append(f"🏭 Cavity {cavity_num} {file_type}: {os.path.basename(path)}")
-        
-        summary_lines.extend([
-            "",
-            "NOTES:",
-            "- Main Excel report is formatted for client presentation",
-            "- Metadata workbook contains internal analysis data",
-            "- Cavity files provide detailed breakdown by cavity",
-            "- JSON files contain complete technical data",
-        ])
-        
-        return "\n".join(summary_lines)
+        """Generate professional export summary"""
+        try:
+            summary_lines = [
+                "DIMENSIONAL ANALYSIS EXPORT SUMMARY",
+                "=" * 50,
+                "",
+                "PROJECT INFORMATION:",
+                f"  Client: {metadata.get('client_name', 'N/A')}",
+                f"  Project Reference: {metadata.get('project_ref', 'N/A')}",
+                f"  Part Number: {metadata.get('part_number', 'N/A')}",
+                f"  Batch Number: {metadata.get('batch_number', 'N/A')}",
+                f"  Report Type: {metadata.get('report_type', 'PPAP')}",
+                "",
+                "QUALITY INFORMATION:",
+                f"  Project Leader: {metadata.get('project_leader_name', 'N/A')}",
+                f"  Quality Facility: {metadata.get('quality_facility', 'N/A')}",
+                f"  Normative Standard: {metadata.get('normative', 'ISO 2768-m')}",
+                "",
+                "EXPORTED FILES:",
+                f"  • Professional Excel Report: {os.path.basename(export_paths.get('excel_report', 'Not generated'))}",
+                f"  • Comprehensive JSON Data: {os.path.basename(export_paths.get('json_data', 'Not generated'))}",
+                "",
+                f"Export completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                "",
+                "The Excel report includes:",
+                "  - Professional PPAP-compliant header with company information",
+                "  - Complete dimensional analysis data table",
+                "  - Cavity-specific sheets (if multiple cavities)",
+                "  - Comprehensive analysis summary",
+                "  - Detailed metadata for traceability",
+                "  - Professional footer with signature areas",
+                "",
+                "Ready for client presentation and regulatory submission.",
+                "=" * 50
+            ]
+            
+            return "\n".join(summary_lines)
+            
+        except Exception as e:
+            self.logger.error(f"Could not generate export summary: {str(e)}")
+            return f"Export completed at {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\nFiles: {len(export_paths)} generated"
