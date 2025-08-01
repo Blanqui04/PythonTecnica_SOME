@@ -69,7 +69,7 @@ class DimensionalTableManager(DimensionalTableUI):
                 result = results_dict.get(key)
                 
                 if result:
-                    self._update_row_optimized(table, row, result)
+                    self._update_row(table, row, result)
                     updated_count += 1
         
         finally:
@@ -79,7 +79,7 @@ class DimensionalTableManager(DimensionalTableUI):
         
         return updated_count
 
-    def _update_row_optimized(self, table: QTableWidget, row: int, result: DimensionalResult):
+    def _update_row(self, table: QTableWidget, row: int, result: DimensionalResult):
         """Optimized single row update with evaluation type support and process capability"""
         # Get evaluation type
         eval_combo = table.cellWidget(row, 8)
@@ -148,10 +148,10 @@ class DimensionalTableManager(DimensionalTableUI):
                 item.setBackground(QColor(248, 249, 250))
                 item.setForeground(QColor(52, 58, 64))
 
-        self._update_status_optimized(table, row, result, evaluation_type)  # Handle status based on evaluation type (assume status is column 23)
-        self._highlight_violations_optimized(table, row, result, evaluation_type)  # Highlight violations efficiently
+        self._update_status(table, row, result, evaluation_type)  # Handle status based on evaluation type (assume status is column 23)
+        self._highlight_violations(table, row, result, evaluation_type)  # Highlight violations efficiently
 
-    def _update_status_optimized(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
+    def _update_status(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
         """Optimized status update with evaluation type support and TO CHECK status"""
         status_col = 23  # Assume status column is 23, adjust as needed
         if status_col >= table.columnCount():
@@ -237,7 +237,7 @@ class DimensionalTableManager(DimensionalTableUI):
         status_item.setToolTip(tooltip)
         status_item.setFont(QFont("Segoe UI", 10, QFont.Bold))
 
-    def _highlight_violations_optimized(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
+    def _highlight_violations(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
         """Optimized violation highlighting"""
         # Skip for Basic/Informative (no tolerance evaluation)
         if evaluation_type in ["Basic", "Informative"]:
@@ -339,12 +339,12 @@ class DimensionalTableManager(DimensionalTableUI):
                     row_data["batch"] = self.batch_number
                 
                 # Validate and add row
-                if self._validate_row_optimized(row_data):
+                if self._validate_row(row_data):
                     all_data.append(row_data)
         
         return pd.DataFrame(all_data) if all_data else pd.DataFrame()
 
-    def _validate_row_optimized(self, row_data: dict) -> bool:
+    def _validate_row(self, row_data: dict) -> bool:
         """Fast row validation"""
         # Basic required fields
         if not row_data.get("element_id") or not row_data.get("description"):
