@@ -9,6 +9,7 @@ class DimensionalStatus(str, Enum):
     BAD = "BAD"
     WARNING = "WARNING"
     TED = "T.E.D."
+    TO_CHECK = "TO CHECK"  # New status for notes
 
 
 @dataclass
@@ -38,6 +39,10 @@ class DimensionalResult:
     warnings: Optional[List[str]] = field(default_factory=list)
     measuring_instrument: Optional[str] = None
     evaluation_type: Optional[str] = None
+    
+    # Process capability fields for classified dimensions (CC, SC, IC)
+    pp: Optional[float] = None  # Process performance index
+    ppk: Optional[float] = None  # Process performance capability index
 
     def to_dict(self) -> dict:
         # Convert dataclass to dict, but serialize enums and lists properly
@@ -48,3 +53,21 @@ class DimensionalResult:
         if d.get("warnings") is None:
             d["warnings"] = []
         return d
+
+    def has_classification(self) -> bool:
+        """Check if dimension has a valid classification for process capability"""
+        return self.classe and self.classe.upper() in ["CC", "SC", "IC"]
+    
+    def should_calculate_process_capability(self) -> bool:
+        """Determine if process capability should be calculated"""
+        return (self.has_classification() and 
+                len(self.measurements) > 1 and  # Need multiple measurements
+                self.std_dev > 0 and  # Need variation
+                self.lower_tolerance is not None and 
+                self.upper_tolerance is not None)
+    
+    def get_tolerance_range(self) -> Optional[float]:
+        """Get the total tolerance range"""
+        if self.lower_tolerance is not None and self.upper_tolerance is not None:
+            return abs(self.upper_tolerance - self.lower_tolerance)
+        return None
