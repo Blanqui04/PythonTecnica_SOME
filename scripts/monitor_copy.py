@@ -2,8 +2,6 @@
 """
 Script per monitoritzar el progrés de la còpia de dades
 """
-
-import sys
 import json
 import psycopg2
 import time
@@ -21,7 +19,7 @@ def connect_to_db(config):
             client_encoding='utf8'
         )
         return connection
-    except:
+    except Exception:
         return None
 
 def monitor_progress():
@@ -46,7 +44,7 @@ def monitor_progress():
     print("=" * 50)
     
     last_count = 0
-    start_time = datetime.now()
+    #start_time = datetime.now()
     
     try:
         while True:
@@ -92,7 +90,7 @@ def monitor_progress():
                     
                     # Si està completat
                     if total_desti >= total_origen:
-                        print(f"\n\n🎉 CÒPIA COMPLETADA!")
+                        print("\n\n🎉 CÒPIA COMPLETADA!")
                         break
                         
                 except Exception as e:
@@ -102,15 +100,15 @@ def monitor_progress():
                     try:
                         source_conn.close()
                         target_conn.close()
-                    except:
+                    except Exception:
                         pass
             else:
-                print(f"\r❌ Error de connexió", end="", flush=True)
+                print("\r❌ Error de connexió", end="", flush=True)
             
             time.sleep(5)  # Actualitzar cada 5 segons
             
     except KeyboardInterrupt:
-        print(f"\n\n⏹️  Monitorització aturada per l'usuari")
+        print("\n\n⏹️  Monitorització aturada per l'usuari")
     except Exception as e:
         print(f"\n❌ Error durant la monitorització: {e}")
 

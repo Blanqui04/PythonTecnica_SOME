@@ -6,7 +6,6 @@ Continua la còpia des d'on es va aturar automàticament.
 """
 
 import sys
-import os
 import logging
 import json
 import psycopg2
@@ -157,7 +156,7 @@ def main():
                 try:
                     source_conn.close()
                     target_conn.close()
-                except:
+                except Exception:
                     pass
                 
                 source_conn = connect_to_db(source_config)
@@ -172,7 +171,7 @@ def main():
             cursor.execute("SELECT COUNT(*) FROM mesuresqualitat")
             final_count = cursor.fetchone()[0]
         
-        print(f"\n🎉 CÒPIA COMPLETADA!")
+        print("\n🎉 CÒPIA COMPLETADA!")
         print(f"📊 Registres finals: {final_count:,}")
         print(f"📊 Percentatge completat: {(final_count / total_origen) * 100:.1f}%")
         
@@ -184,7 +183,7 @@ def main():
         try:
             source_conn.close()
             target_conn.close()
-        except:
+        except Exception:
             pass
     
     return 0

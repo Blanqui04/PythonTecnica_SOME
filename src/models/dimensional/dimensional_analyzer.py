@@ -1,4 +1,4 @@
-# src/models/dimensional/dimensional_analyzer.py - OPTIMIZED VERSION
+# src/models/dimensional/dimensional_analyzer.py - OPTIMIZED VERSION WITH PROCESS CAPABILITY
 import logging
 from typing import List, Dict, Any
 from statistics import mean, stdev
@@ -8,7 +8,7 @@ import pandas as pd
 
 
 class DimensionalAnalyzer:
-    """Optimized analyzer for dimensional measurement data"""
+    """Optimized analyzer for dimensional measurement data with process capability"""
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ class DimensionalAnalyzer:
         self.gdt_interpreter = GDTInterpreter()
 
     def analyze_row(self, record: Dict[str, Any]) -> DimensionalResult:
-        """Optimized row analysis with evaluation type support"""
+        """Optimized row analysis with evaluation type support and process capability"""
         try:
             # Extract basic info
             element_id = str(record.get("element_id", "Unknown"))
@@ -70,6 +70,11 @@ class DimensionalAnalyzer:
                 if len(measurements) == 1:
                     warnings.append("Single measurement - no statistical analysis")
             
+            # Calculate process capability for classified dimensions
+            pp, ppk = self._calculate_process_capability(
+                measurements, avg, sd, nominal, lower_tol, upper_tol, classe, evaluation_type
+            )
+            
             return DimensionalResult(
                 element_id=element_id,
                 batch=batch,
@@ -93,11 +98,71 @@ class DimensionalAnalyzer:
                 warnings=warnings,
                 evaluation_type=evaluation_type,
                 measuring_instrument=measuring_instrument,
+                pp=pp,
+                ppk=ppk,
             )
             
         except Exception as e:
             self.logger.error(f"Analysis error for {record.get('element_id', 'Unknown')}: {str(e)}")
             return self._create_error_result(record, f"Analysis error: {str(e)}")
+    
+    def _calculate_process_capability(self, measurements: List[float], mean_val: float, 
+                                    std_dev: float, nominal: float, lower_tol: float, 
+                                    upper_tol: float, classe: str, evaluation_type: str) -> tuple[float, float]:
+        """Calculate Pp and Ppk for classified dimensions (CC, SC, IC)"""
+        # Only calculate for classified dimensions with valid data
+        if not classe or classe.upper() not in ["CC", "SC", "IC"]:
+            return None, None
+        
+        # Skip for notes, basic, informative
+        if evaluation_type in ["Note", "Basic", "Informative"]:
+            return None, None
+        
+        # Need measurements, valid std dev, and tolerances
+        if (not measurements or len(measurements) < 2 or std_dev <= 0 or 
+            lower_tol == 0.0 and upper_tol == 0.0):
+            return None, None
+        
+        try:
+            # Calculate specification limits
+            if lower_tol is not None and upper_tol is not None:
+                # Bilateral tolerance
+                lsl = nominal + lower_tol  # Lower Specification Limit
+                usl = nominal + upper_tol  # Upper Specification Limit
+                tolerance_range = abs(upper_tol - lower_tol)
+                
+                # Pp (Process Performance) = Tolerance Width / (6 * std_dev)
+                pp = tolerance_range / (6 * std_dev)
+                
+                # Ppk (Process Performance Capability) = min(Ppu, Ppl)
+                # Ppu = (USL - mean) / (3 * std_dev)
+                # Ppl = (mean - LSL) / (3 * std_dev)
+                ppu = (usl - mean_val) / (3 * std_dev)
+                ppl = (mean_val - lsl) / (3 * std_dev)
+                ppk = min(ppu, ppl)
+                
+            elif upper_tol is not None and upper_tol > 0:
+                # Unilateral upper tolerance (common for positional tolerances)
+                usl = nominal + upper_tol
+                lsl = nominal  # Or could be 0 depending on context
+                
+                # For unilateral tolerance, use available limit
+                pp = upper_tol / (3 * std_dev)  # Modified for unilateral
+                ppu = (usl - mean_val) / (3 * std_dev)
+                ppk = ppu  # Only upper capability
+                
+            else:
+                return None, None
+            
+            # Round to reasonable decimal places
+            pp = round(pp, 3) if pp is not None else None
+            ppk = round(ppk, 3) if ppk is not None else None
+            
+            return pp, ppk
+            
+        except (ZeroDivisionError, ValueError, TypeError) as e:
+            self.logger.warning(f"Process capability calculation error: {str(e)}")
+            return None, None
     
     def _process_tolerances(self, record: Dict[str, Any], evaluation_type: str, description: str, nominal: float) -> tuple[float, float, List[str]]:
         """Optimized tolerance processing based on evaluation type"""
@@ -141,10 +206,20 @@ class DimensionalAnalyzer:
     
     def _determine_status(self, record: Dict[str, Any], evaluation_type: str, measurements: List[float], 
                          nominal: float, lower_tol: float, upper_tol: float) -> tuple[DimensionalStatus, int]:
-        """Optimized status determination with evaluation type support"""
+        """Optimized status determination with evaluation type support and TO CHECK for notes"""
         force_status = record.get("force_status", "AUTO")
         
-        # Handle forced status first
+        # Handle Notes first - default to TO_CHECK unless forced
+        if evaluation_type == "Note":
+            if force_status == "GOOD":
+                return DimensionalStatus.GOOD, 0
+            elif force_status == "BAD":
+                return DimensionalStatus.BAD, len(measurements) if measurements else 0
+            else:
+                # Default for notes is TO_CHECK
+                return DimensionalStatus.TO_CHECK, 0
+        
+        # Handle forced status for non-notes
         if force_status == "GOOD":
             return DimensionalStatus.GOOD, 0
         elif force_status == "BAD":
@@ -153,11 +228,8 @@ class DimensionalAnalyzer:
             return DimensionalStatus.TED, len(measurements)
         elif force_status == "WARNING":
             return DimensionalStatus.WARNING, len(measurements)
-
-        # Handle different evaluation types
-        if evaluation_type == "Note":
-            return DimensionalStatus.WARNING, 0
         
+        # Handle different evaluation types
         if evaluation_type in ["Basic", "Informative"]:
             return DimensionalStatus.TED, 0  # Will be displayed as T.E.D. in UI
         
@@ -235,5 +307,7 @@ class DimensionalAnalyzer:
             feature_type="dimension",
             warnings=[error_message],
             evaluation_type=record.get("evaluation_type", "Normal"),
-            measuring_instrument=str(record.get("measuring_instrument", ""))
+            measuring_instrument=str(record.get("measuring_instrument", "")),
+            pp=None,
+            ppk=None
         )
