@@ -89,7 +89,7 @@ class DataExportService:
             export_paths = {}
 
             # Enhance metadata with database info
-            enhanced_metadata = self._enhance_metadata(metadata, db_config_path, db_key)
+            enhanced_metadata = self._metadata(metadata, db_config_path, db_key)
             
             # Sort and group results with proper automotive numbering
             sorted_results = self._sort_results_automotive_standard(results)
@@ -152,7 +152,7 @@ class DataExportService:
 
         return sorted(results, key=lambda r: parse_automotive_id(r.element_id))
 
-    def _enhance_metadata(self, metadata: Dict[str, Any], db_config_path: Optional[str], db_key: str) -> Dict[str, Any]:
+    def _metadata(self, metadata: Dict[str, Any], db_config_path: Optional[str], db_key: str) -> Dict[str, Any]:
         """Enhance metadata with database information and fallbacks"""
         enhanced = {
             'client_name': metadata.get('client_name', ''),
@@ -380,7 +380,7 @@ class DataExportService:
         
         # Determine dimension characteristics
         evaluation_type = getattr(result, 'evaluation_type', '') or ''
-        dimension_class = getattr(result, 'class', '') or ''
+        dimension_class = getattr(result, 'classe', '') or ''
         is_notes = evaluation_type.lower() == 'notes'
         is_basic_info = evaluation_type.lower() in ['basic', 'informative']
         is_statistical = dimension_class.upper() in ['CC', 'SC', 'IC']
@@ -452,13 +452,13 @@ class DataExportService:
                 cell.fill = self.ALT_ROW_FILL
             
             # Apply borders with grouping separators
-            if col == 3:  # After Instrument
+            if col == 4:  # After Instrument
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 8:  # After M5
+            elif col == 9:  # After M5
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 11:  # After Mean
+            elif col == 12:  # After Mean
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 14:  # After Ppk
+            elif col == 15:  # After Ppk
                 cell.border = self.LEFT_MEDIUM_BORDER
             else:
                 cell.border = self.THIN_BORDER
