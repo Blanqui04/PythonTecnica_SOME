@@ -390,26 +390,37 @@ class DataExportService:
     def _add_automotive_data_row(self, ws: Worksheet, row: int, result: DimensionalResult, num_columns: int, row_index: int):
         """Add data row with automotive industry formatting standards - using pre-calculated values from DimensionalResult"""
 
-        evaluation_type = (getattr(result, 'evaluation_type', '') or '').strip().lower()
+        # --- FIX: Robust evaluation_type detection for notes ---
+        # Try to get evaluation_type from result, fallback to checking description or class for 'note'
+        evaluation_type = (
+            getattr(result, 'evaluation_type', None)
+            or getattr(result, 'feature_type', None)
+            or ''
+        )
+        evaluation_type = str(evaluation_type).strip().lower()
+
+        # Fallback: if evaluation_type is empty, check if description or class hints at note
+        is_notes = False
+        if evaluation_type in ['note', 'notes']:
+            is_notes = True
+        elif not evaluation_type:
+            # Try to infer from description or class
+            desc = (getattr(result, 'description', '') or '').lower()
+            classe = (getattr(result, 'classe', '') or '').lower()
+            if 'note' in desc or 'nota' in desc or classe == 'note':
+                is_notes = True
+
         dimension_class = getattr(result, 'classe', '') or ''
-        is_notes = evaluation_type in ['note', 'notes']
         is_basic_info = evaluation_type in ['basic', 'informative']
         is_statistical = dimension_class.upper() in ['CC', 'SC', 'IC'] and not is_notes
 
         measurements = result.measurements if result.measurements else []
         has_measurements = bool(measurements and any(m is not None for m in measurements))
 
+        print(f"[TABLE] Adding row {row} for element_id={result.element_id} | eval_type={evaluation_type} | class={dimension_class} | is_note={is_notes}")
+
         # If there are no measurements, force all stats/measurements/status to empty/TO CHECK
-        if not has_measurements:
-            mean_val = None
-            std_val = None
-            min_val = None
-            max_val = None
-            pp_val = None
-            ppk_val = None
-            measurements_out = [""] * 5
-            status = "TO CHECK"
-        elif is_notes:
+        if not has_measurements or is_notes:
             mean_val = None
             std_val = None
             min_val = None
@@ -420,13 +431,19 @@ class DataExportService:
             status = "TO CHECK"
         else:
             mean_val = result.mean if hasattr(result, 'mean') and result.mean is not None else None
-            std_val = result.std_dev if hasattr(result, 'std_dev') and result.std_dev is not None else None
             min_val = min(measurements) if measurements else None
             max_val = max(measurements) if measurements else None
-            pp_val = result.pp if hasattr(result, 'pp') and result.pp is not None and is_statistical else None
-            ppk_val = result.ppk if hasattr(result, 'ppk') and result.ppk is not None and is_statistical else None
             measurements_out = [self._format_measurement(m) for m in (measurements + [None] * 5)[:5]]
             status = result.status.value if hasattr(result.status, "value") else str(result.status)
+            # Only show std, pp, ppk if statistical
+            if is_statistical:
+                std_val = result.std_dev if hasattr(result, 'std_dev') and result.std_dev is not None else None
+                pp_val = result.pp if hasattr(result, 'pp') and result.pp is not None else None
+                ppk_val = result.ppk if hasattr(result, 'ppk') and result.ppk is not None else None
+            else:
+                std_val = None
+                pp_val = None
+                ppk_val = None
 
         # Prepare data using pre-calculated values
         data = [
@@ -437,9 +454,9 @@ class DataExportService:
             "" if not has_measurements else self._format_number(min_val, 2),
             "" if not has_measurements else self._format_number(max_val, 2),
             "" if not has_measurements else self._format_number(mean_val, 2),
-            "" if not has_measurements else self._format_number(std_val, 2),
-            "" if not has_measurements else self._format_number(pp_val, 2),
-            "" if not has_measurements else self._format_number(ppk_val, 2),
+            "" if not has_measurements or not is_statistical else self._format_number(std_val, 2),
+            "" if not has_measurements or not is_statistical else self._format_number(pp_val, 2),
+            "" if not has_measurements or not is_statistical else self._format_number(ppk_val, 2),
             status
         ]
 
