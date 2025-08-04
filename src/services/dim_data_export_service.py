@@ -19,7 +19,17 @@ class DataExportService:
     """Professional dimensional analysis export service for automotive PPAP reports"""
 
     def __init__(self):
+        os.makedirs('logs', exist_ok=True)
         self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logging.INFO)
+        fh = logging.FileHandler('logs/dimensional.log')    # Create file handler
+        fh.setLevel(logging.INFO)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')   # Create formatter
+        fh.setFormatter(formatter)
+        # Add handler to logger
+        if not self.logger.handlers:
+            self.logger.addHandler(fh)
+        
         self._init_styles()
         
     def _init_styles(self):
@@ -39,7 +49,7 @@ class DataExportService:
         self.OK_FILL = PatternFill(start_color='D5F4E6', end_color='D5F4E6', fill_type='solid')
         self.NOK_FILL = PatternFill(start_color='FADBD8', end_color='FADBD8', fill_type='solid')
         self.TED_FILL = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
-        self.WARNING_FILL = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
+        self.WG_FILL = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
         self.ALT_ROW_FILL = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
         self.STATISTICAL_FILL = PatternFill(start_color='EBF3FD', end_color='EBF3FD', fill_type='solid')  # Light blue for statistical
         
@@ -105,7 +115,8 @@ class DataExportService:
                 logo_path
             )
             export_paths['excel_report'] = excel_path
-            self.logger.info(f"📊 Professional Excel PPAP report created: {os.path.basename(excel_path)}")
+            # Remove emojis from log messages to avoid UnicodeEncodeError
+            self.logger.info(f"Professional Excel PPAP report created: {os.path.basename(excel_path)}")
 
             # Create comprehensive JSON
             json_path = os.path.join(export_dir, f"{base_filename}_complete_data_{timestamp}.json")
@@ -117,12 +128,12 @@ class DataExportService:
                 cavity_groups
             )
             export_paths['json_data'] = json_path
-            self.logger.info(f"📁 Comprehensive JSON exported: {os.path.basename(json_path)}")
+            self.logger.info(f"Comprehensive JSON exported: {os.path.basename(json_path)}")
 
             return export_paths
 
         except Exception as e:
-            self.logger.error(f"❌ Export failed: {str(e)}", exc_info=True)
+            self.logger.error(f"Export failed: {str(e)}", exc_info=True)
             raise RuntimeError(f"Export failed: {str(e)}") from e
 
     def _sort_results_automotive_standard(self, results: List[DimensionalResult]) -> List[DimensionalResult]:
@@ -314,24 +325,24 @@ class DataExportService:
         self._apply_automotive_formatting(ws)
 
     def _add_automotive_dimensional_table(self, ws: Worksheet, results: List[DimensionalResult], start_row: int) -> int:
-        """Add automotive industry standard dimensional data table"""
+        """Add automotive industry standard dimensional data table with improved header aesthetics"""
         current_row = start_row
         
-        # Updated headers according to automotive PPAP standards
+        # Enhanced headers with better formatting and spacing
         headers = [
-            'Element ID', 'Description', 'Instrument', 'M1', 'M2', 'M3', 'M4', 'M5',
-            'Min', 'Max', 'Mean', 'Std', 'Pp', 'Ppk', 'Status'
+            'Element\nID', 'Description', 'Measuring\nInstrument', 'M1', 'M2', 'M3', 'M4', 'M5',
+            'Min\nValue', 'Max\nValue', 'Mean\nValue', 'Std\nDev', 'Pp', 'Ppk', 'Status'
         ]
         
-        # Write headers with automotive styling
+        # Write headers with enhanced automotive styling
         for col, header in enumerate(headers, 1):
             cell = ws.cell(row=current_row, column=col, value=header)
             cell.font = self.HEADER_FONT
             cell.fill = self.HEADER_FILL
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
             
-            # Apply borders with logical groupings
-            if col == 3:  # After Instrument
+            # Apply enhanced borders with logical groupings
+            if col == 3:  # After Measuring Instrument
                 cell.border = Border(
                     left=Side(style='thin', color='D0D3D4'),
                     right=Side(style='medium', color='85929E'),
@@ -345,7 +356,7 @@ class DataExportService:
                     top=Side(style='thick', color='2C3E50'),
                     bottom=Side(style='thick', color='2C3E50')
                 )
-            elif col == 11:  # After Mean
+            elif col == 11:  # After Mean Value
                 cell.border = Border(
                     left=Side(style='thin', color='D0D3D4'),
                     right=Side(style='medium', color='85929E'),
@@ -362,7 +373,8 @@ class DataExportService:
             else:
                 cell.border = self.THICK_BORDER
         
-        ws.row_dimensions[current_row].height = 35
+        # Increased header row height for better readability
+        ws.row_dimensions[current_row].height = 40
         current_row += 1
         
         # Write data rows with automotive formatting
@@ -376,48 +388,68 @@ class DataExportService:
         return current_row
 
     def _add_automotive_data_row(self, ws: Worksheet, row: int, result: DimensionalResult, num_columns: int, row_index: int):
-        """Add data row with automotive industry formatting standards"""
-        
-        # Determine dimension characteristics
-        evaluation_type = getattr(result, 'evaluation_type', '') or ''
-        dimension_class = getattr(result, 'classe', '') or ''
-        is_notes = evaluation_type.lower() == 'notes'
-        is_basic_info = evaluation_type.lower() in ['basic', 'informative']
-        is_statistical = dimension_class.upper() in ['CC', 'SC', 'IC']
-        
-        # Get forced status or calculate auto status
-        status = self._get_final_status(result)
-        
-        # Calculate statistics
-        measurements = [m for m in result.measurements if m is not None]
-        stats = self._calculate_statistics(measurements)
-        
-        # Calculate Pp and Ppk only for statistical dimensions
-        pp_ppk = self._calculate_pp_ppk(result, stats) if is_statistical else {'pp': None, 'ppk': None}
+        """Add data row with automotive industry formatting standards - using pre-calculated values from DimensionalResult"""
 
-        # Prepare data
+        evaluation_type = (getattr(result, 'evaluation_type', '') or '').strip().lower()
+        dimension_class = getattr(result, 'classe', '') or ''
+        is_notes = evaluation_type in ['note', 'notes']
+        is_basic_info = evaluation_type in ['basic', 'informative']
+        is_statistical = dimension_class.upper() in ['CC', 'SC', 'IC'] and not is_notes
+
+        measurements = result.measurements if result.measurements else []
+        has_measurements = bool(measurements and any(m is not None for m in measurements))
+
+        # If there are no measurements, force all stats/measurements/status to empty/TO CHECK
+        if not has_measurements:
+            mean_val = None
+            std_val = None
+            min_val = None
+            max_val = None
+            pp_val = None
+            ppk_val = None
+            measurements_out = [""] * 5
+            status = "TO CHECK"
+        elif is_notes:
+            mean_val = None
+            std_val = None
+            min_val = None
+            max_val = None
+            pp_val = None
+            ppk_val = None
+            measurements_out = [""] * 5
+            status = "TO CHECK"
+        else:
+            mean_val = result.mean if hasattr(result, 'mean') and result.mean is not None else None
+            std_val = result.std_dev if hasattr(result, 'std_dev') and result.std_dev is not None else None
+            min_val = min(measurements) if measurements else None
+            max_val = max(measurements) if measurements else None
+            pp_val = result.pp if hasattr(result, 'pp') and result.pp is not None and is_statistical else None
+            ppk_val = result.ppk if hasattr(result, 'ppk') and result.ppk is not None and is_statistical else None
+            measurements_out = [self._format_measurement(m) for m in (measurements + [None] * 5)[:5]]
+            status = result.status.value if hasattr(result.status, "value") else str(result.status)
+
+        # Prepare data using pre-calculated values
         data = [
             result.element_id,
-            getattr(result, 'description', ''),
-            self._format_instrument(getattr(result, 'measuring_instrument', '')),
-            *[self._format_measurement(m) for m in (result.measurements + [None] * 5)[:5]],
-            self._format_number(stats['min'], 2),
-            self._format_number(stats['max'], 2),
-            self._format_number(stats['mean'], 2),
-            self._format_number(stats['std'], 2) if is_statistical else '',
-            self._format_number(pp_ppk['pp'], 2) if is_statistical else '',
-            self._format_number(pp_ppk['ppk'], 2) if is_statistical else '',
+            result.description or '',
+            self._format_instrument(result.measuring_instrument),
+            *measurements_out,
+            "" if not has_measurements else self._format_number(min_val, 2),
+            "" if not has_measurements else self._format_number(max_val, 2),
+            "" if not has_measurements else self._format_number(mean_val, 2),
+            "" if not has_measurements else self._format_number(std_val, 2),
+            "" if not has_measurements else self._format_number(pp_val, 2),
+            "" if not has_measurements else self._format_number(ppk_val, 2),
             status
         ]
 
-        # Determine row styling
         is_alternate = row_index % 2 == 1
-        
+
         for col, value in enumerate(data, 1):
             cell = ws.cell(row=row, column=col, value=value)
-            
+
             # Apply font based on dimension type
-            if is_notes:
+            if not has_measurements or is_notes:
                 cell.font = self.NOTES_FONT
             elif is_basic_info:
                 cell.font = self.BASIC_FONT
@@ -425,170 +457,63 @@ class DataExportService:
                 cell.font = self.STATISTICAL_FONT
             else:
                 cell.font = self.DATA_FONT
-            
-            # Apply cell alignment based on column type
-            if col == 1:  # Element ID
+
+            # Alignment
+            if col == 1:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-            elif col == 2:  # Description
-                if is_notes:
-                    cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
-                else:
-                    cell.alignment = Alignment(horizontal='left', vertical='center')
-            elif col == 3:  # Instrument
-                cell.alignment = Alignment(horizontal='center', vertical='center')
-            elif 4 <= col <= 8:  # Measurements M1-M5
+            elif col == 2:
+                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+            elif col == 3:
                 cell.alignment = Alignment(horizontal='left', vertical='center')
-            elif 9 <= col <= 14:  # Statistics (Min, Max, Mean, Std, Pp, Ppk)
+            elif 4 <= col <= 8:
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+            elif 9 <= col <= 14:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-            elif col == 15:  # Status
+            elif col == 15:
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-            
-            # Apply background fills
-            if col == 15:  # Status column
-                self._apply_status_formatting(cell, status)
+
+            # Background fills
+            if col == 15:
+                self._apply_status_formatting(cell, self._normalize_status(status))
             elif is_statistical:
                 cell.fill = self.STATISTICAL_FILL
             elif is_alternate:
                 cell.fill = self.ALT_ROW_FILL
-            
-            # Apply borders with grouping separators
-            if col == 4:  # After Instrument
+
+            # Borders with grouping separators
+            if col == 4:
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 9:  # After M5
+            elif col == 9:
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 12:  # After Mean
+            elif col == 12:
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 15:  # After Ppk
+            elif col == 15:
                 cell.border = self.LEFT_MEDIUM_BORDER
             else:
                 cell.border = self.THIN_BORDER
 
-    def _get_final_status(self, result: DimensionalResult) -> str:
-        """Get final status - prioritize forced status, fallback to auto calculation"""
-        try:
-            # Check if there's a forced status
-            forced_status = getattr(result, 'force_status', None)
-            if forced_status and str(forced_status).strip():
-                return self._normalize_status(str(forced_status))
-            
-            # Check evaluation type for special cases
-            evaluation_type = getattr(result, 'evaluation_type', '').lower()
-            if evaluation_type in ['basic', 'informative', 'notes']:
-                return 'T.E.D'
-            
-            # Auto-calculate status based on measurements and tolerances
-            return self._calculate_auto_status(result)
-            
-        except Exception as e:
-            self.logger.warning(f"Error getting status for {result.element_id}: {e}")
-            return 'WARNING'
+        if not has_measurements or is_notes:
+            ws.row_dimensions[row].height = 40
 
-    def _calculate_auto_status(self, result: DimensionalResult) -> str:
-        """Calculate automatic status based on measurements and tolerances"""
-        try:
-            measurements = [m for m in result.measurements if m is not None]
-            if not measurements:
-                return 'WARNING'
-            
-            # Get tolerance limits
-            lower_limit, upper_limit = self._get_spec_limits_safe(result)
-            
-            if lower_limit is None or upper_limit is None:
-                return 'WARNING'
-            
-            # Check if all measurements are within tolerance
-            for measurement in measurements:
-                if measurement < lower_limit or measurement > upper_limit:
-                    return 'NOK'
-            
-            return 'OK'
-            
-        except Exception:
-            return 'WARNING'
-
-    def _normalize_status(self, status: str) -> str:
-        """Normalize status values for consistency"""
-        status = str(status).strip().upper()
+    def _normalize_status(self, status) -> str:
+        """Normalize status values for consistency - handles both enum and string values"""
+        # Handle enum values
+        if hasattr(status, 'value'):
+            status_str = status.value
+        else:
+            status_str = str(status)
+        
+        status_str = status_str.strip().upper()
         
         status_map = {
             'GOOD': 'OK', 'PASS': 'OK', 'OK': 'OK', 'PASSED': 'OK',
             'BAD': 'NOK', 'FAIL': 'NOK', 'NOK': 'NOK', 'NG': 'NOK', 'FAILED': 'NOK',
             'WARNING': 'WARNING', 'WARN': 'WARNING',
-            'T.E.D.': 'T.E.D', 'TED': 'T.E.D', 'BASIC': 'T.E.D', 'INFORMATIVE': 'T.E.D'
+            'T.E.D.': 'T.E.D', 'TED': 'T.E.D', 'T.E.D': 'T.E.D', 'BASIC': 'T.E.D', 'INFORMATIVE': 'T.E.D',
+            'TO CHECK': 'TO CHECK', 'TO_CHECK': 'TO CHECK', 'CHECK': 'TO CHECK'
         }
         
-        return status_map.get(status, 'WARNING')
-
-    def _calculate_pp_ppk(self, result: DimensionalResult, stats: Dict[str, Optional[float]]) -> Dict[str, Optional[float]]:
-        """Calculate Pp and Ppk for statistical dimensions (CC, SC, IC classes only)"""
-        try:
-            if not stats['std'] or stats['std'] <= 0:
-                return {'pp': None, 'ppk': None}
-            
-            # Get tolerance limits
-            lower_limit, upper_limit = self._get_spec_limits_safe(result)
-            if lower_limit is None or upper_limit is None:
-                return {'pp': None, 'ppk': None}
-            
-            tolerance_range = upper_limit - lower_limit
-            mean = stats['mean']
-            std = stats['std']
-            
-            # Calculate Pp (Process Performance)
-            pp = tolerance_range / (6 * std)
-            
-            # Calculate Ppk (Process Performance Index)
-            cpu = (upper_limit - mean) / (3 * std)
-            cpl = (mean - lower_limit) / (3 * std)
-            ppk = min(cpu, cpl)
-            
-            return {'pp': pp, 'ppk': ppk}
-            
-        except Exception as e:
-            self.logger.debug(f"Could not calculate Pp/Ppk for {result.element_id}: {e}")
-            return {'pp': None, 'ppk': None}
-
-    def _calculate_statistics(self, measurements: List[float]) -> Dict[str, Optional[float]]:
-        """Calculate statistics with error handling"""
-        if not measurements:
-            return {'min': None, 'max': None, 'mean': None, 'std': None}
-        
-        try:
-            mean_val = sum(measurements) / len(measurements)
-            std_val = None
-            if len(measurements) > 1:
-                variance = sum((x - mean_val) ** 2 for x in measurements) / (len(measurements) - 1)
-                std_val = variance ** 0.5
-            
-            return {
-                'min': min(measurements),
-                'max': max(measurements),
-                'mean': mean_val,
-                'std': std_val
-            }
-        except Exception:
-            return {'min': None, 'max': None, 'mean': None, 'std': None}
-
-    def _get_spec_limits_safe(self, result: DimensionalResult) -> Tuple[Optional[float], Optional[float]]:
-        """Get specification limits with comprehensive error handling"""
-        try:
-            # Try explicit tolerances first
-            lower = getattr(result, 'lower_tolerance', None)
-            upper = getattr(result, 'upper_tolerance', None)
-            if lower is not None and upper is not None:
-                return float(lower), float(upper)
-            
-            # Try nominal ± tolerance
-            nominal = getattr(result, 'nominal', None)
-            if nominal is not None:
-                plus_tol = getattr(result, 'plus_tolerance', 0) or 0
-                minus_tol = getattr(result, 'minus_tolerance', 0) or 0
-                return float(nominal) - abs(float(minus_tol)), float(nominal) + abs(float(plus_tol))
-            
-        except (ValueError, TypeError, AttributeError):
-            pass
-        
-        return None, None
+        return status_map.get(status_str, 'WARNING')
     
     def _format_measurement(self, value) -> str:
         """Format measurement values to 2 decimals, left aligned"""
@@ -623,7 +548,9 @@ class DataExportService:
             'OK': (self.OK_FILL, Font(name='Arial', size=9, bold=True, color='27AE60')),
             'NOK': (self.NOK_FILL, Font(name='Arial', size=9, bold=True, color='E74C3C')),
             'T.E.D': (self.TED_FILL, Font(name='Arial', size=9, bold=True, color='3498DB')),
-            'WARNING': (self.WARNING_FILL, Font(name='Arial', size=9, bold=True, color='856404'))
+            'WARNING': (self.WG_FILL, Font(name='Arial', size=9, bold=True, color='856404')),
+            'TO CHECK': (PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid'), 
+                        Font(name='Arial', size=9, bold=True, color='D6B656'))
         }
         
         if status in status_formats:
@@ -726,23 +653,23 @@ class DataExportService:
         ws.cell(row=current_row + 1, column=10, value=metadata.get('report_date', '')).font = self.DATA_FONT
 
     def _set_automotive_column_widths(self, ws: Worksheet):
-        """Set column widths optimized for automotive PPAP reports"""
+        """Set column widths optimized for automotive PPAP reports with enhanced headers"""
         column_widths = {
             'A': 12,   # Element ID
-            'B': 30,   # Description
-            'C': 15,   # Instrument
+            'B': 35,   # Description (wider for better readability)
+            'C': 16,   # Measuring Instrument (slightly wider)
             'D': 8,    # M1
             'E': 8,    # M2
             'F': 8,    # M3
             'G': 8,    # M4
             'H': 8,    # M5
-            'I': 8,    # Min
-            'J': 8,    # Max
-            'K': 8,    # Mean
-            'L': 8,    # Std
+            'I': 9,    # Min Value (slightly wider)
+            'J': 9,    # Max Value (slightly wider)
+            'K': 9,    # Mean Value (slightly wider)
+            'L': 8,    # Std Dev
             'M': 8,    # Pp
             'N': 8,    # Ppk
-            'O': 10    # Status
+            'O': 12    # Status (wider for "TO CHECK")
         }
         
         for col, width in column_widths.items():
@@ -781,7 +708,7 @@ class DataExportService:
         metadata: Dict[str, Any],
         summary_data: Dict[str, Any]
     ):
-        """Create professional summary sheet with automotive metrics"""
+        """Create professional summary sheet with automotive metrics - using pre-calculated values"""
         current_row = 1
         
         # Title
@@ -791,16 +718,25 @@ class DataExportService:
         title.alignment = Alignment(horizontal='center')
         current_row += 3
         
-        # Calculate automotive-specific statistics
+        # Calculate automotive-specific statistics using pre-calculated statuses
         all_results = []
         for cavity_results in cavity_groups.values():
             all_results.extend(cavity_results)
         
         total_dims = len(all_results)
-        ok_count = sum(1 for r in all_results if self._get_final_status(r) == 'OK')
-        nok_count = sum(1 for r in all_results if self._get_final_status(r) == 'NOK')
-        ted_count = sum(1 for r in all_results if self._get_final_status(r) == 'T.E.D')
-        statistical_count = sum(1 for r in all_results if getattr(r, 'class', '') in ['CC', 'SC', 'IC'])
+        
+        # Use pre-calculated statuses from DimensionalResult objects
+        statuses = [self._normalize_status(r.status) for r in all_results]
+        ok_count = statuses.count('OK')
+        nok_count = statuses.count('NOK')
+        ted_count = statuses.count('T.E.D')
+        warning_count = statuses.count('WARNING')
+        
+        # Count statistical dimensions using has_classification method or classe attribute
+        statistical_count = sum(1 for r in all_results 
+                              if hasattr(r, 'has_classification') and r.has_classification() 
+                              or getattr(r, 'classe', '').upper() in ['CC', 'SC', 'IC'])
+        
         success_rate = (ok_count / (ok_count + nok_count)) * 100 if (ok_count + nok_count) > 0 else 0
         
         # Overall statistics
@@ -809,6 +745,7 @@ class DataExportService:
             ('Passed (OK):', ok_count),
             ('Failed (NOK):', nok_count),
             ('Basic/Info (T.E.D):', ted_count),
+            ('Warnings:', warning_count),
             ('Statistical Dimensions:', statistical_count),
             ('Success Rate:', f"{success_rate:.1f}%"),
             ('Analysis Date:', metadata.get('report_date', ''))
@@ -827,8 +764,9 @@ class DataExportService:
             
             for cavity_num in sorted(cavity_groups.keys()):
                 cavity_results = cavity_groups[cavity_num]
-                cavity_ok = sum(1 for r in cavity_results if self._get_final_status(r) == 'OK')
-                cavity_nok = sum(1 for r in cavity_results if self._get_final_status(r) == 'NOK')
+                cavity_statuses = [self._normalize_status(r.status) for r in cavity_results]
+                cavity_ok = cavity_statuses.count('OK')
+                cavity_nok = cavity_statuses.count('NOK')
                 cavity_rate = (cavity_ok / (cavity_ok + cavity_nok)) * 100 if (cavity_ok + cavity_nok) > 0 else 0
                 
                 ws.cell(row=current_row, column=1, value=f"Cavity {cavity_num}:").font = self.DATA_FONT
@@ -888,7 +826,7 @@ class DataExportService:
         summary_data: Optional[Dict] = None,
         cavity_groups: Optional[Dict] = None
     ):
-        """Export comprehensive JSON data with automotive specifications"""
+        """Export comprehensive JSON data with automotive specifications - using pre-calculated values"""
         export_data = {
             "metadata": metadata,
             "results": [self._result_to_dict(r) for r in results],
@@ -897,7 +835,9 @@ class DataExportService:
             "statistics": self._calculate_overall_statistics(results),
             "automotive_compliance": {
                 "ppap_standard": True,
-                "statistical_dimensions": len([r for r in results if getattr(r, 'class', '') in ['CC', 'SC', 'IC']]),
+                "statistical_dimensions": len([r for r in results 
+                                             if hasattr(r, 'has_classification') and r.has_classification() 
+                                             or getattr(r, 'classe', '').upper() in ['CC', 'SC', 'IC']]),
                 "export_format_version": "2.0_automotive"
             },
             "export_timestamp": datetime.now().isoformat(),
@@ -908,21 +848,29 @@ class DataExportService:
             json.dump(export_data, f, indent=2, ensure_ascii=False, default=str)
 
     def _calculate_overall_statistics(self, results: List[DimensionalResult]) -> Dict[str, Any]:
-        """Calculate overall statistics for automotive compliance"""
+        """Calculate overall statistics for automotive compliance - using pre-calculated values"""
         if not results:
             return {}
         
-        statuses = [self._get_final_status(r) for r in results]
-        statistical_dims = [r for r in results if getattr(r, 'class', '') in ['CC', 'SC', 'IC']]
+        # Use pre-calculated statuses from DimensionalResult objects
+        statuses = [self._normalize_status(r.status) for r in results]
+        
+        # Count statistical dimensions using pre-calculated classification
+        statistical_dims = [r for r in results 
+                          if hasattr(r, 'has_classification') and r.has_classification() 
+                          or getattr(r, 'classe', '').upper() in ['CC', 'SC', 'IC']]
+        
+        ok_count = statuses.count('OK')
+        nok_count = statuses.count('NOK')
         
         return {
             "total_dimensions": len(results),
-            "passed": statuses.count('OK'),
-            "failed": statuses.count('NOK'),
+            "passed": ok_count,
+            "failed": nok_count,
             "basic_info": statuses.count('T.E.D'),
             "warnings": statuses.count('WARNING'),
             "statistical_dimensions": len(statistical_dims),
-            "success_rate": (statuses.count('OK') / (statuses.count('OK') + statuses.count('NOK'))) * 100 if (statuses.count('OK') + statuses.count('NOK')) > 0 else 0,
+            "success_rate": (ok_count / (ok_count + nok_count)) * 100 if (ok_count + nok_count) > 0 else 0,
             "automotive_compliance": True
         }
 
@@ -931,34 +879,72 @@ class DataExportService:
         cavity_groups = {}
         
         for result in results:
-            cavity = getattr(result, 'cavity', 1) or 1  # Default to cavity 1
-            if cavity not in cavity_groups:
-                cavity_groups[cavity] = []
-            cavity_groups[cavity].append(result)
+            # Use the cavity attribute from DimensionalResult
+            cavity = getattr(result, 'cavity', '1')
+            
+            # Handle string cavity values and convert to int
+            try:
+                cavity_num = int(str(cavity).strip()) if cavity else 1
+            except (ValueError, TypeError):
+                cavity_num = 1  # Default to cavity 1
+            
+            if cavity_num not in cavity_groups:
+                cavity_groups[cavity_num] = []
+            cavity_groups[cavity_num].append(result)
         
         return cavity_groups
 
     def _result_to_dict(self, result: DimensionalResult) -> Dict[str, Any]:
-        """Convert result to dictionary with automotive-specific data"""
+        """Convert result to dictionary with automotive-specific data - using pre-calculated values"""
+
+        # Use pre-calculated values from DimensionalResult
         measurements = list(result.measurements) if result.measurements else []
-        stats = self._calculate_statistics([m for m in measurements if m is not None])
-        
-        # Get automotive-specific attributes
-        dimension_class = getattr(result, 'class', '')
-        is_statistical = dimension_class.upper() in ['CC', 'SC', 'IC']
-        pp_ppk = self._calculate_pp_ppk(result, stats) if is_statistical else {'pp': None, 'ppk': None}
-        
+
+        stats = {
+            'min': min(measurements) if measurements else None,
+            'max': max(measurements) if measurements else None,
+            'mean': getattr(result, 'mean', None),
+            'std': getattr(result, 'std_dev', None)
+        }
+
+        is_statistical = (hasattr(result, 'has_classification') and result.has_classification()) or \
+                        getattr(result, 'classe', '').upper() in ['CC', 'SC', 'IC']
+
+        pp_ppk = {
+            'pp': getattr(result, 'pp', None) if is_statistical else None,
+            'ppk': getattr(result, 'ppk', None) if is_statistical else None
+        }
+
+        # Use status as is (do not normalize for JSON export)
+        status = result.status.value if hasattr(result.status, "value") else str(result.status)
+
+        # For notes, ensure measurements/stats are empty and status is TO CHECK
+        evaluation_type = (getattr(result, 'evaluation_type', '') or '').strip().lower()
+        if evaluation_type in ['note', 'notes']:
+            measurements = []
+            stats = {'min': None, 'max': None, 'mean': None, 'std': None}
+            pp_ppk = {'pp': None, 'ppk': None}
+            status = "TO CHECK"
+
         return {
             "element_id": result.element_id,
             "description": getattr(result, 'description', ''),
-            "class": dimension_class,
+            "batch": getattr(result, 'batch', ''),
+            "cavity": getattr(result, 'cavity', '1'),
+            "classe": getattr(result, 'classe', ''),
+            "nominal": getattr(result, 'nominal', None),
+            "lower_tolerance": getattr(result, 'lower_tolerance', None),
+            "upper_tolerance": getattr(result, 'upper_tolerance', None),
             "evaluation_type": getattr(result, 'evaluation_type', ''),
             "measuring_instrument": getattr(result, 'measuring_instrument', 'ScanBox'),
             "measurements": measurements,
+            "deviation": list(getattr(result, 'deviation', [])) if hasattr(result, 'deviation') else [],
             "statistics": stats,
             "pp_ppk": pp_ppk,
-            "status": self._get_final_status(result),
-            "cavity": getattr(result, 'cavity', 1),
+            "status": status,
+            "out_of_spec_count": getattr(result, 'out_of_spec_count', 0),
+            "gdt_flags": getattr(result, 'gdt_flags', {}),
+            "warnings": list(getattr(result, 'warnings', [])) if hasattr(result, 'warnings') else [],
             "is_statistical": is_statistical,
             "automotive_compliant": True
         }
@@ -1008,14 +994,15 @@ class DataExportService:
                 "AUTOMOTIVE PPAP COMPLIANCE FEATURES:",
                 "  ✓ Professional automotive-standard formatting",
                 "  ✓ Proper dimensional sorting (001, 002, 100, 201.1, 201.2, etc.)",
-                "  ✓ Statistical analysis (Pp/Ppk) for CC, SC, IC dimensions",
-                "  ✓ Status validation with forced status priority",
+                "  ✓ Statistical analysis (Pp/Ppk) using pre-calculated values",
+                "  ✓ Status validation using pre-calculated DimensionalResult status",
                 "  ✓ Notes dimensions with proper text alignment",
                 "  ✓ Basic/Informative dimensions marked as T.E.D",
                 "  ✓ Logical column groupings with medium borders",
                 "  ✓ Alternating row colors for readability",
                 "  ✓ Cavity-specific analysis and sorting",
                 "  ✓ Professional PPAP header and signature areas",
+                "  ✓ Uses pre-calculated values from DimensionalResult objects",
                 "",
                 "Ready for submission to automotive clients:",
                 "Autoliv • ZF • Brose • Sofegi • BMW • Mercedes • Audi • VW",
