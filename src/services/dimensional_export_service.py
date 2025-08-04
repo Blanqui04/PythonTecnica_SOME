@@ -22,11 +22,10 @@ class DataExportService:
         os.makedirs('logs', exist_ok=True)
         self.logger = logging.getLogger(__name__)
         self.logger.setLevel(logging.INFO)
-        fh = logging.FileHandler('logs/dimensional.log')    # Create file handler
+        fh = logging.FileHandler('logs/dimensional.log')
         fh.setLevel(logging.INFO)
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')   # Create formatter
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
-        # Add handler to logger
         if not self.logger.handlers:
             self.logger.addHandler(fh)
         
@@ -41,8 +40,8 @@ class DataExportService:
         self.DATA_FONT = Font(name='Arial', size=9)
         self.SMALL_FONT = Font(name='Arial', size=8)
         self.NOTES_FONT = Font(name='Arial', size=9)
-        self.BASIC_FONT = Font(name='Arial', size=9, color='808080')  # Grey for basic/informative
-        self.STATISTICAL_FONT = Font(name='Arial', size=9, bold=True, color='1B4F72')  # Highlight statistical dims
+        self.BASIC_FONT = Font(name='Arial', size=9, color='808080')
+        self.STATISTICAL_FONT = Font(name='Arial', size=9, bold=True, color='1B4F72')
         
         # Fills
         self.HEADER_FILL = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
@@ -51,7 +50,7 @@ class DataExportService:
         self.TED_FILL = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
         self.WG_FILL = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
         self.ALT_ROW_FILL = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
-        self.STATISTICAL_FILL = PatternFill(start_color='EBF3FD', end_color='EBF3FD', fill_type='solid')  # Light blue for statistical
+        self.STATISTICAL_FILL = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
         
         # Borders - Professional automotive standard
         self.THIN_BORDER = Border(
@@ -73,7 +72,7 @@ class DataExportService:
             bottom=Side(style='thick', color='2C3E50')
         )
         
-        # Column separators - Medium borders for logical groupings
+        # Specialized borders for groupings
         self.LEFT_MEDIUM_BORDER = Border(
             left=Side(style='medium', color='85929E'),
             right=Side(style='thin', color='D0D3D4'),
@@ -296,33 +295,27 @@ class DataExportService:
         
         wb.save(filepath)
 
-    def _create_main_report_sheet(
-        self,
-        ws: Worksheet,
-        cavity_groups: Dict[int, List[DimensionalResult]],
-        metadata: Dict[str, Any],
-        logo_path: Optional[str] = None
-    ):
-        """Create main PPAP report sheet with professional automotive header"""
+    def _main_report_sheet(self, ws: Worksheet, cavity_groups: Dict[int, List[DimensionalResult]], metadata: Dict[str, Any], logo_path: Optional[str] = None):
+        """Create main PPAP report sheet with enhanced professional header"""
         current_row = 1
         
-        # Add professional header
-        current_row = self._add_ppap_header(ws, metadata, current_row, logo_path)
-        current_row += 2
+        # Add professional header with logo
+        current_row = self._ppap_header(ws, metadata, current_row, logo_path)
+        current_row += 1
         
-        # Add dimensional data table with automotive specifications
+        # Add dimensional data table
         all_results = []
         for cavity_results in cavity_groups.values():
             all_results.extend(cavity_results)
         
-        current_row = self._add_automotive_dimensional_table(ws, all_results, current_row)
-        current_row += 3
+        current_row = self._dimensional_table(ws, all_results, current_row)
+        current_row += 2
         
         # Add professional footer
-        self._add_ppap_footer(ws, metadata, current_row)
+        self._ppap_footer(ws, metadata, current_row)
         
         # Apply professional formatting
-        self._apply_automotive_formatting(ws)
+        self._apply_formatting(ws)
 
     def _add_automotive_dimensional_table(self, ws: Worksheet, results: List[DimensionalResult], start_row: int) -> int:
         """Add automotive industry standard dimensional data table with improved header aesthetics"""
