@@ -965,10 +965,10 @@ class DataExportService:
 
     def _set_print_settings(self, ws: Worksheet):
         """Set professional print settings for automotive reports"""
-        ws.page_setup.orientation = ws.ORIENTATION_LANDSCAPE
+        ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
         ws.page_setup.paperSize = ws.PAPERSIZE_A4
         ws.page_setup.fitToPage = True
-        ws.page_setup.fitToHeight = False
+        ws.page_setup.fitToHeight = True
         ws.page_setup.fitToWidth = 1
         
         # Set margins for automotive standard
