@@ -920,8 +920,18 @@ class SummaryWidget(QWidget):
         """Update session header"""
         m = self.metrics
         
+        # Ensure session_start is a datetime object
+        session_start = m.get("session_start", datetime.now())
+        if isinstance(session_start, str):
+            try:
+                session_start = datetime.fromisoformat(session_start)
+                m["session_start"] = session_start
+            except Exception:
+                session_start = datetime.now()
+                m["session_start"] = session_start
+
         # Calculate session duration
-        duration = datetime.now() - m["session_start"]
+        duration = datetime.now() - session_start
         duration_str = str(duration).split('.')[0]
         
         # Update session label
