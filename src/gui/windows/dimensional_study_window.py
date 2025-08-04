@@ -317,7 +317,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             "Process Validation",
             "Internal Audit",
             "Customer Audit",
-            "Tool or Mold Change",
+            "Tool modification",
             "Supplier Change",
             "Material Change",
             "Annual Requalification",

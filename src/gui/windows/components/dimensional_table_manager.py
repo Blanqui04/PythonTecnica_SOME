@@ -84,10 +84,6 @@ class DimensionalTableManager(DimensionalTableUI):
         eval_combo = table.cellWidget(row, 8)
         evaluation_type = eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal"
 
-        # Use values directly from DimensionalResult
-        classe = result.classe.upper() if result.classe else ""
-        has_classification = classe in ["CC", "SC", "IC"]
-
         # For Note: always empty statistics/measurements, status TO CHECK
         if evaluation_type == "Note":
             stat_data = [

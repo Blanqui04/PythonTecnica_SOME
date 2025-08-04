@@ -1165,12 +1165,19 @@ class SummaryWidget(QWidget):
         self._clear_layout(self.classification_layout)
         
         m = self.metrics
-        
+
+        # Ensure all counts are integers and handle None safely
+        cc = int(m.get("cc_dimensions", 0) or 0)
+        sc = int(m.get("sc_dimensions", 0) or 0)
+        ic = int(m.get("ic_dimensions", 0) or 0)
+        total = int(m.get("total_dimensions", 0) or 0)
+        other = total - cc - sc - ic if total - cc - sc - ic > 0 else 0
+
         class_info = [
-            ("Critical Characteristics (CC)", m["cc_dimensions"], "🔴"),
-            ("Significant Characteristics (SC)", m["sc_dimensions"], "🟡"),
-            ("Important Characteristics (IC)", m["ic_dimensions"], "🟢"),
-            ("Other Dimensions", m["total_dimensions"] - m["cc_dimensions"] - m["sc_dimensions"] - m["ic_dimensions"], "⚪")
+            ("Critical Characteristics (CC)", cc, "🔴"),
+            ("Significant Characteristics (SC)", sc, "🟡"),
+            ("Important Characteristics (IC)", ic, "🟢"),
+            ("Other Dimensions", other, "⚪")
         ]
         
         for label, count, icon in class_info:
@@ -1492,15 +1499,19 @@ class SummaryWidget(QWidget):
             pass
 
     def _log_message(self, message: str, level: str = "INFO"):
-        """Safe logging with null checks"""
-        try:
-            if (hasattr(self, "parent_window") and self.parent_window and 
-                hasattr(self.parent_window, "_log_message")):
-                self.parent_window._log_message(message, level)
-            else:
+        """Safe logging with null checks and reduced verbosity"""
+        # Only log important events, not every update
+        important_levels = {"ERROR", "WARNING", "INFO"}
+        if level in important_levels or "restored" in message or "reset" in message or "edit" in message.lower():
+            try:
+                if (hasattr(self, "parent_window") and self.parent_window and 
+                    hasattr(self.parent_window, "_log_message")):
+                    self.parent_window._log_message(message, level)
+                else:
+                    print(f"[{level}] {message}")
+            except Exception:
                 print(f"[{level}] {message}")
-        except Exception:
-            print(f"[{level}] {message}")
+        # Otherwise, skip debug/periodic update logs
 
     def reset_widget(self):
         """Reset widget to initial state"""
