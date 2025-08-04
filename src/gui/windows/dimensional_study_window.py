@@ -386,7 +386,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             "Customer Specific",
             "Other/Custom"
         ])
-        self.tolerance_combo.setMinimumWidth(170)
+        self.tolerance_combo.setMinimumWidth(180)
         self.tolerance_combo.setStyleSheet("""
             QComboBox {
                 background-color: #1B263B;
