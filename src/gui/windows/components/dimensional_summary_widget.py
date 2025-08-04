@@ -583,8 +583,18 @@ class SummaryWidget(QWidget):
             # Restore metrics
             if "metrics" in data:
                 for key, value in data["metrics"].items():
-                    if key in self.metrics:
-                        self.metrics[key] = value
+                    if key == "session_start":
+                        # Convert string to datetime if needed
+                        if isinstance(value, str):
+                            try:
+                                self.metrics[key] = datetime.fromisoformat(value)
+                            except Exception:
+                                self.metrics[key] = datetime.now()
+                        else:
+                            self.metrics[key] = value
+                    else:
+                        if key in self.metrics:
+                            self.metrics[key] = value
             
             # Update UI with restored data
             self._update_all_content()
