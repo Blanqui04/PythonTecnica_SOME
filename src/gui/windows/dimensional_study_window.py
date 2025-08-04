@@ -23,7 +23,7 @@ from PyQt5.QtGui import QColor, QPixmap, QFont
 import pandas as pd
 import os
 import logging
-from typing import List
+from typing import List, Optional
 from datetime import datetime
 from .base_dimensional_window import BaseDimensionalWindow
 from .components.dimensional_table_manager import DimensionalTableManager
@@ -63,6 +63,9 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
         # Load last session
         QTimer.singleShot(100, self.session_manager._load_last_session)
+        
+        # Auto-load database data option (after session load)
+        QTimer.singleShot(500, self._check_auto_load_database)
 
     def _init_logging(self):
         """Initialize enhanced logging configuration"""
@@ -398,8 +401,13 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.load_file_button.setMinimumSize(140, 40)
         self.load_file_button.clicked.connect(self.session_manager._load_file)
 
+        self.load_db_button = ModernButton("💾 Load from Database")
+        self.load_db_button.setMinimumSize(160, 40)
+        self.load_db_button.clicked.connect(self._load_data_from_database)
+
         mode_layout.addWidget(self.mode_toggle)
         mode_layout.addWidget(self.load_file_button)
+        mode_layout.addWidget(self.load_db_button)
         mode_group.setLayout(mode_layout)
 
         # Manual mode controls (initially hidden)
@@ -965,6 +973,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.duplicate_row_button.setVisible(True)
             self.delete_row_button.setVisible(True)
             self.load_file_button.setVisible(False)
+            self.load_db_button.setVisible(False)
             self._log_message("📝 Switched to manual entry mode")
         else:
             self.mode_toggle.setText("🔄 Switch to Manual Entry")
@@ -973,6 +982,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.duplicate_row_button.setVisible(False)
             self.delete_row_button.setVisible(False)
             self.load_file_button.setVisible(True)
+            self.load_db_button.setVisible(True)
             self.run_study_button.setEnabled(True)
             self._log_message("📁 Switched to file mode")
 
@@ -1148,6 +1158,277 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             )
             self._update_summary_from_tables()
 
+    def _load_data_from_database(self):
+        """Load measurement data from database table mesuresqualitat where maquina='gompc_projectes'"""
+        try:
+            # Ask user how many records to load
+            from PyQt5.QtWidgets import QInputDialog
+            
+            num_records, ok = QInputDialog.getInt(
+                self, 
+                "Database Load Options", 
+                "How many different elements would you like to load?\n(Up to 5 measurements per element will be grouped by Project+Lot+Element)",
+                5,  # default value
+                1,  # minimum value
+                50,  # maximum value - increased since we're loading element groups
+                1   # step
+            )
+            
+            if not ok:
+                self._log_message("Database load cancelled by user", "INFO")
+                return
+                
+            self._log_message(f"🔍 Connecting to database to load grouped measurements for {num_records} different elements...")
+            
+            # Import database adapter
+            from src.database.quality_measurement_adapter import QualityMeasurementDBAdapter
+            from src.services.network_scanner import NetworkScanner
+            
+            # Load database configuration
+            scanner = NetworkScanner()
+            db_config = scanner.load_db_config()
+            
+            if not db_config:
+                raise Exception("Could not load database configuration")
+            
+            # Create database adapter - db_config is already the primary config
+            db_adapter = QualityMeasurementDBAdapter({'primary': db_config})
+            
+            if not db_adapter.connect():
+                raise Exception("Could not connect to database")
+            
+            self._log_message("✅ Database connection established")
+            
+            # Query to get measurements grouped by id_referencia_client, id_lot, and element
+            # This will give us multiple measurements for the same element/project/lot combination
+            query = f"""
+            WITH grouped_measurements AS (
+                SELECT 
+                    element as element_id,
+                    COALESCE(property, COALESCE(element, 'Measurement')) as description,
+                    COALESCE(nominal, 0) as nominal,
+                    COALESCE(tolerancia_negativa, 0) as lower_tolerance,
+                    COALESCE(tolerancia_positiva, 0) as upper_tolerance,
+                    actual as measurement_value,
+                    desviacio as deviation_value,
+                    check_value,
+                    data_hora,
+                    client,
+                    id_referencia_client,
+                    id_lot,
+                    COALESCE(cavitat, '') as cavitat,
+                    COALESCE(pieza, '') as pieza,
+                    COALESCE(datum, '') as datum,
+                    COALESCE(fase, '') as fase,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY id_referencia_client, id_lot, element 
+                        ORDER BY data_hora DESC
+                    ) as measurement_rank
+                FROM mesuresqualitat 
+                WHERE maquina = 'gompc_projectes' 
+                    AND element IS NOT NULL 
+                    AND id_referencia_client IS NOT NULL 
+                    AND id_lot IS NOT NULL
+            )
+            SELECT 
+                element_id,
+                description,
+                nominal,
+                lower_tolerance,
+                upper_tolerance,
+                measurement_value,
+                deviation_value,
+                check_value,
+                data_hora,
+                client,
+                id_referencia_client,
+                id_lot,
+                cavitat,
+                pieza,
+                datum,
+                fase,
+                measurement_rank
+            FROM grouped_measurements 
+            WHERE measurement_rank <= 5
+            ORDER BY id_referencia_client, id_lot, element_id, measurement_rank
+            LIMIT {num_records * 5}
+            """
+            
+            # Execute query and get DataFrame
+            df = db_adapter.execute_query_to_dataframe(query)
+            
+            if df.empty:
+                self._log_message("⚠️ No grouped measurement data found in database for maquina='gompc_projectes'", "WARNING")
+                QMessageBox.information(
+                    self, 
+                    "No Data Found", 
+                    "No measurement data found in database for machine 'gompc_projectes'\n\n"
+                    "Make sure the table 'mesuresqualitat' contains records with:\n"
+                    "• maquina = 'gompc_projectes'\n"
+                    "• Valid element, id_referencia_client, and id_lot values"
+                )
+                return
+            
+            # Transform data to dimensional analysis format
+            dimensional_df = self._transform_db_data_to_dimensional_format(df)
+            
+            # Populate table with transformed data
+            self._populate_table_from_dataframe(dimensional_df)
+            
+            # Log detailed success information
+            total_measurements = dimensional_df[[f'measurement_{i}' for i in range(1, 6)]].notna().sum().sum()
+            elements_with_data = dimensional_df[dimensional_df['measurement_count'] > 0].shape[0]
+            
+            self._log_message(
+                f"✅ Successfully loaded {len(dimensional_df)} element records with {total_measurements} total measurements from database",
+                "INFO"
+            )
+            self._log_message(
+                f"📊 Elements with measurement data: {elements_with_data}/{len(dimensional_df)}",
+                "INFO"
+            )
+            
+            self.run_study_button.setEnabled(True)  # Enable run button
+            
+            # Close database connection
+            db_adapter.close()
+            
+            # Update summary
+            if hasattr(self, "summary_widget"):
+                total_measurements = dimensional_df[[f'measurement_{i}' for i in range(1, 6)]].notna().sum().sum()
+                self.summary_widget.record_edit(
+                    f"Loaded {len(dimensional_df)} elements with {total_measurements} measurements from database (gompc_projectes)"
+                )
+                self._update_summary_from_tables()
+                
+        except Exception as e:
+            error_msg = f"Failed to load data from database: {str(e)}"
+            self._log_message(error_msg, "ERROR")
+            QMessageBox.critical(self, "Database Load Error", error_msg)
+
+    def _transform_db_data_to_dimensional_format(self, db_df: pd.DataFrame) -> pd.DataFrame:
+        """Transform database data format to dimensional analysis format with proper grouping"""
+        try:
+            if db_df.empty:
+                return pd.DataFrame()
+            
+            # Group by id_referencia_client, id_lot, and element_id to aggregate measurements
+            grouped_data = []
+            
+            # Create grouping key
+            grouping_columns = ['id_referencia_client', 'id_lot', 'element_id']
+            
+            for group_key, group_df in db_df.groupby(grouping_columns):
+                id_ref, lot, element_id = group_key
+                
+                # Take the first row for base information (all should be the same for grouped data)
+                base_row = group_df.iloc[0]
+                
+                # Build base record with safe value extraction
+                record = {
+                    'element_id': str(element_id).strip(),
+                    'description': str(base_row.get('description', 'No description')).strip(),
+                    'nominal': self._safe_float_conversion(base_row.get('nominal', 0)),
+                    'batch': str(lot).strip(),
+                    'cavity': str(base_row.get('cavitat', '')).strip(),
+                    'class': str(base_row.get('pieza', '')).strip(),
+                    'datum_element_id': str(base_row.get('datum', '')).strip(),
+                    'evaluation_type': 'Normal',  # Default evaluation type
+                    'measuring_instrument': 'GOMPC'
+                }
+                
+                # Handle tolerances safely
+                lower_tol = self._safe_float_conversion(base_row.get('lower_tolerance', 0))
+                upper_tol = self._safe_float_conversion(base_row.get('upper_tolerance', 0))
+                
+                # Set tolerances (None if zero or invalid)
+                record['lower_tolerance'] = lower_tol if lower_tol != 0 else None
+                record['upper_tolerance'] = upper_tol if upper_tol != 0 else None
+                
+                # Collect all measurements for this group (up to 5)
+                measurements = []
+                for _, measurement_row in group_df.head(5).iterrows():
+                    measurement_value = self._safe_float_conversion(measurement_row.get('measurement_value'))
+                    if measurement_value is not None:
+                        measurements.append(measurement_value)
+                
+                # Fill measurement columns (measurement_1 to measurement_5)
+                for i in range(1, 6):
+                    if i <= len(measurements):
+                        record[f'measurement_{i}'] = measurements[i-1]
+                    else:
+                        record[f'measurement_{i}'] = None
+                
+                # Add additional fields from database
+                record['client'] = str(base_row.get('client', self.client_name)).strip()
+                record['project_ref'] = str(id_ref).strip()
+                record['timestamp'] = str(base_row.get('data_hora', ''))
+                record['fase'] = str(base_row.get('fase', '')).strip()
+                record['measurement_count'] = len(measurements)
+                
+                # Add some metadata for tracking
+                record['db_group_key'] = f"{id_ref}_{lot}_{element_id}"
+                record['latest_measurement_time'] = str(group_df['data_hora'].max())
+                
+                grouped_data.append(record)
+                
+                # Log group information
+                self._log_message(
+                    f"Grouped element '{element_id}' (Project: {id_ref}, Lot: {lot}) - {len(measurements)} measurements",
+                    "DEBUG"
+                )
+            
+            result_df = pd.DataFrame(grouped_data)
+            
+            # Sort by project, lot, and element for better organization
+            if not result_df.empty:
+                result_df = result_df.sort_values(['project_ref', 'batch', 'element_id'])
+                result_df = result_df.reset_index(drop=True)
+            
+            self._log_message(
+                f"Transformed {len(db_df)} database records into {len(result_df)} dimensional analysis records",
+                "INFO"
+            )
+            
+            # Log summary of what was loaded
+            if not result_df.empty:
+                projects = result_df['project_ref'].nunique()
+                lots = result_df['batch'].nunique()
+                elements = result_df['element_id'].nunique()
+                total_measurements = result_df[[f'measurement_{i}' for i in range(1, 6)]].notna().sum().sum()
+                
+                self._log_message(
+                    f"📊 Loaded data summary: {projects} projects, {lots} lots, {elements} elements, {total_measurements} total measurements",
+                    "INFO"
+                )
+            
+            return result_df
+            
+        except Exception as e:
+            self._log_message(f"Error transforming database data: {str(e)}", "ERROR")
+            raise
+
+    def _safe_float_conversion(self, value) -> Optional[float]:
+        """Safely convert value to float, returning None if invalid"""
+        try:
+            if value is None or pd.isna(value):
+                return None
+            
+            if isinstance(value, str):
+                value = value.strip()
+                if value == '' or value.lower() in ['null', 'none', 'nan']:
+                    return None
+            
+            converted = float(value)
+            # Check for reasonable range (avoid extreme values)
+            if -1e10 <= converted <= 1e10:
+                return converted
+            else:
+                return None
+                
+        except (ValueError, TypeError, OverflowError):
+            return None
+
     def _mark_unsaved_changes(self):
         """Mark unsaved changes and update summary - OPTIMIZED VERSION"""
         self.unsaved_changes = True
@@ -1320,7 +1601,39 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         """Enable/disable UI during processing"""
         self.mode_toggle.setEnabled(enabled)
         self.load_file_button.setEnabled(enabled)
+        self.load_db_button.setEnabled(enabled)
         self.add_row_button.setEnabled(enabled)
         self.duplicate_row_button.setEnabled(enabled)
         self.delete_row_button.setEnabled(enabled)
         self.run_study_button.setEnabled(enabled)
+
+    def _check_auto_load_database(self):
+        """Check if user wants to auto-load data from database"""
+        try:
+            # Only offer auto-load if no data is already loaded
+            if hasattr(self, 'table_manager') and self.table_manager:
+                current_df = self.table_manager._get_dataframe_from_tables()
+                if not current_df.empty:
+                    self._log_message("Data already loaded, skipping auto-load check", "DEBUG")
+                    return
+            
+            # Ask user if they want to load data from database
+            reply = QMessageBox.question(
+                self,
+                "Auto-load Database Data",
+                "Would you like to automatically load the latest measurement data from the database?\n\n"
+                "• Source: mesuresqualitat table (machine: gompc_projectes)\n"
+                "• Grouping: Up to 5 measurements per Element+Project+Lot combination\n"
+                "• Data: Latest measurements for dimensional analysis",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes
+            )
+            
+            if reply == QMessageBox.Yes:
+                self._log_message("🔄 User opted for auto-loading database data", "INFO")
+                self._load_data_from_database()
+            else:
+                self._log_message("User declined auto-loading database data", "DEBUG")
+                
+        except Exception as e:
+            self._log_message(f"Error in auto-load check: {str(e)}", "ERROR")
