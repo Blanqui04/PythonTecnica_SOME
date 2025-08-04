@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional, Tuple
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
-from openpyxl.drawing.image import Image
+# from openpyxl.drawing.image import Image
 from openpyxl.worksheet.worksheet import Worksheet
 #from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
@@ -388,10 +388,9 @@ class DataExportService:
         return current_row
 
     def _add_automotive_data_row(self, ws: Worksheet, row: int, result: DimensionalResult, num_columns: int, row_index: int):
-        """Add data row with automotive industry formatting standards - using pre-calculated values from DimensionalResult"""
-
-        # --- FIX: Robust evaluation_type detection for notes ---
-        # Try to get evaluation_type from result, fallback to checking description or class for 'note'
+        """Add data row with automotive industry formatting standards - ENHANCED ALIGNMENT"""
+        
+        # Get evaluation type and classification
         evaluation_type = (
             getattr(result, 'evaluation_type', None)
             or getattr(result, 'feature_type', None)
@@ -399,12 +398,11 @@ class DataExportService:
         )
         evaluation_type = str(evaluation_type).strip().lower()
 
-        # Fallback: if evaluation_type is empty, check if description or class hints at note
+        # Check if it's a note
         is_notes = False
         if evaluation_type in ['note', 'notes']:
             is_notes = True
         elif not evaluation_type:
-            # Try to infer from description or class
             desc = (getattr(result, 'description', '') or '').lower()
             classe = (getattr(result, 'classe', '') or '').lower()
             if 'note' in desc or 'nota' in desc or classe == 'note':
@@ -417,9 +415,7 @@ class DataExportService:
         measurements = result.measurements if result.measurements else []
         has_measurements = bool(measurements and any(m is not None for m in measurements))
 
-        print(f"[TABLE] Adding row {row} for element_id={result.element_id} | eval_type={evaluation_type} | class={dimension_class} | is_note={is_notes}")
-
-        # If there are no measurements, force all stats/measurements/status to empty/TO CHECK
+        # Prepare data using pre-calculated values
         if not has_measurements or is_notes:
             mean_val = None
             std_val = None
@@ -435,7 +431,10 @@ class DataExportService:
             max_val = max(measurements) if measurements else None
             measurements_out = [self._format_measurement(m) for m in (measurements + [None] * 5)[:5]]
             status = result.status.value if hasattr(result.status, "value") else str(result.status)
-            # Only show std, pp, ppk if statistical
+            
+            # Normalize status for display
+            status = self._normalize_status(status)
+            
             if is_statistical:
                 std_val = result.std_dev if hasattr(result, 'std_dev') and result.std_dev is not None else None
                 pp_val = result.pp if hasattr(result, 'pp') and result.pp is not None else None
@@ -445,7 +444,6 @@ class DataExportService:
                 pp_val = None
                 ppk_val = None
 
-        # Prepare data using pre-calculated values
         data = [
             result.element_id,
             result.description or '',
@@ -475,46 +473,53 @@ class DataExportService:
             else:
                 cell.font = self.DATA_FONT
 
-            # Alignment
-            if col == 1:
+            # ENHANCED ALIGNMENT for professional automotive reports
+            if col == 1:  # Element ID
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-            elif col == 2:
-                cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
-            elif col == 3:
-                cell.alignment = Alignment(horizontal='left', vertical='center')
-            elif 4 <= col <= 8:
-                cell.alignment = Alignment(horizontal='left', vertical='center')
-            elif 9 <= col <= 14:
+            elif col == 2:  # Description
+                if is_notes:
+                    # Notes: left-aligned, top-aligned, wrapped text
+                    cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+                else:
+                    # Regular descriptions: center-aligned both horizontally and vertically
+                    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+            elif col == 3:  # Measuring Instrument
                 cell.alignment = Alignment(horizontal='center', vertical='center')
-            elif col == 15:
+            elif 4 <= col <= 8:  # Measurements M1-M5
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+            elif 9 <= col <= 14:  # Statistics (Min, Max, Mean, Std, Pp, Ppk)
+                cell.alignment = Alignment(horizontal='center', vertical='center')
+            elif col == 15:  # Status
                 cell.alignment = Alignment(horizontal='center', vertical='center')
 
             # Background fills
-            if col == 15:
-                self._apply_status_formatting(cell, self._normalize_status(status))
+            if col == 15:  # Status column
+                self._apply_status_formatting(cell, status)
             elif is_statistical:
                 cell.fill = self.STATISTICAL_FILL
             elif is_alternate:
                 cell.fill = self.ALT_ROW_FILL
 
             # Borders with grouping separators
-            if col == 4:
+            if col == 4:  # After measuring instrument
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 9:
+            elif col == 9:  # After measurements
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 12:
+            elif col == 12:  # After mean
                 cell.border = self.LEFT_MEDIUM_BORDER
-            elif col == 15:
+            elif col == 15:  # Status column
                 cell.border = self.LEFT_MEDIUM_BORDER
             else:
                 cell.border = self.THIN_BORDER
 
-        if not has_measurements or is_notes:
-            ws.row_dimensions[row].height = 40
+        # Set row height - taller for notes, standard for others
+        if is_notes:
+            ws.row_dimensions[row].height = 45  # Taller for notes with wrapped text
+        else:
+            ws.row_dimensions[row].height = 25  # Standard height for data
 
     def _normalize_status(self, status) -> str:
-        """Normalize status values for consistency - handles both enum and string values"""
-        # Handle enum values
+        """Normalize status values for automotive industry standards"""
         if hasattr(status, 'value'):
             status_str = status.value
         else:
@@ -522,15 +527,16 @@ class DataExportService:
         
         status_str = status_str.strip().upper()
         
+        # Automotive industry standard status mapping
         status_map = {
-            'GOOD': 'OK', 'PASS': 'OK', 'OK': 'OK', 'PASSED': 'OK',
-            'BAD': 'NOK', 'FAIL': 'NOK', 'NOK': 'NOK', 'NG': 'NOK', 'FAILED': 'NOK',
+            'GOOD': 'OK', 'PASS': 'OK', 'OK': 'OK', 'PASSED': 'OK', 'CONFORMING': 'OK',
+            'BAD': 'NOK', 'FAIL': 'NOK', 'NOK': 'NOK', 'NG': 'NOK', 'FAILED': 'NOK', 'NON_CONFORMING': 'NOK',
             'WARNING': 'WARNING', 'WARN': 'WARNING',
             'T.E.D.': 'T.E.D', 'TED': 'T.E.D', 'T.E.D': 'T.E.D', 'BASIC': 'T.E.D', 'INFORMATIVE': 'T.E.D',
-            'TO CHECK': 'TO CHECK', 'TO_CHECK': 'TO CHECK', 'CHECK': 'TO CHECK'
+            'TO CHECK': 'TO CHECK', 'TO_CHECK': 'TO CHECK', 'CHECK': 'TO CHECK', 'PENDING': 'TO CHECK'
         }
         
-        return status_map.get(status_str, 'WARNING')
+        return status_map.get(status_str, 'TO CHECK')
     
     def _format_measurement(self, value) -> str:
         """Format measurement values to 2 decimals, left aligned"""
@@ -582,111 +588,241 @@ class DataExportService:
         start_row: int, 
         logo_path: Optional[str] = None
     ) -> int:
-        """Add professional PPAP header for automotive industry"""
+        """Add professional PPAP header for automotive industry - ENHANCED FORMAT"""
         current_row = start_row
         
-        # Logo and title row
-        if logo_path and os.path.exists(logo_path):
-            try:
-                img = Image(logo_path)
-                img.height = 50
-                img.width = 100
-                ws.add_image(img, f'A{current_row}')
-            except Exception as e:
-                self.logger.warning(f"Could not add logo: {e}")
-        
-        # Main title
-        ws.merge_cells(f'E{current_row}:L{current_row}')
-        title_cell = ws.cell(row=current_row, column=5, value="DIMENSIONAL ANALYSIS REPORT")
-        title_cell.font = self.TITLE_FONT
+        # TOP SECTION - Title and Document Control
+        # Main Title (spans entire width)
+        ws.merge_cells(f'A{current_row}:O{current_row}')
+        title_cell = ws.cell(row=current_row, column=1, value="PRODUCTION PART APPROVAL PROCESS - DIMENSIONAL RESULTS")
+        title_cell.font = Font(name='Arial', size=16, bold=True, color='FFFFFF')
+        title_cell.fill = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
         title_cell.alignment = Alignment(horizontal='center', vertical='center')
+        title_cell.border = self.THICK_BORDER
+        ws.row_dimensions[current_row].height = 35
+        current_row += 1
         
-        # Report type
-        ws.merge_cells(f'M{current_row}:O{current_row}')
-        type_cell = ws.cell(row=current_row, column=13, value=f"{metadata.get('report_type', 'PPAP')} REPORT")
-        type_cell.font = Font(name='Arial', size=12, bold=True, color='E74C3C')
-        type_cell.alignment = Alignment(horizontal='center', vertical='center')
+        # Subtitle with report type
+        ws.merge_cells(f'A{current_row}:O{current_row}')
+        subtitle_cell = ws.cell(row=current_row, column=1, value=f"HOJA DE APROBACIÓN DIMENSIONAL - RESULTADOS / {metadata.get('report_type', 'PPAP')} REPORT")
+        subtitle_cell.font = Font(name='Arial', size=12, bold=True, color='2C3E50')
+        subtitle_cell.alignment = Alignment(horizontal='center', vertical='center')
+        subtitle_cell.border = self.MEDIUM_BORDER
+        ws.row_dimensions[current_row].height = 25
+        current_row += 2
         
-        current_row += 3
+        # COMPANY AND PART INFORMATION SECTION
+        # Left side - Supplier Information
+        ws.cell(row=current_row, column=1, value="Proveedor / Supplier:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'B{current_row}:F{current_row}')
+        ws.cell(row=current_row, column=2, value=metadata.get('client_name', '')).font = Font(name='Arial', size=10)
         
-        # Information table - automotive specific
-        info_data = [
-            ('Client / Supplier:', metadata.get('client_name', ''), 'Part Number:', metadata.get('part_number', '')),
-            ('Drawing Number:', metadata.get('drawing_number', ''), 'Batch Number:', metadata.get('batch_number', '')),
-            ('Project Reference:', metadata.get('project_ref', ''), 'Report Date:', metadata.get('report_date', '')),
-            ('Quality Facility:', metadata.get('quality_facility', ''), 'Normative:', metadata.get('normative', 'ISO 2768-m')),
-            ('Project Leader:', metadata.get('project_leader_name', ''), 'Inspector:', metadata.get('inspector', ''))
-        ]
+        # Right side - Part Information  
+        ws.cell(row=current_row, column=8, value="Referencia/Índice / Part No. / Issue:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'I{current_row}:O{current_row}')
+        ws.cell(row=current_row, column=9, value=metadata.get('part_number', '')).font = Font(name='Arial', size=10)
         
-        for left_label, left_value, right_label, right_value in info_data:
-            # Left side
-            ws.cell(row=current_row, column=1, value=left_label).font = self.SUBTITLE_FONT
-            ws.merge_cells(f'B{current_row}:G{current_row}')
-            ws.cell(row=current_row, column=2, value=left_value).font = self.DATA_FONT
-            
-            # Right side  
-            ws.cell(row=current_row, column=9, value=right_label).font = self.SUBTITLE_FONT
-            ws.merge_cells(f'J{current_row}:O{current_row}')
-            ws.cell(row=current_row, column=10, value=right_value).font = self.DATA_FONT
-            
-            # Apply borders
-            for col in range(1, 16):
-                ws.cell(row=current_row, column=col).border = self.THIN_BORDER
-            
-            current_row += 1
+        # Apply borders to entire row
+        for col in range(1, 16):
+            ws.cell(row=current_row, column=col).border = self.THIN_BORDER
+        current_row += 1
         
+        # Part Description
+        ws.cell(row=current_row, column=1, value="Descripción / Part Name:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'B{current_row}:F{current_row}')
+        ws.cell(row=current_row, column=2, value=metadata.get('part_description', metadata.get('project_ref', ''))).font = Font(name='Arial', size=10)
+        
+        # Drawing Number/Revision
+        ws.cell(row=current_row, column=8, value="Plano/Rev. / Drawing No./Rev.:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'I{current_row}:O{current_row}')
+        drawing_info = f"{metadata.get('drawing_number', '')} / {metadata.get('drawing_revision', metadata.get('drawing_number', '').split('/')[-1] if '/' in metadata.get('drawing_number', '') else 'Rev')}"
+        ws.cell(row=current_row, column=9, value=drawing_info).font = Font(name='Arial', size=10)
+        
+        for col in range(1, 16):
+            ws.cell(row=current_row, column=col).border = self.THIN_BORDER
+        current_row += 1
+        
+        # Batch/Lot Number and Cavity
+        ws.cell(row=current_row, column=1, value="Nº Lot / Batch No.:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'B{current_row}:F{current_row}')
+        ws.cell(row=current_row, column=2, value=metadata.get('batch_number', '')).font = Font(name='Arial', size=10)
+        
+        ws.cell(row=current_row, column=8, value="Nº cavidad / Cavity No.:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'I{current_row}:O{current_row}')
+        ws.cell(row=current_row, column=9, value=metadata.get('cavity_number', '1')).font = Font(name='Arial', size=10)
+        
+        for col in range(1, 16):
+            ws.cell(row=current_row, column=col).border = self.THIN_BORDER
+        current_row += 1
+        
+        # Quality Department and Report Info
+        ws.cell(row=current_row, column=1, value="Unidad de inspección / Name of Inspection Facility:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'B{current_row}:F{current_row}')
+        ws.cell(row=current_row, column=2, value=metadata.get('quality_facility', 'Quality Dept.')).font = Font(name='Arial', size=10)
+        
+        ws.cell(row=current_row, column=8, value="Nº informe / Report numb.:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'I{current_row}:O{current_row}')
+        report_number = f"{metadata.get('project_ref', '')}/{datetime.now().strftime('%y/%m')}"
+        ws.cell(row=current_row, column=9, value=report_number).font = Font(name='Arial', size=10)
+        
+        for col in range(1, 16):
+            ws.cell(row=current_row, column=col).border = self.THIN_BORDER
+        current_row += 1
+        
+        # Report Date and Protocol
+        ws.cell(row=current_row, column=1, value="Report Date:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'B{current_row}:F{current_row}')
+        ws.cell(row=current_row, column=2, value=metadata.get('report_date', datetime.now().strftime('%d/%m/%Y'))).font = Font(name='Arial', size=10)
+        
+        ws.cell(row=current_row, column=8, value="According metrology protocol:").font = Font(name='Arial', size=10, bold=True)
+        ws.merge_cells(f'I{current_row}:O{current_row}')
+        # Get tolerance standard from metadata or use default
+        tolerance_standard = metadata.get('tolerance_standard', metadata.get('normative', 'ISO 2768-m'))
+        protocol = f"ITM-1 / {tolerance_standard}"
+        ws.cell(row=current_row, column=9, value=protocol).font = Font(name='Arial', size=10)
+        
+        for col in range(1, 16):
+            ws.cell(row=current_row, column=col).border = self.THICK_BORDER
+        
+        # Set row heights for professional appearance
+        for row in range(start_row + 2, current_row + 1):
+            ws.row_dimensions[row].height = 22
+        
+        current_row += 2
         return current_row
 
     def _add_ppap_footer(self, ws: Worksheet, metadata: Dict[str, Any], start_row: int):
-        """Add professional PPAP footer with signatures for automotive compliance"""
-        current_row = start_row
+        """Add professional PPAP footer with signature areas and notes - ENHANCED"""
+        current_row = start_row + 2
         
-        # Notes section
+        # NOTES SECTION
         ws.merge_cells(f'A{current_row}:O{current_row}')
-        notes_cell = ws.cell(row=current_row, column=1, value="NOTES / OBSERVATIONS:")
-        notes_cell.font = self.SUBTITLE_FONT
-        notes_cell.border = self.THIN_BORDER
+        notes_header = ws.cell(row=current_row, column=1, value="NOTES / OBSERVACIONES:")
+        notes_header.font = Font(name='Arial', size=12, bold=True, color='1B4F72')
+        notes_header.fill = PatternFill(start_color='EBF3FD', end_color='EBF3FD', fill_type='solid')
+        notes_header.alignment = Alignment(horizontal='left', vertical='center')
+        notes_header.border = self.MEDIUM_BORDER
+        ws.row_dimensions[current_row].height = 25
         current_row += 1
         
-        # Notes box (4 rows)
-        for i in range(4):
-            for col in range(1, 16):
-                cell = ws.cell(row=current_row, column=col, value='')
-                cell.border = self.THIN_BORDER
-            ws.row_dimensions[current_row].height = 20
+        # Notes content area (6 rows for adequate space)
+        for i in range(6):
+            ws.merge_cells(f'A{current_row}:O{current_row}')
+            note_cell = ws.cell(row=current_row, column=1, value='')
+            note_cell.border = self.THIN_BORDER
+            note_cell.fill = PatternFill(start_color='FAFBFC', end_color='FAFBFC', fill_type='solid') if i % 2 == 0 else PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
+            ws.row_dimensions[current_row].height = 25
             current_row += 1
         
         current_row += 1
         
-        # Signature section
-        # Project Leader
-        ws.cell(row=current_row, column=2, value="PROJECT LEADER:").font = self.SUBTITLE_FONT
-        ws.cell(row=current_row + 1, column=2, value=metadata.get('project_leader_name', '')).font = self.DATA_FONT
-        ws.cell(row=current_row + 2, column=2, value=metadata.get('project_leader_title', 'Quality Engineer')).font = self.SMALL_FONT
-        ws.cell(row=current_row + 3, column=2, value="Signature: _________________").font = self.DATA_FONT
+        # SIGNATURE SECTION
+        # Section title
+        ws.merge_cells(f'A{current_row}:O{current_row}')
+        signature_header = ws.cell(row=current_row, column=1, value="APPROVAL / APROBACIÓN")
+        signature_header.font = Font(name='Arial', size=12, bold=True, color='1B4F72')
+        signature_header.fill = PatternFill(start_color='EBF3FD', end_color='EBF3FD', fill_type='solid')
+        signature_header.alignment = Alignment(horizontal='center', vertical='center')
+        signature_header.border = self.MEDIUM_BORDER
+        ws.row_dimensions[current_row].height = 25
+        current_row += 1
         
-        # Date
-        ws.cell(row=current_row, column=10, value="DATE:").font = self.SUBTITLE_FONT
-        ws.cell(row=current_row + 1, column=10, value=metadata.get('report_date', '')).font = self.DATA_FONT
+        # Signature table headers
+        signature_headers = [
+            "Unterschrift / Signature",
+            "Titel / Title", 
+            "Datum / Date"
+        ]
+        
+        # Headers row
+        ws.cell(row=current_row, column=1, value=signature_headers[0]).font = Font(name='Arial', size=10, bold=True)
+        ws.cell(row=current_row, column=1).alignment = Alignment(horizontal='center', vertical='center')
+        ws.cell(row=current_row, column=1).fill = PatternFill(start_color='D5DBDB', end_color='D5DBDB', fill_type='solid')
+        ws.merge_cells(f'A{current_row}:G{current_row}')
+        
+        ws.cell(row=current_row, column=8, value=signature_headers[1]).font = Font(name='Arial', size=10, bold=True)
+        ws.cell(row=current_row, column=8).alignment = Alignment(horizontal='center', vertical='center')
+        ws.cell(row=current_row, column=8).fill = PatternFill(start_color='D5DBDB', end_color='D5DBDB', fill_type='solid')
+        ws.merge_cells(f'H{current_row}:L{current_row}')
+        
+        ws.cell(row=current_row, column=13, value=signature_headers[2]).font = Font(name='Arial', size=10, bold=True)
+        ws.cell(row=current_row, column=13).alignment = Alignment(horizontal='center', vertical='center')
+        ws.cell(row=current_row, column=13).fill = PatternFill(start_color='D5DBDB', end_color='D5DBDB', fill_type='solid')
+        ws.merge_cells(f'M{current_row}:O{current_row}')
+        
+        for col in range(1, 16):
+            ws.cell(row=current_row, column=col).border = self.MEDIUM_BORDER
+        
+        ws.row_dimensions[current_row].height = 25
+        current_row += 1
+        
+        # PROJECT LEADER signature line
+        ws.merge_cells(f'A{current_row}:G{current_row}')
+        signature_line = ws.cell(row=current_row, column=1, value="")
+        signature_line.border = self.THIN_BORDER
+        signature_line.fill = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
+        
+        ws.merge_cells(f'H{current_row}:L{current_row}')
+        title_cell = ws.cell(row=current_row, column=8, value="PROJECT LEADER")
+        title_cell.font = Font(name='Arial', size=10, bold=True)
+        title_cell.alignment = Alignment(horizontal='center', vertical='center')
+        title_cell.border = self.THIN_BORDER
+        
+        ws.merge_cells(f'M{current_row}:O{current_row}')
+        date_cell = ws.cell(row=current_row, column=13, value=metadata.get('report_date', datetime.now().strftime('%d/%m/%y')))
+        date_cell.font = Font(name='Arial', size=10)
+        date_cell.alignment = Alignment(horizontal='center', vertical='center')
+        date_cell.border = self.THIN_BORDER
+        
+        ws.row_dimensions[current_row].height = 30
+        current_row += 1
+        
+        # Project leader name
+        ws.merge_cells(f'A{current_row}:G{current_row}')
+        name_cell = ws.cell(row=current_row, column=1, value="")
+        name_cell.border = self.THIN_BORDER
+        
+        ws.merge_cells(f'H{current_row}:L{current_row}')
+        leader_name = ws.cell(row=current_row, column=8, value=metadata.get('project_leader_name', ''))
+        leader_name.font = Font(name='Arial', size=10)
+        leader_name.alignment = Alignment(horizontal='center', vertical='center')
+        leader_name.border = self.THIN_BORDER
+        
+        ws.merge_cells(f'M{current_row}:O{current_row}')
+        empty_date = ws.cell(row=current_row, column=13, value="")
+        empty_date.border = self.THIN_BORDER
+        
+        ws.row_dimensions[current_row].height = 25
+        current_row += 2
+        
+        # COMPLIANCE FOOTER
+        ws.merge_cells(f'A{current_row}:O{current_row}')
+        compliance_footer = ws.cell(row=current_row, column=1, 
+                                value=f"This report complies with {metadata.get('normative', 'ISO 2768-m')} standards and automotive PPAP requirements. "
+                                        f"Generated by Dimensional Analysis System v2.0 - {metadata.get('export_timestamp', datetime.now().isoformat())}")
+        compliance_footer.font = Font(name='Arial', size=8, italic=True, color='566573')
+        compliance_footer.alignment = Alignment(horizontal='center', vertical='center')
+        compliance_footer.border = self.THIN_BORDER
+        ws.row_dimensions[current_row].height = 20
 
     def _set_automotive_column_widths(self, ws: Worksheet):
-        """Set column widths optimized for automotive PPAP reports with enhanced headers"""
+        """Set column widths optimized for automotive PPAP reports with professional print layout"""
         column_widths = {
-            'A': 12,   # Element ID
-            'B': 35,   # Description (wider for better readability)
-            'C': 16,   # Measuring Instrument (slightly wider)
-            'D': 8,    # M1
-            'E': 8,    # M2
-            'F': 8,    # M3
-            'G': 8,    # M4
-            'H': 8,    # M5
-            'I': 9,    # Min Value (slightly wider)
-            'J': 9,    # Max Value (slightly wider)
-            'K': 9,    # Mean Value (slightly wider)
-            'L': 8,    # Std Dev
-            'M': 8,    # Pp
-            'N': 8,    # Ppk
-            'O': 12    # Status (wider for "TO CHECK")
+            'A': 10,   # Element ID - slightly narrower for print
+            'B': 30,   # Description - optimized for automotive descriptions
+            'C': 14,   # Measuring Instrument
+            'D': 7,    # M1 - optimized for measurements
+            'E': 7,    # M2
+            'F': 7,    # M3
+            'G': 7,    # M4
+            'H': 7,    # M5
+            'I': 8,    # Min Value
+            'J': 8,    # Max Value
+            'K': 8,    # Mean Value
+            'L': 7,    # Std Dev
+            'M': 7,    # Pp
+            'N': 7,    # Ppk
+            'O': 10    # Status
         }
         
         for col, width in column_widths.items():
@@ -967,21 +1103,41 @@ class DataExportService:
         }
 
     def _set_print_settings(self, ws: Worksheet):
-        """Set professional print settings for automotive reports"""
+        """Set professional print settings for automotive reports - ENHANCED"""
+        # Page setup for A4 portrait
         ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
         ws.page_setup.paperSize = ws.PAPERSIZE_A4
-        ws.page_setup.fitToPage = True
-        ws.page_setup.fitToHeight = True
-        ws.page_setup.fitToWidth = 1
         
-        # Set margins for automotive standard
+        # Professional margins for automotive reports
         ws.page_margins = PageMargins(
-            left=0.5, right=0.5, top=0.75, bottom=0.75, 
-            header=0.3, footer=0.3
+            left=0.7,      # 18mm
+            right=0.7,     # 18mm  
+            top=0.75,      # 19mm
+            bottom=0.75,   # 19mm
+            header=0.3,    # 8mm
+            footer=0.3     # 8mm
         )
         
-        # Print titles (repeat first row on each page)
-        ws.print_title_rows = '1:1'
+        # Print settings for professional output
+        ws.page_setup.fitToPage = True
+        ws.page_setup.fitToHeight = False  # Allow multiple pages
+        ws.page_setup.fitToWidth = 1      # Fit to one page wide
+        ws.page_setup.scale = 100         # Use 100% scale initially
+        
+        # Center horizontally on page
+        ws.page_setup.horizontalCentered = True
+        ws.page_setup.verticalCentered = False
+        
+        # Print quality settings
+        ws.page_setup.draft = False
+        ws.page_setup.cellComments = None
+        ws.page_setup.useFirstPageNumber = True
+        
+        # Repeat header row on each page
+        ws.print_title_rows = '1:12'  # Repeat header rows 1-12 on each page
+        
+        # Print area (auto-adjust based on content)
+        ws.print_area = None  # Auto-detect print area
 
     def generate_export_summary(self, export_paths: Dict[str, str], metadata: Dict[str, Any]) -> str:
         """Generate professional export summary for automotive clients"""
