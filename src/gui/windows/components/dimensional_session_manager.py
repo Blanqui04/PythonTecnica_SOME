@@ -15,7 +15,7 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, Any, Optional
-from src.services.dim_data_export_service import DataExportService
+from src.services.dimensional_export_service import DataExportService
 #from src.database.database_connection import PostgresConn
 
 
@@ -901,9 +901,10 @@ class SessionManager:
         base_metadata = {
             'client_name': self.client_name,
             'project_ref': self.project_ref,
-            'part_number': self.project_ref,  # Part number = project_ref
+            'part_number': self.project_ref,
             'batch_number': self.batch_number,
             'report_type': self._parent.report_type_combo.currentText(),
+            'tolerance_standard': self._parent.tolerance_combo.currentText(),  # NEW: Get from UI
             'manual_mode': getattr(self._parent, 'manual_mode', False),
             'export_timestamp': datetime.now().isoformat(),
             'report_date': datetime.now().strftime('%Y-%m-%d'),
