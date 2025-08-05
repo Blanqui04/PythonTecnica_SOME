@@ -307,7 +307,7 @@ class ExcelReportService:
             # This method might not exist in the current implementation
             # but can be added to SPCChartManager
             return getattr(self.chart_manager, 'get_study_statistics', lambda: {})()
-        except:
+        except Exception:
             return {}
 
     def validate_charts_exist(self) -> Dict[str, List[str]]:
@@ -421,12 +421,12 @@ def example_usage():
     )
     
     if success:
-        print(f"✅ Complete report generated successfully!")
+        print("✅ Complete report generated successfully!")
         print(f"📁 File location: {result}")
         
         # Get summary
         summary = service.get_report_summary()
-        print(f"📊 Report summary:")
+        print("📊 Report summary:")
         print(f"   - Elements analyzed: {summary['elements_count']}")
         print(f"   - Elements: {', '.join(summary['elements'])}")
         
