@@ -1,0 +1,1850 @@
+{
+  "estructura": [
+    [
+      "Dades necessàries per estructurar una Matriu"
+    ],
+    [
+      "1 - Nº Matriu:",
+      "AL-244018"
+    ],
+    [
+      "2 - SOP projecte",
+      "2024-12-01 00:00:00"
+    ],
+    [
+      "3 - EOP projecte",
+      "2030-12-01 00:00:00"
+    ],
+    [
+      "4 - Tool Lifetime",
+      "10000000"
+    ],
+    [
+      "5 - Quantitat Anual:",
+      "600000"
+    ],
+    [
+      "6 - Quantitat Total Projecte:",
+      "3600000"
+    ],
+    [
+      "7 - Referència/es peça:",
+      "666429400A"
+    ],
+    [
+      "8 - Cavitats:",
+      "2 ( 1 + 1 )"
+    ],
+    [
+      "9 - Matricer:",
+      "GST"
+    ],
+    [
+      "10 - Data entrega matriu:",
+      "TBD"
+    ],
+    [
+      "11 - Projecte:",
+      "TESLA OPAL"
+    ],
+    [
+      "12 - Jerarquía:",
+      "Brackets"
+    ],
+    [
+      "13 - Nº Expedient:",
+      "440/23"
+    ],
+    [
+      "14 - Responsable Projecte:",
+      "Enric Torner / Iwona Krol"
+    ],
+    [
+      "Dades necessàries per estructurar una Matèria prima"
+    ],
+    [
+      "1 - Descripció material:",
+      "AHSS800"
+    ],
+    [
+      "2 - Mides (BANDA x PAS x GRUIX):",
+      "162  x  45  x  2,7"
+    ],
+    [
+      "3 - Proveïdor:",
+      "BECKET + POOL"
+    ],
+    [
+      "4 - Preu actualitzat:",
+      "1.362"
+    ],
+    [
+      "5 - Volum Anual:",
+      "600000"
+    ],
+    [
+      "6 - Temps estimat Canvi de Rull:",
+      "20 '"
+    ],
+    [
+      "7 - Pes estimat del Rull:",
+      "2000 Kgr"
+    ],
+    [
+      "Dades necessàries per estructurar un Component / Material Aux."
+    ],
+    [
+      "COMPONENT 1 COMPRA"
+    ],
+    [
+      "1 - Descripció material:"
+    ],
+    [
+      "2 - Mides:"
+    ],
+    [
+      "3 - Proveïdor:"
+    ],
+    [
+      "4 - Preu actualitzat:"
+    ],
+    [
+      "5 - Plànol si cal:"
+    ],
+    [
+      "6 - Volum Anual:"
+    ],
+    [
+      "7 - SOP:",
+      "2024-12-01 00:00:00"
+    ],
+    [
+      "COMPONENT 2 COMPRA"
+    ],
+    [
+      "1 - Descripció material:"
+    ],
+    [
+      "2 - Mides:"
+    ],
+    [
+      "3 - Proveïdor:"
+    ],
+    [
+      "4 - Preu actualitzat:"
+    ],
+    [
+      "5 - Plànol si cal:"
+    ],
+    [
+      "6 - Volum Anual:"
+    ],
+    [
+      "7 - SOP:",
+      "2024-12-01 00:00:00"
+    ],
+    [
+      "COMPONENT 3 COMPRA"
+    ],
+    [
+      "1 - Descripció material:"
+    ],
+    [
+      "2 - Mides:"
+    ],
+    [
+      "3 - Proveïdor:"
+    ],
+    [
+      "4 - Preu actualitzat:"
+    ],
+    [
+      "5 - Plànol si cal:"
+    ],
+    [
+      "6 - Volum Anual:"
+    ],
+    [
+      "7 - SOP:",
+      "2024-12-01 00:00:00"
+    ],
+    [
+      "Dades necessàries per estructurar una peça / conjunt"
+    ],
+    [
+      "1 - Client:",
+      "ALV"
+    ],
+    [
+      "2 - Tipus:  SQB / KSW / MIXTE:",
+      "FULL SOME KSW"
+    ],
+    [
+      "3 - Tipus Facturació: A / B / C:",
+      "B"
+    ],
+    [
+      "4 - Categoria Peça (Bàscula):",
+      "B"
+    ],
+    [
+      "5 - Quantiat Anual:",
+      "600000"
+    ],
+    [
+      "6 - Descripció actualitzada:",
+      "STRAP BRACKET BUCKLE LH"
+    ],
+    [
+      "7 - Referència client:",
+      "666429400A"
+    ],
+    [
+      "8 - Responsables tècnics i de qualitat:",
+      "Enric Torner / Iwona Krol / Frederic Gonzalez"
+    ],
+    [
+      "9 - Projecte:",
+      "TESLA OPAL"
+    ],
+    [
+      "10 - Tractaments:"
+    ],
+    [
+      "* Descripció complerta del tractament 1:",
+      "KTL 15-30 micres"
+    ],
+    [
+      "* proveïdor KSW:",
+      "DEFACTO"
+    ],
+    [
+      "* preu KSW:                   (Ull preu en Euros)",
+      "0.055"
+    ],
+    [
+      "* Descripció complerta del tractament 2:",
+      "0"
+    ],
+    [
+      "* proveïdor KSW:",
+      "0"
+    ],
+    [
+      "* preu KSW:                   (Ull preu en Euros)",
+      "0"
+    ],
+    [
+      "* Descripció complerta del tractament 3:",
+      "0"
+    ],
+    [
+      "* proveïdor KSW:",
+      "0"
+    ],
+    [
+      "* preu KSW:                   (Ull preu en Euros)",
+      "0"
+    ],
+    [
+      "11 - Embalatge:"
+    ],
+    [
+      "Es necessàri un nou embalatge?",
+      "NO"
+    ],
+    [
+      "11.1 - EUROPA"
+    ],
+    [
+      "Caixa:",
+      "3413 - Caixa Cartró 385x285x150 + LID (4118)"
+    ],
+    [
+      "Tapa / Altres:",
+      "0"
+    ],
+    [
+      "Pallet:",
+      "855 - Palet Fusta EUR 1200x800"
+    ],
+    [
+      "Peces / Caixa:",
+      "235"
+    ],
+    [
+      "Caixes / Pallet:",
+      "40"
+    ],
+    [
+      "11.2 - OVERSEAS"
+    ],
+    [
+      "Peces / Caixa:",
+      "0"
+    ],
+    [
+      "Tapa / Altres:",
+      "0"
+    ],
+    [
+      "12 - Pes Brut:",
+      "0.077255775"
+    ],
+    [
+      "13 - Pes Net:",
+      "0.04138"
+    ],
+    [
+      "14 - Ruta:"
+    ],
+    [
+      "* Centre Treball",
+      "CT- Premsa 400 Tn"
+    ],
+    [
+      "* Descripció CT",
+      "Stamping"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "45     / OEE:  44,54%"
+    ],
+    [
+      "* Centre Treball",
+      "CT- 0620"
+    ],
+    [
+      "* Descripció CT",
+      "Deburring"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "10870"
+    ],
+    [
+      "* Centre Treball"
+    ],
+    [
+      "* Descripció CT"
+    ],
+    [
+      "* cpm o (peces/hora) per CT"
+    ],
+    [
+      "* Centre Treball"
+    ],
+    [
+      "* Descripció CT"
+    ],
+    [
+      "* cpm o (peces/hora) per CT"
+    ],
+    [
+      "* Centre Treball"
+    ],
+    [
+      "* Descripció CT"
+    ],
+    [
+      "* cpm o (peces/hora) per CT"
+    ],
+    [
+      "* Matriu",
+      "AL-244018"
+    ],
+    [
+      "* Cavitats",
+      "2 ( 1+1 )"
+    ],
+    [
+      "* Co-producte ( si / no )",
+      "Producte Únic"
+    ],
+    [
+      "* Si hi ha subcontractació ( oferta )"
+    ],
+    [
+      "15 - Plànol actualitzat",
+      "6664294 001"
+    ],
+    [
+      "16 - Cost Peça (Intern SOME)",
+      "0.2109423027077346"
+    ],
+    [
+      "17 - Preu Peça (Oferta a Client)",
+      "0.2965"
+    ],
+    [
+      "18 - Planta Producció Client",
+      "RRS"
+    ],
+    [
+      "PD. La resta d'informació que s'entra ja l'aconseguèix la persona que estructura."
+    ]
+  ],
+  "dades_extra": [
+    {
+      "Key": "ENTRADA DADES FORMULARIS",
+      "Value": NaN
+    },
+    {
+      "Key": "UBICACIÓ CARPETA PROJECTES EN CURS",
+      "Value": "\\\\Server\\some\\Projectes en curs\\AUTOLIV\\666429400_666429500 - BRACKET ( ET i IK )"
+    },
+    {
+      "Key": "TIPUS PROJECTE",
+      "Value": "NEW"
+    },
+    {
+      "Key": "FLOW CHART",
+      "Value": "FULL SOME KSW"
+    },
+    {
+      "Key": "DATA KOP",
+      "Value": "2024-04-11T00:00:00"
+    },
+    {
+      "Key": "DATA ENVIAMENT PSA",
+      "Value": "2024-03-26T00:00:00"
+    },
+    {
+      "Key": "RESPONSABLE COMERCIAL",
+      "Value": "David Bernal"
+    },
+    {
+      "Key": "RESPONSABLE DE PROJECTE",
+      "Value": "Enric Torner / Iwona Krol"
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": "Brackets"
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": "AL-244018"
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": "A040724"
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": 4201197407
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": "20231128 SM RFQ for 44023 ( AUTOLIV PROJECT ) Updated on Dec 19"
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": "W12/24"
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": "W14/24"
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": "TBD"
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": "TBD"
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": "Habituals"
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": "DAP SOME"
+    },
+    {
+      "Key": "TOOL LIFETIME (Unitats)",
+      "Value": 10000000
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": 80700
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": "30 % - 30 % - 40 %"
+    },
+    {
+      "Key": "PLANTA/ES DE DESTÍ",
+      "Value": "RRS"
+    },
+    {
+      "Key": "CONDICIONS ENVIAMENT A CLIENT",
+      "Value": "FCA Some Ksw"
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": 30000
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": "400 Tn"
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST Proveïdor Màquina",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING Màquina",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT Màquina",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A Proveïdor",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENTS ESTAMPACIÓ INTERNA",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 1",
+      "Value": NaN
+    },
+    {
+      "Key": "FLOW CHART",
+      "Value": NaN
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "TOOL LIFETIME (Unitats)",
+      "Value": NaN
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 2",
+      "Value": NaN
+    },
+    {
+      "Key": "FLOW CHART",
+      "Value": NaN
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "TOOL LIFETIME (Unitats)",
+      "Value": NaN
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 3",
+      "Value": NaN
+    },
+    {
+      "Key": "FLOW CHART",
+      "Value": NaN
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "TOOL LIFETIME (Unitats)",
+      "Value": NaN
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 4",
+      "Value": NaN
+    },
+    {
+      "Key": "FLOW CHART",
+      "Value": NaN
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "TOOL LIFETIME (Unitats)",
+      "Value": NaN
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 5",
+      "Value": NaN
+    },
+    {
+      "Key": "FLOW CHART",
+      "Value": NaN
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": NaN
+    },
+    {
+      "Key": "TOOL LIFETIME (Unitats)",
+      "Value": NaN
+    },
+    {
+      "Key": "IMPORT COMANDA CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT COMPRA ",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 1",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 2",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 3",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 4",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PRIMERES MOSTRES  F.O.T A CLIENT",
+      "Value": "W34/24"
+    },
+    {
+      "Key": "QUANTITAT PECES F.O.T. A CLIENT",
+      "Value": 50
+    },
+    {
+      "Key": "DATA ENTREGA PECES PPAP A CLIENT",
+      "Value": "W46"
+    },
+    {
+      "Key": "QUANTITAT PECES PPAP A CLIENT",
+      "Value": 450
+    },
+    {
+      "Key": "S.O.P. CLIENT",
+      "Value": "2024-12-01T00:00:00"
+    },
+    {
+      "Key": "E.O.P. CLIENT",
+      "Value": "2030-12-01T00:00:00"
+    },
+    {
+      "Key": "M.O.Q - INFORMAT A CLIENT",
+      "Value": 9400
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": "20 '"
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": "2000 Kgr"
+    },
+    {
+      "Key": "RESPONSABLE PROJECTE - SOMEKSW",
+      "Value": "Iwona Krol"
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT - SOME SA",
+      "Value": "Frederic Gonzalez"
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT - SOMEKSW",
+      "Value": "Adrian Deka"
+    },
+    {
+      "Key": "RESPONSABLE DE PROCESSOS - SOME SA",
+      "Value": "Guillem Senmartí"
+    },
+    {
+      "Key": "RESPONSABLE DE PROCESSOS - SOMEKSW",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE DE MATRICERIA - SOME SA",
+      "Value": "Marc Anglada"
+    },
+    {
+      "Key": "RESPONSABLE DE MATRICERIA - SOMEKSW",
+      "Value": "Arkadiusz Wisniewski "
+    },
+    {
+      "Key": "RESPONSABLE PRODUCCIÓ SOME - SOME SA",
+      "Value": "Eva Bertran "
+    },
+    {
+      "Key": "RESPONSABLE PRODUCCIÓ - SOMEKSW",
+      "Value": "Ewelina Cygan"
+    },
+    {
+      "Key": "RESPONSABLE COMPRES CLIENT",
+      "Value": "Eduard Dragoi"
+    },
+    {
+      "Key": "RESPONSABLE DISSENY CLIENT",
+      "Value": "Tudor Gogescu"
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT CLIENT (SQA)",
+      "Value": "Alexandru Dranga"
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT CLIENT (SDE)",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": "YES"
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": "YES"
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": "YES"
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": "YES"
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": "YES"
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": "YES"
+    },
+    {
+      "Key": "Es necessàri un nou embalatge?",
+      "Value": "NO"
+    },
+    {
+      "Key": "\\\\Server\\some\\Projectes en curs\\AUTOLIV\\666429400_666429500 - BRACKET ( ET i IK )",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "DRAWINGS RELEASED",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": NaN
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS GENERALS DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": NaN
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": NaN
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": NaN
+    }
+  ],
+  "datasheet": [
+    {
+      "0": NaN,
+      "1": NaN,
+      "2": NaN,
+      "3": NaN,
+      "4": NaN,
+      "5": NaN,
+      "6": NaN,
+      "7": NaN,
+      "8": NaN,
+      "9": NaN,
+      "10": NaN,
+      "11": NaN,
+      "12": NaN,
+      "13": NaN,
+      "14": NaN,
+      "15": NaN,
+      "16": NaN,
+      "17": NaN,
+      "18": NaN,
+      "19": NaN,
+      "20": NaN,
+      "21": NaN,
+      "22": NaN,
+      "23": NaN,
+      "24": NaN,
+      "25": NaN,
+      "26": NaN,
+      "27": NaN,
+      "28": NaN,
+      "29": NaN,
+      "30": NaN,
+      "31": NaN,
+      "32": NaN,
+      "33": NaN,
+      "34": NaN,
+      "35": NaN,
+      "36": NaN,
+      "37": NaN,
+      "38": NaN,
+      "39": NaN,
+      "40": NaN,
+      "41": NaN,
+      "42": NaN,
+      "43": NaN,
+      "44": NaN,
+      "45": NaN,
+      "46": NaN,
+      "47": NaN,
+      "48": NaN,
+      "49": NaN,
+      "50": NaN,
+      "51": NaN,
+      "52": NaN,
+      "53": NaN,
+      "54": NaN,
+      "55": NaN,
+      "56": NaN,
+      "57": NaN,
+      "58": NaN,
+      "59": NaN,
+      "60": NaN,
+      "61": NaN,
+      "62": NaN,
+      "63": NaN,
+      "64": NaN,
+      "65": NaN,
+      "66": NaN,
+      "67": NaN,
+      "68": NaN,
+      "69": NaN,
+      "70": NaN,
+      "71": NaN,
+      "72": NaN,
+      "73": NaN,
+      "74": NaN,
+      "75": NaN,
+      "76": NaN,
+      "77": NaN,
+      "78": NaN,
+      "79": NaN,
+      "80": NaN,
+      "81": NaN,
+      "82": NaN,
+      "83": NaN,
+      "84": NaN,
+      "85": NaN,
+      "86": NaN,
+      "87": NaN,
+      "88": NaN,
+      "89": NaN,
+      "90": NaN,
+      "91": NaN,
+      "92": NaN,
+      "93": NaN,
+      "94": NaN,
+      "95": NaN,
+      "96": NaN,
+      "97": NaN,
+      "98": NaN,
+      "99": NaN,
+      "100": NaN,
+      "101": NaN,
+      "102": NaN,
+      "103": NaN,
+      "104": NaN,
+      "105": NaN,
+      "106": NaN,
+      "107": NaN,
+      "108": NaN,
+      "109": NaN,
+      "110": NaN,
+      "111": NaN,
+      "112": NaN,
+      "113": NaN,
+      "114": NaN,
+      "115": NaN,
+      "116": NaN,
+      "117": NaN,
+      "118": NaN,
+      "119": NaN,
+      "120": NaN,
+      "121": NaN,
+      "122": NaN,
+      "123": NaN,
+      "124": NaN,
+      "125": NaN,
+      "126": NaN,
+      "127": NaN,
+      "128": NaN,
+      "129": NaN,
+      "130": NaN,
+      "131": NaN,
+      "132": NaN,
+      "133": NaN,
+      "134": NaN,
+      "135": NaN,
+      "136": NaN,
+      "137": NaN,
+      "138": NaN,
+      "139": NaN,
+      "140": NaN,
+      "141": NaN,
+      "142": NaN,
+      "143": NaN,
+      "144": NaN,
+      "145": NaN,
+      "146": NaN,
+      "147": NaN,
+      "148": NaN,
+      "149": NaN,
+      "150": NaN,
+      "151": NaN,
+      "152": NaN,
+      "153": NaN,
+      "154": NaN,
+      "155": NaN,
+      "156": NaN,
+      "157": NaN,
+      "158": NaN,
+      "159": NaN,
+      "160": NaN,
+      "161": NaN,
+      "162": NaN,
+      "163": NaN,
+      "164": NaN,
+      "165": NaN,
+      "166": NaN,
+      "167": NaN,
+      "168": NaN,
+      "169": NaN,
+      "170": NaN,
+      "171": NaN,
+      "172": NaN,
+      "173": NaN,
+      "174": NaN,
+      "175": NaN,
+      "176": NaN,
+      "177": NaN,
+      "178": NaN,
+      "179": NaN,
+      "180": NaN,
+      "181": NaN,
+      "182": NaN,
+      "183": NaN,
+      "184": NaN,
+      "185": NaN,
+      "186": NaN,
+      "187": NaN,
+      "188": NaN,
+      "189": NaN,
+      "190": NaN,
+      "191": NaN,
+      "192": NaN,
+      "193": NaN,
+      "194": NaN,
+      "195": NaN,
+      "196": NaN,
+      "197": NaN,
+      "198": NaN,
+      "199": NaN,
+      "200": NaN,
+      "201": NaN,
+      "202": NaN,
+      "203": NaN,
+      "204": NaN,
+      "205": NaN,
+      "206": NaN,
+      "207": NaN,
+      "208": NaN,
+      "209": NaN,
+      "210": NaN,
+      "211": NaN,
+      "212": NaN,
+      "213": NaN,
+      "214": NaN,
+      "215": NaN,
+      "216": NaN,
+      "217": NaN,
+      "218": NaN,
+      "219": NaN,
+      "220": NaN,
+      "221": NaN,
+      "222": NaN,
+      "223": NaN,
+      "224": NaN,
+      "225": NaN,
+      "226": NaN,
+      "227": NaN,
+      "228": NaN,
+      "229": NaN,
+      "230": NaN,
+      "231": NaN,
+      "232": NaN,
+      "233": NaN,
+      "234": NaN,
+      "235": NaN,
+      "236": NaN,
+      "237": NaN,
+      "238": NaN,
+      "239": NaN,
+      "240": NaN,
+      "241": NaN
+    },
+    {
+      "0": NaN,
+      "1": NaN,
+      "2": NaN,
+      "3": NaN,
+      "4": NaN,
+      "5": NaN,
+      "6": NaN,
+      "7": NaN,
+      "8": NaN,
+      "9": NaN,
+      "10": NaN,
+      "11": NaN,
+      "12": NaN,
+      "13": NaN,
+      "14": NaN,
+      "15": NaN,
+      "16": NaN,
+      "17": NaN,
+      "18": NaN,
+      "19": NaN,
+      "20": NaN,
+      "21": NaN,
+      "22": NaN,
+      "23": NaN,
+      "24": NaN,
+      "25": NaN,
+      "26": NaN,
+      "27": NaN,
+      "28": NaN,
+      "29": NaN,
+      "30": NaN,
+      "31": NaN,
+      "32": NaN,
+      "33": NaN,
+      "34": NaN,
+      "35": NaN,
+      "36": NaN,
+      "37": NaN,
+      "38": NaN,
+      "39": NaN,
+      "40": NaN,
+      "41": NaN,
+      "42": NaN,
+      "43": NaN,
+      "44": NaN,
+      "45": NaN,
+      "46": NaN,
+      "47": NaN,
+      "48": NaN,
+      "49": NaN,
+      "50": NaN,
+      "51": NaN,
+      "52": NaN,
+      "53": NaN,
+      "54": NaN,
+      "55": NaN,
+      "56": NaN,
+      "57": NaN,
+      "58": NaN,
+      "59": NaN,
+      "60": NaN,
+      "61": NaN,
+      "62": NaN,
+      "63": NaN,
+      "64": NaN,
+      "65": NaN,
+      "66": NaN,
+      "67": NaN,
+      "68": NaN,
+      "69": NaN,
+      "70": NaN,
+      "71": NaN,
+      "72": NaN,
+      "73": NaN,
+      "74": NaN,
+      "75": NaN,
+      "76": NaN,
+      "77": NaN,
+      "78": NaN,
+      "79": NaN,
+      "80": NaN,
+      "81": NaN,
+      "82": NaN,
+      "83": NaN,
+      "84": NaN,
+      "85": NaN,
+      "86": NaN,
+      "87": NaN,
+      "88": NaN,
+      "89": NaN,
+      "90": NaN,
+      "91": NaN,
+      "92": NaN,
+      "93": NaN,
+      "94": NaN,
+      "95": NaN,
+      "96": NaN,
+      "97": NaN,
+      "98": NaN,
+      "99": NaN,
+      "100": NaN,
+      "101": NaN,
+      "102": NaN,
+      "103": NaN,
+      "104": NaN,
+      "105": NaN,
+      "106": NaN,
+      "107": NaN,
+      "108": NaN,
+      "109": NaN,
+      "110": NaN,
+      "111": NaN,
+      "112": NaN,
+      "113": NaN,
+      "114": NaN,
+      "115": NaN,
+      "116": NaN,
+      "117": NaN,
+      "118": NaN,
+      "119": NaN,
+      "120": NaN,
+      "121": NaN,
+      "122": NaN,
+      "123": NaN,
+      "124": NaN,
+      "125": NaN,
+      "126": NaN,
+      "127": NaN,
+      "128": NaN,
+      "129": NaN,
+      "130": NaN,
+      "131": NaN,
+      "132": NaN,
+      "133": NaN,
+      "134": NaN,
+      "135": NaN,
+      "136": NaN,
+      "137": NaN,
+      "138": NaN,
+      "139": NaN,
+      "140": NaN,
+      "141": NaN,
+      "142": NaN,
+      "143": NaN,
+      "144": NaN,
+      "145": NaN,
+      "146": NaN,
+      "147": NaN,
+      "148": NaN,
+      "149": NaN,
+      "150": NaN,
+      "151": NaN,
+      "152": NaN,
+      "153": NaN,
+      "154": NaN,
+      "155": NaN,
+      "156": NaN,
+      "157": NaN,
+      "158": NaN,
+      "159": NaN,
+      "160": NaN,
+      "161": NaN,
+      "162": NaN,
+      "163": NaN,
+      "164": NaN,
+      "165": NaN,
+      "166": NaN,
+      "167": NaN,
+      "168": NaN,
+      "169": NaN,
+      "170": NaN,
+      "171": NaN,
+      "172": NaN,
+      "173": NaN,
+      "174": NaN,
+      "175": NaN,
+      "176": NaN,
+      "177": NaN,
+      "178": NaN,
+      "179": NaN,
+      "180": NaN,
+      "181": NaN,
+      "182": NaN,
+      "183": NaN,
+      "184": NaN,
+      "185": NaN,
+      "186": NaN,
+      "187": NaN,
+      "188": NaN,
+      "189": NaN,
+      "190": NaN,
+      "191": NaN,
+      "192": NaN,
+      "193": NaN,
+      "194": NaN,
+      "195": NaN,
+      "196": NaN,
+      "197": NaN,
+      "198": NaN,
+      "199": NaN,
+      "200": NaN,
+      "201": NaN,
+      "202": NaN,
+      "203": NaN,
+      "204": NaN,
+      "205": NaN,
+      "206": NaN,
+      "207": NaN,
+      "208": NaN,
+      "209": NaN,
+      "210": NaN,
+      "211": NaN,
+      "212": NaN,
+      "213": NaN,
+      "214": NaN,
+      "215": NaN,
+      "216": NaN,
+      "217": NaN,
+      "218": NaN,
+      "219": NaN,
+      "220": NaN,
+      "221": NaN,
+      "222": NaN,
+      "223": NaN,
+      "224": NaN,
+      "225": NaN,
+      "226": NaN,
+      "227": NaN,
+      "228": NaN,
+      "229": NaN,
+      "230": NaN,
+      "231": NaN,
+      "232": NaN,
+      "233": NaN,
+      "234": NaN,
+      "235": NaN,
+      "236": NaN,
+      "237": NaN,
+      "238": NaN,
+      "239": NaN,
+      "240": NaN,
+      "241": NaN
+    }
+  ],
+  "client": "AUTOLIV",
+  "ref_project": "666429400",
+  "processed_at": "2025-08-05T11:26:05.328077"
+}

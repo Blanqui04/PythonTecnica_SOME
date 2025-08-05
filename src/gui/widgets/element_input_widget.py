@@ -25,7 +25,7 @@ from src.gui.utils.element_input_styles import (
 )
 from .buttons import ModernButton, ActionButton, CompactButton
 from .inputs import ModernLineEdit, ModernComboBox
-#from src.services.measurement_history_service import MeasurementHistoryService
+from src.services.measurement_history_service import MeasurementHistoryService
 import logging
 
 logger = logging.getLogger(__name__)
@@ -36,17 +36,18 @@ class DatabaseSearchWorker(QObject):
     finished = pyqtSignal(list)  # Elements trobats
     error = pyqtSignal(str)  # Error message
     
-    def __init__(self, client, project_reference):
+    def __init__(self, client, project_reference, batch_lot=None):
         super().__init__()
         self.client = client
         self.project_reference = project_reference
+        self.batch_lot = batch_lot
     
     @pyqtSlot()
     def search_measurements(self):
         """Cerca les mesures a la base de dades"""
         try:
             service = MeasurementHistoryService()
-            elements = service.get_measurement_history(self.client, self.project_reference, limit=10)
+            elements = service.get_measurement_history(self.client, self.project_reference, limit=10, batch_lot=self.batch_lot)
             service.close()
             self.finished.emit(elements)
         except Exception as e:
@@ -59,11 +60,12 @@ class ElementDataSearchWorker(QObject):
     finished = pyqtSignal(list)  # Registres trobats per l'element
     error = pyqtSignal(str)  # Error message
     
-    def __init__(self, client, project_reference, element_id):
+    def __init__(self, client, project_reference, element_id, batch_lot=None):
         super().__init__()
         self.client = client
         self.project_reference = project_reference
         self.element_id = element_id
+        self.batch_lot = batch_lot
     
     @pyqtSlot()
     def search_element_data(self):
@@ -75,7 +77,8 @@ class ElementDataSearchWorker(QObject):
                 self.client, 
                 self.project_reference, 
                 self.element_id, 
-                limit=10
+                limit=10,
+                batch_lot=self.batch_lot
             )
             service.close()
             self.finished.emit(measurements)
@@ -89,17 +92,18 @@ class AvailableElementsWorker(QObject):
     finished = pyqtSignal(list)  # Elements disponibles trobats
     error = pyqtSignal(str)  # Error message
     
-    def __init__(self, client, project_reference):
+    def __init__(self, client, project_reference, batch_lot=None):
         super().__init__()
         self.client = client
         self.project_reference = project_reference
+        self.batch_lot = batch_lot
     
     @pyqtSlot()
     def search_available_elements(self):
         """Cerca tots els elements disponibles per client/projecte"""
         try:
             service = MeasurementHistoryService()
-            elements = service.get_available_elements(self.client, self.project_reference)
+            elements = service.get_available_elements(self.client, self.project_reference, batch_lot=self.batch_lot)
             service.close()
             self.finished.emit(elements)
         except Exception as e:
@@ -111,11 +115,12 @@ class ElementInputWidget(QWidget):
     # Signal that will be emitted when the study should be started
     study_requested = pyqtSignal(list, dict)  # Emits (elements, extrapolation_config)
 
-    def __init__(self, parent=None, client=None, project_reference=None):
+    def __init__(self, parent=None, client=None, project_reference=None, batch_lot=None):
         super().__init__(parent)
         self.elements = []  # Llista per guardar els elements
         self.client = client
         self.project_reference = project_reference
+        self.batch_lot = batch_lot
         self.measurement_service = None
         
         # Separar workers per evitar conflictes
@@ -715,7 +720,7 @@ class ElementInputWidget(QWidget):
             
         # Crear nous workers per elements
         self.elements_thread = QThread()
-        self.elements_worker = AvailableElementsWorker(self.client, self.project_reference)
+        self.elements_worker = AvailableElementsWorker(self.client, self.project_reference, self.batch_lot)
         self.elements_worker.moveToThread(self.elements_thread)
         
         # Connections
@@ -770,7 +775,7 @@ class ElementInputWidget(QWidget):
             
         # Crear nous workers per dades
         self.data_thread = QThread()
-        self.data_worker = ElementDataSearchWorker(self.client, self.project_reference, element_name)
+        self.data_worker = ElementDataSearchWorker(self.client, self.project_reference, element_name, self.batch_lot)
         self.data_worker.moveToThread(self.data_thread)
         
         # Connections
@@ -826,7 +831,7 @@ class ElementInputWidget(QWidget):
             
             # Crear worker i thread
             self.search_thread = QThread()
-            self.search_worker = DatabaseSearchWorker(self.client, self.project_reference)
+            self.search_worker = DatabaseSearchWorker(self.client, self.project_reference, self.batch_lot)
             self.search_worker.moveToThread(self.search_thread)
             
             # Connectar signals
