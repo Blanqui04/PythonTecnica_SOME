@@ -74,25 +74,9 @@ class RightPanel(QGroupBox):
         file_layout.addWidget(self.view_drawing_btn)
         file_group.setLayout(file_layout)
         
-        # Data transfer section
-        transfer_group = QGroupBox("Data Transfer")
-        transfer_group.setStyleSheet(self.get_section_style())
-        transfer_layout = QVBoxLayout()
-        transfer_layout.setSpacing(10)
-        
-        export_icon = self.load_icon("export.svg")
-        
-        self.export_btn = ActionButton("Export Data", export_icon)
-        
-        self.export_btn.clicked.connect(lambda: self.emit_action("export_data"))
-        
-        transfer_layout.addWidget(self.export_btn)
-        transfer_group.setLayout(transfer_layout)
-        
         # Add all sections to main layout
         layout.addWidget(edit_group)
         layout.addWidget(file_group)
-        layout.addWidget(transfer_group)
         layout.addStretch()
         
         self.setLayout(layout)
