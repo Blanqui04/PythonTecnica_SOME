@@ -69,7 +69,7 @@ class DimensionalTableManager(DimensionalTableUI):
                 result = results_dict.get(key)
                 
                 if result:
-                    self._update_row_optimized(table, row, result)
+                    self._update_row(table, row, result)
                     updated_count += 1
         
         finally:
@@ -79,216 +79,136 @@ class DimensionalTableManager(DimensionalTableUI):
         
         return updated_count
 
-    def _update_row_optimized(self, table: QTableWidget, row: int, result: DimensionalResult):
-        """Optimized single row update with evaluation type support and process capability"""
-        # Get evaluation type
+    def _update_row(self, table: QTableWidget, row: int, result: DimensionalResult):
+        """Optimized single row update: use DimensionalResult values directly, especially status"""
         eval_combo = table.cellWidget(row, 8)
         evaluation_type = eval_combo.currentText() if isinstance(eval_combo, QComboBox) else "Normal"
-        
-        # Format values once
-        def format_val(val):
-            if val is None or val == "":
-                return ""
-            try:
-                return f"{float(val):.3f}"
-            except (ValueError, TypeError):
-                return str(val)
-        
-        # Determine what statistics to show based on evaluation type and class
-        classe = result.classe.upper() if result.classe else ""
-        has_classification = classe in ["CC", "SC", "IC"]
-        
+
+        # For Note: always empty statistics/measurements, status TO CHECK
         if evaluation_type == "Note":
-            if result.measurements:
-                # Note with measurements - show basic statistics only
-                min_val = format_val(min(result.measurements))
-                max_val = format_val(max(result.measurements))
-                mean_val = format_val(result.mean)
-                std_val = ""  # No std for notes
-                pp_val = ""   # No Pp for notes
-                ppk_val = ""  # No Ppk for notes
-            else:
-                # Note without measurements - empty statistics
-                min_val = max_val = mean_val = std_val = pp_val = ppk_val = ""
+            stat_data = [
+                (17, ""),   # minimum
+                (18, ""),   # maximum  
+                (19, ""),   # mean
+                (20, ""),   # std_deviation
+                (21, ""),   # Pp
+                (22, ""),   # Ppk
+            ]
         else:
-            # All other types show statistics if measurements exist
-            min_val = format_val(min(result.measurements)) if result.measurements else ""
-            max_val = format_val(max(result.measurements)) if result.measurements else ""
-            mean_val = format_val(result.mean) if result.mean is not None else ""
-            
-            # Show std, Pp, Ppk only for classified dimensions (CC, SC, IC)
-            if has_classification and len(result.measurements) > 1:
-                std_val = format_val(result.std_dev) if result.std_dev is not None else ""
-                pp_val = format_val(result.pp) if result.pp is not None else ""
-                ppk_val = format_val(result.ppk) if result.ppk is not None else ""
-            else:
-                std_val = pp_val = ppk_val = ""
-        
-        # Update statistics columns in batch
-        # Assume columns are: 17=min, 18=max, 19=mean, 20=std, 21=pp, 22=ppk, 23=status
-        stat_data = [
-            (17, min_val),   # minimum
-            (18, max_val),   # maximum  
-            (19, mean_val),  # mean
-            (20, std_val),   # std_deviation (only for classified)
-            (21, pp_val),    # Pp (only for classified)
-            (22, ppk_val),   # Ppk (only for classified)
-        ]
-        
+            stat_data = [
+                (17, f"{result.mean:.3f}" if result.mean is not None else ""),
+                (18, f"{result.std_dev:.3f}" if result.std_dev is not None else ""),
+                (19, f"{min(result.measurements):.3f}" if result.measurements else ""),
+                (20, f"{max(result.measurements):.3f}" if result.measurements else ""),
+                (21, f"{result.pp:.3f}" if result.pp is not None else ""),
+                (22, f"{result.ppk:.3f}" if result.ppk is not None else ""),
+            ]
+
+        # Write statistics to table
         for col_idx, value in stat_data:
-            if col_idx < table.columnCount():  # Check if column exists
+            if col_idx < table.columnCount():
                 item = table.item(row, col_idx)
                 if not item:
                     item = QTableWidgetItem()
                     item.setFlags(item.flags() ^ Qt.ItemIsEditable)
                     table.setItem(row, col_idx, item)
-                
                 item.setText(str(value))
-                # Apply consistent styling for statistics
                 item.setBackground(QColor(248, 249, 250))
                 item.setForeground(QColor(52, 58, 64))
 
-        self._update_status_optimized(table, row, result, evaluation_type)  # Handle status based on evaluation type (assume status is column 23)
-        self._highlight_violations_optimized(table, row, result, evaluation_type)  # Highlight violations efficiently
+        self._update_status(table, row, result, evaluation_type)
+        self._highlight_violations(table, row, result, evaluation_type)
 
-    def _update_status_optimized(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
-        """Optimized status update with evaluation type support and TO CHECK status"""
+    def _update_status(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
+        """Set status cell using DimensionalResult.status directly"""
         status_col = 23  # Assume status column is 23, adjust as needed
         if status_col >= table.columnCount():
             return
-            
+
         status_item = table.item(row, status_col)
         if not status_item:
             status_item = QTableWidgetItem()
             status_item.setFlags(status_item.flags() ^ Qt.ItemIsEditable)
             table.setItem(row, status_col, status_item)
-        
-        # Determine final status based on evaluation type
-        if evaluation_type in ["Basic", "Informative"]:
-            final_status = "T.E.D."  # Theoretical Exact Dimension
+
+        # Always use status from DimensionalResult
+        if evaluation_type == "Note":
+            final_status = "TO CHECK"
+        else:
+            final_status = result.status.value if hasattr(result.status, "value") else str(result.status)
+
+        print(f"[TABLE] Row {row} | element_id={result.element_id} | eval_type={evaluation_type} | status={final_status}")
+        import logging
+        logging.getLogger("dimensional.table").warning(f"[TABLE] Row {row} | element_id={result.element_id} | eval_type={evaluation_type} | status={final_status}")
+
+        # Color logic (unchanged)
+        if final_status in ["T.E.D.", "TED"]:
             tooltip = "T.E.D. - Not evaluable (Basic/Informative dimension)"
             color = self.colors["primary"]
             text_color = self.colors["white"]
-            
-        elif evaluation_type == "Note":
-            # Notes use force status or default to TO CHECK
-            force_combo = table.cellWidget(row, 24)  # Assume force status is column 24
-            force_status = force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO"
-            
-            if force_status == "BAD":
-                final_status = "BAD"
-                tooltip = "Note - Forced BAD"
-                color = self.colors["bad"]
-                text_color = self.colors["white"]
-            elif force_status == "GOOD":
-                final_status = "GOOD"
-                tooltip = "Note - Forced GOOD"
-                color = self.colors["good"]
-                text_color = self.colors["white"]
-            else:
-                final_status = "TO CHECK"
-                tooltip = "Note - Requires review"
-                color = QColor(255, 193, 7)  # Yellow/orange for TO CHECK
-                text_color = self.colors["black"]
-                
+        elif final_status == "BAD":
+            tooltip = "One or more measurements out of tolerance"
+            color = self.colors["bad"]
+            text_color = self.colors["white"]
+        elif final_status == "GOOD":
+            tooltip = "All measurements within tolerance"
+            color = self.colors["good"]
+            text_color = self.colors["white"]
+        elif final_status == "WARNING":
+            tooltip = "Measurements may be borderline, check!"
+            color = self.colors["warning"]
+            text_color = self.colors["black"]
+        elif final_status == "TO CHECK":
+            tooltip = "Note - Requires review"
+            color = QColor(255, 193, 7)
+            text_color = self.colors["black"]
         else:
-            # Normal and GD&T evaluations
-            force_combo = table.cellWidget(row, 24)  # Assume force status is column 24
-            force_status = force_combo.currentText() if isinstance(force_combo, QComboBox) else "AUTO"
-            
-            if force_status == "GOOD":
-                final_status = "GOOD"
-                tooltip = "Forced GOOD"
-                color = self.colors["good"]
-                text_color = self.colors["white"]
-            elif force_status == "BAD":
-                final_status = "BAD"
-                tooltip = "Forced BAD"
-                color = self.colors["bad"]
-                text_color = self.colors["white"]
-            else:
-                # Use calculated status
-                final_status = result.status.value
-                if final_status == "GOOD":
-                    tooltip = "All measurements within tolerance"
-                    color = self.colors["good"]
-                    text_color = self.colors["white"]
-                elif final_status == "BAD":
-                    tooltip = "One or more measurements out of tolerance"
-                    color = self.colors["bad"]
-                    text_color = self.colors["white"]
-                elif final_status == "WARNING":
-                    tooltip = "Measurements may be borderline, check!"
-                    color = self.colors["warning"]
-                    text_color = self.colors["black"]
-                elif final_status == "TO CHECK":
-                    tooltip = "Requires review"
-                    color = QColor(255, 193, 7)  # Yellow/orange
-                    text_color = self.colors["black"]
-                else:
-                    tooltip = f"Status: {final_status}"
-                    color = self.colors["warning"]
-                    text_color = self.colors["black"]
-        
-        # Apply status styling efficiently
+            tooltip = f"Status: {final_status}"
+            color = self.colors["warning"]
+            text_color = self.colors["black"]
+
         status_item.setText(final_status)
         status_item.setBackground(color)
         status_item.setForeground(text_color)
         status_item.setToolTip(tooltip)
         status_item.setFont(QFont("Segoe UI", 10, QFont.Bold))
 
-    def _highlight_violations_optimized(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
-        """Optimized violation highlighting"""
-        # Skip for Basic/Informative (no tolerance evaluation)
-        if evaluation_type in ["Basic", "Informative"]:
+    def _highlight_violations(self, table: QTableWidget, row: int, result: DimensionalResult, evaluation_type: str):
+        """Optimized violation highlighting: skip for notes, use result.measurements directly"""
+        if evaluation_type in ["Basic", "Informative", "Note"]:
             return
-        
+
         if not result.measurements or (result.lower_tolerance is None and result.upper_tolerance is None):
             return
-        
+
         measurement_cols = [12, 13, 14, 15, 16]
-        
-        # Calculate limits once
         lower_limit = result.nominal + (result.lower_tolerance or 0)
         upper_limit = result.nominal + (result.upper_tolerance or 0)
-        
+
         for idx, col in enumerate(measurement_cols):
             if idx >= len(result.measurements):
                 break
-                
             item = table.item(row, col)
             if not item:
                 continue
-            
             try:
                 value = result.measurements[idx]
                 formatted_value = f"{value:.3f}"
                 item.setText(formatted_value)
-                
-                # Check if violation
-                if evaluation_type == "Normal" or evaluation_type == "GD&T":
-                    if result.nominal == 0.0 and result.lower_tolerance == 0.0 and result.upper_tolerance and result.upper_tolerance > 0.0:
-                        # Unilateral tolerance for nominal=0
-                        is_violation = value < 0 or value > result.upper_tolerance
-                    elif result.nominal == 0.0 and result.lower_tolerance and result.lower_tolerance < 0.0 and result.upper_tolerance and result.upper_tolerance > 0.0:
-                        # Bilateral tolerance for nominal=0
-                        is_violation = abs(value) > max(abs(result.lower_tolerance), abs(result.upper_tolerance))
-                    else:
-                        # Standard tolerance check
-                        is_violation = not (lower_limit <= value <= upper_limit)
+                if result.nominal == 0.0 and result.lower_tolerance == 0.0 and result.upper_tolerance and result.upper_tolerance > 0.0:
+                    is_violation = value < 0 or value > result.upper_tolerance
+                elif result.nominal == 0.0 and result.lower_tolerance and result.lower_tolerance < 0.0 and result.upper_tolerance and result.upper_tolerance > 0.0:
+                    is_violation = abs(value) > max(abs(result.lower_tolerance), abs(result.upper_tolerance))
                 else:
-                    is_violation = False
-                
-                # Apply color coding
+                    is_violation = not (lower_limit <= value <= upper_limit)
                 if is_violation:
-                    item.setForeground(self.colors["bad"])  # Red for violations
+                    item.setForeground(self.colors["bad"])
                     item.setFont(QFont("Segoe UI", 9, QFont.Bold))
                     item.setToolTip(f"Out of tolerance: {formatted_value}")
                 else:
-                    item.setForeground(self.colors["good"])  # Green for good
+                    item.setForeground(self.colors["good"])
                     item.setFont(QFont("Segoe UI", 9))
                     item.setToolTip(f"Within tolerance: {formatted_value}")
-                    
             except (ValueError, IndexError):
                 continue
 
@@ -339,12 +259,12 @@ class DimensionalTableManager(DimensionalTableUI):
                     row_data["batch"] = self.batch_number
                 
                 # Validate and add row
-                if self._validate_row_optimized(row_data):
+                if self._validate_row(row_data):
                     all_data.append(row_data)
         
         return pd.DataFrame(all_data) if all_data else pd.DataFrame()
 
-    def _validate_row_optimized(self, row_data: dict) -> bool:
+    def _validate_row(self, row_data: dict) -> bool:
         """Fast row validation"""
         # Basic required fields
         if not row_data.get("element_id") or not row_data.get("description"):

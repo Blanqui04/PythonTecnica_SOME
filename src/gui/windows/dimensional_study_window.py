@@ -314,9 +314,38 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         report_layout.addWidget(report_label)
 
         self.report_type_combo = QComboBox()
-        self.report_type_combo.addItems(
-            ["PPAP", "FOT", "Intern audit", "Process validation"]
-        )
+        self.report_type_combo.addItems([
+            "PPAP",
+            "FOT (First Off Tool)",
+            "Process Validation",
+            "Internal Audit",
+            "Customer Audit",
+            "Tool modification",
+            "Supplier Change",
+            "Material Change",
+            "Annual Requalification",
+            "Serial Production Control",
+            "Temporary Deviation Approval",
+            "Quality Incident",
+            "Customer Complaint",
+            "New Measurement Equipment Validation",
+            "New Operator Validation",
+            "Plant Layout Change",
+            "Process Parameter Change",
+            "New Product Models or Variants",
+            "Internal Benchmarking",
+            "Packaging Validation",
+            "Post-Transport/Logistics Validation",
+            "Extreme Environmental Conditions",
+            "Lifetime/Aging Study",
+            "CAE Simulation vs Real Part",
+            "Third-Party Audit",
+            "Pre-Destructive Test Validation",
+            "Measurement Method Correlation Study",
+            "Subcomponent Validation within Functional Test",
+            "Assembly Tolerance Stack-Up Study"
+        ])
+
         self.report_type_combo.setMinimumWidth(150)
         self.report_type_combo.setStyleSheet("""
             QComboBox {
@@ -338,6 +367,48 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         """)
         report_layout.addWidget(self.report_type_combo)
         report_layout.addStretch()
+
+        report_layout.addWidget(self.report_type_combo)
+
+        # Standard Tolerance ComboBox
+        tolerance_label = QLabel("📏 Standard Tolerance:")
+        tolerance_label.setStyleSheet("color: white;")
+        report_layout.addWidget(tolerance_label)
+
+        self.tolerance_combo = QComboBox()
+        self.tolerance_combo.addItems([
+            "ISO 2768-m (General)",
+            "ISO 2768-f (Fine)",
+            "ISO 2768-c (Coarse)",
+            "ISO 2768-v (Very Coarse)",
+            "DIN 6930",
+            "DIN 7168-m",
+            "DIN 16901",
+            "ISO 286-1",
+            "ISO 286-2",
+            "Customer Specific",
+            "Other/Custom"
+        ])
+        self.tolerance_combo.setMinimumWidth(180)
+        self.tolerance_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #1B263B;
+                color: white;
+                padding: 6px 10px;
+                border: 1px solid #415A77;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1B263B;
+                selection-background-color: #415A77;
+                color: white;
+            }
+        """)
+        report_layout.addWidget(self.tolerance_combo)
 
         config_layout.addLayout(report_layout)
         config_group.setLayout(config_layout)
