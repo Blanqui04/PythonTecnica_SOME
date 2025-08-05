@@ -27,6 +27,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QPixmap, QFont
 
 from src.services.spc_chart_service import SPCChartService
+from src.gui.windows.components.spc_export_dialog import ExcelExportDialog
 from ..logging_config import logger
 from ..utils.chart_utils import ChartPathResolver, ChartDisplayHelper
 from ..utils.styles import global_style, get_color_palette
@@ -1069,13 +1070,14 @@ class ModernSPCChartWindow(QDialog):
             QMessageBox.warning(self, "Error", "La carpeta de resultats no existeix.")
 
     def export_charts(self):
-        QMessageBox.information(
-            self,
-            "Exportació",
-            "Funcionalitat d'exportació pendent d'implementar.\n\n"
-            "Aquesta funcionalitat permetrà exportar els gràfics "
-            "en diferents formats (PDF, PNG, SVG).",
+        dialog = ExcelExportDialog(
+            client=self.client,
+            ref_project=self.ref_project,
+            batch_number=self.batch_number,
+            parent=self
         )
+        dialog.exec_()
+
 
     def closeEvent(self, event):
         if hasattr(self, "chart_worker") and self.chart_worker.isRunning():
