@@ -413,28 +413,29 @@ class DatabaseEditor(QDialog):
             # Processar cada fila modificada
             for row in self.modified_rows:
                 try:
-                    # Detectar la clau primària de forma intel·ligent
-                    primary_key_column, primary_key_value = self._get_primary_key_for_row(row)
-                    
                     # Verificar si és una fila nova (fora del rang del DataFrame original)
                     is_new_row = row >= len(self.current_dataframe)
                     
-                    if not primary_key_column or not primary_key_value:
-                        if is_new_row:
-                            # Nova fila sense clau primària - necessita inserció
-                            self.info_text.append(f"➕ Fila {row + 1}: Preparant per inserció (nova fila)")
-                            # Recopilar dades per inserció
-                            new_record = self._collect_row_data(row)
-                            if self._insert_new_record(new_record):
-                                success_count += 1
-                                self.info_text.append(f"✅ Nova fila {row + 1} inserida correctament")
-                            else:
-                                error_count += 1
-                                self.info_text.append(f"❌ Error inserint nova fila {row + 1}")
+                    if is_new_row:
+                        # Sempre inserir files noves, independentment de la clau primària
+                        self.info_text.append(f"➕ Fila {row + 1}: Preparant per inserció (nova fila)")
+                        # Recopilar dades per inserció
+                        new_record = self._collect_row_data(row)
+                        if self._insert_new_record(new_record):
+                            success_count += 1
+                            self.info_text.append(f"✅ Nova fila {row + 1} inserida correctament")
                         else:
-                            # Fila existent sense clau primària identificable
-                            self.info_text.append(f"⚠️ Fila {row + 1}: No es pot identificar la clau primària")
                             error_count += 1
+                            self.info_text.append(f"❌ Error inserint nova fila {row + 1}")
+                        continue
+                    
+                    # Per files existents, detectar la clau primària per actualitzar
+                    primary_key_column, primary_key_value = self._get_primary_key_for_row(row)
+                    
+                    if not primary_key_column or not primary_key_value:
+                        # Fila existent sense clau primària identificable
+                        self.info_text.append(f"⚠️ Fila {row + 1}: No es pot identificar la clau primària per actualització")
+                        error_count += 1
                         continue
                     
                     # Recopilar canvis per files existents
@@ -447,18 +448,11 @@ class DatabaseEditor(QDialog):
                             if cell_item:
                                 new_value = cell_item.text()
                                 
-                                # Comparar amb valor original només si no és una fila nova
-                                if is_new_row:
-                                    # Per files noves, afegir tots els valors no buits
-                                    if new_value.strip():
-                                        converted_value = self._smart_type_conversion(new_value, column_name)
-                                        updates[column_name] = converted_value
-                                else:
-                                    # Per files existents, comparar amb l'original
-                                    original_value = str(self.current_dataframe.iloc[row, col]) if pd.notna(self.current_dataframe.iloc[row, col]) else ""
-                                    if new_value != original_value:
-                                        converted_value = self._smart_type_conversion(new_value, column_name)
-                                        updates[column_name] = converted_value
+                                # Per files existents, comparar amb l'original
+                                original_value = str(self.current_dataframe.iloc[row, col]) if pd.notna(self.current_dataframe.iloc[row, col]) else ""
+                                if new_value != original_value:
+                                    converted_value = self._smart_type_conversion(new_value, column_name)
+                                    updates[column_name] = converted_value
                     
                     # Actualitzar registre si hi ha canvis
                     if updates:
@@ -560,17 +554,27 @@ class DatabaseEditor(QDialog):
         """
         row_data = {}
         
+        # Identificar possibles claus primàries autoincrementades
+        auto_increment_candidates = ['id', 'ID', 'pk', 'primary_key']
+        
         for col in range(self.table_widget.columnCount()):
             header_item = self.table_widget.horizontalHeaderItem(col)
             if header_item:
                 column_name = header_item.text()
                 cell_item = self.table_widget.item(row, col)
+                
                 if cell_item and cell_item.text().strip():
                     value = cell_item.text().strip()
                     converted_value = self._smart_type_conversion(value, column_name)
                     row_data[column_name] = converted_value
                 else:
-                    row_data[column_name] = None
+                    # Si la columna sembla una clau primària autoincrementada i està buida,
+                    # no la incloure en la inserció per permetre l'auto-increment
+                    if column_name.lower() in [pk.lower() for pk in auto_increment_candidates]:
+                        self.info_text.append(f"🔑 Ometent clau primària buida '{column_name}' (auto-increment)")
+                        continue
+                    else:
+                        row_data[column_name] = None
         
         return row_data
     
@@ -613,13 +617,17 @@ class DatabaseEditor(QDialog):
             
             if isinstance(result, int) and result > 0:
                 self.info_text.append(f"✅ Nou registre inserit amb {len(filtered_data)} columnes")
+                self.info_text.append(f"📋 Columnes insertades: {', '.join(filtered_data.keys())}")
                 return True
             else:
                 self.info_text.append(f"❌ Error en la inserció: resultat {result}")
+                self.info_text.append(f"🔍 Query executada: {query}")
                 return False
                 
         except Exception as e:
-            self.info_text.append(f"❌ Error inserint registre: {str(e)}")
+            error_msg = f"❌ Error inserint registre: {str(e)}"
+            self.info_text.append(error_msg)
+            self.info_text.append(f"🔍 Dades que s'intentaven inserir: {record_data}")
             logger.error(f"Error inserint registre: {e}")
             return False
     
@@ -693,7 +701,8 @@ class DatabaseEditor(QDialog):
         self.save_btn.setEnabled(True)
         
         self.info_text.append(f"➕ Nova fila afegida a la posició {row_count + 1} (marcada en verd)")
-        self.info_text.append(f"💡 Consell: Omple almenys una clau primària abans de guardar")
+        self.info_text.append(f"💡 Consell: Omple les dades necessàries i clica 'Guardar Canvis'")
+        self.info_text.append(f"🔑 Nota: Les claus primàries buides (com 'id') s'auto-generaran")
     
     def delete_selected_rows(self):
         """Elimina les files seleccionades de la base de dades"""
