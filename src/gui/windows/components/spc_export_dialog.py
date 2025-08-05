@@ -1,16 +1,12 @@
-# src/gui/dialogs/excel_export_dialog.py
-from PyQt5.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, 
-    QComboBox, QCheckBox, QTextEdit, QGroupBox, QProgressBar,
-    QMessageBox, QFrame, QGridLayout, QPushButton, QSpacerItem,
-    QSizePolicy
-)
-from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap, QIcon
+# src/gui/components/spc_export_dialog.py
+from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QCheckBox, 
+                             QGroupBox, QProgressBar, QMessageBox, QFrame, QGridLayout)
+from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtGui import QFont
 
 from ...widgets.buttons import ModernButton, ActionButton, CompactButton
-from ...widgets.inputs import ModernComboBox, ModernTextEdit, ModernLineEdit
-from ...utils.styles import global_style, get_color_palette
+from ...widgets.inputs import ModernComboBox, ModernLineEdit
+from ...utils.styles import get_color_palette
 from src.services.spc_export_service import ExcelReportService
 from ...logging_config import logger
 
@@ -79,7 +75,7 @@ class ExcelExportDialog(QDialog):
         self.worker = None
         
         self.setup_ui()
-        self.apply_styles()
+        # self.apply_styles()
         self.load_defaults()
 
     def setup_ui(self):

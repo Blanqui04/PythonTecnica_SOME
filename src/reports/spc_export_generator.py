@@ -1,21 +1,14 @@
 # src/reports/excel_spc_report_generator.py
-import os
-import json
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Dict, Optional, Any
 import logging
 
-import openpyxl
 from openpyxl import Workbook
-from openpyxl.styles import (Font, PatternFill, Border, Side, Alignment, NamedStyle, Protection)
-from openpyxl.drawing import image
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import (Font, PatternFill, Border, Side, Alignment, NamedStyle)
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.chart import LineChart, Reference
 from openpyxl.drawing.image import Image
 
-from src.models.plotting.spc_charts_manager import SPCChartManager
 from src.models.plotting.spc_data_loader import SPCDataLoader
 from src.gui.logging_config import logger as base_logger
 
@@ -681,7 +674,7 @@ if __name__ == "__main__":
     test_file = create_test_report()
     
     if test_file:
-        print(f"\nTest report created successfully!")
+        print("\nTest report created successfully!")
         print(f"File location: {test_file}")
         print("\nThe report includes:")
         print("- Professional header with company logo")
