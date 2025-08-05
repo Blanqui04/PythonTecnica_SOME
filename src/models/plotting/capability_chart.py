@@ -1,3 +1,4 @@
+# src/models/plotting/capability_chart.py
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.table import Table
