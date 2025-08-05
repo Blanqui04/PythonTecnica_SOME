@@ -15,7 +15,7 @@ import json
 import os
 from datetime import datetime
 from typing import Dict, Any, Optional
-from src.services.dim_data_export_service import DataExportService
+from src.services.dimensional_export_service import DataExportService
 #from src.database.database_connection import PostgresConn
 
 
@@ -731,7 +731,7 @@ class SessionManager:
         return None
     
     def _export_data(self):
-        """Main export method - optimized for professional PPAP reports"""
+        """Main export method - NO USER PROMPTS, streamlined professional export"""
         if not self._validate_export_data():
             return
 
@@ -745,10 +745,10 @@ class SessionManager:
             if not export_dir:
                 return
 
-            self._log("🚀 Starting professional PPAP export...", "INFO")
+            self._log("🚀 Starting professional PPAP export (streamlined)...", "INFO")
             
-            # Prepare export data
-            export_data = self._prepare_export_data()
+            # Prepare export data with smart defaults
+            export_data = self._prepare_streamlined_export_data()
             
             # Create export service and generate reports
             export_service = DataExportService()
@@ -769,14 +769,48 @@ class SessionManager:
             with open(summary_path, 'w', encoding='utf-8') as f:
                 f.write(summary_text)
 
-            # Show success message
-            self._show_export_success(export_paths, export_dir)
+            # Show streamlined success message
+            self._show_streamlined_export_success(export_paths, export_dir)
             self._log("✅ Professional PPAP export completed successfully!", "INFO")
 
         except Exception as e:
             error_msg = f"Export failed: {str(e)}"
             self._log(error_msg, "ERROR")
             QMessageBox.critical(self._parent, "Export Error", error_msg)
+
+    def _prepare_streamlined_export_data(self) -> Dict[str, Any]:
+        """Prepare all export data with smart defaults - NO USER INTERACTION"""
+        # Get results or convert table data
+        results = self._get_results_for_export()
+        
+        # Generate base filename
+        report_type = self._parent.report_type_combo.currentText().replace(" ", "_")
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
+        base_filename = f"{self.client_name}_{self.project_ref}_{self.batch_number}_{report_type}_{timestamp}"
+
+        # Gather metadata with smart defaults
+        metadata = self._gather_comprehensive_metadata()
+
+        # Get summary data if available
+        summary_data = None
+        if hasattr(self._parent, "summary_widget") and self._parent.summary_widget:
+            try:
+                summary_data = self._parent.summary_widget.get_summary_data()
+            except Exception as e:
+                self._log(f"⚠️ Could not get summary data: {str(e)}", "WARNING")
+
+        # Set paths
+        logo_path = self._get_logo_path()
+        db_config_path = os.path.join("./config/database", "db_config.json")
+
+        return {
+            'results': results,
+            'base_filename': base_filename,
+            'metadata': metadata,
+            'summary_data': summary_data,
+            'logo_path': logo_path,
+            'db_config_path': db_config_path
+        }
 
     def _validate_export_data(self) -> bool:
         """Validate data before export"""
@@ -897,109 +931,97 @@ class SessionManager:
         return None
 
     def _gather_comprehensive_metadata(self) -> Dict[str, Any]:
-        """Gather comprehensive metadata with user input for missing fields"""
+        """Gather comprehensive metadata with smart defaults - NO USER PROMPTS"""
         base_metadata = {
             'client_name': self.client_name,
             'project_ref': self.project_ref,
-            'part_number': self.project_ref,  # Part number = project_ref
+            'part_number': self.project_ref,
             'batch_number': self.batch_number,
             'report_type': self._parent.report_type_combo.currentText(),
+            'tolerance_standard': self._parent.tolerance_combo.currentText(),  # Get from UI
             'manual_mode': getattr(self._parent, 'manual_mode', False),
             'export_timestamp': datetime.now().isoformat(),
-            'report_date': datetime.now().strftime('%Y-%m-%d'),
-            'software_version': '2.0'
+            'report_date': datetime.now().strftime('%d/%m/%Y'),
+            'software_version': '2.0',
+            # Professional defaults - no user prompts needed
+            'drawing_number': 'TBD',
+            'project_leader_name': 'Quality Engineer',
+            'project_leader_title': 'Quality Engineer', 
+            'quality_facility': 'Quality Lab 1',
+            'normative': self._parent.tolerance_combo.currentText(),
+            'inspector': 'Quality Team',
+            'quotation_number': self._generate_smart_quotation_number(),
+            'part_description': self._generate_smart_part_description(),
+            'cavity_count': self._determine_cavity_count(),
+            'current_cavity': getattr(self._parent, 'current_cavity', None)
         }
-
-        # Ask user for critical missing information
-        enhanced_metadata = self._collect_missing_metadata(base_metadata)
         
-        return enhanced_metadata
+        return base_metadata
 
-    def _collect_missing_metadata(self, base_metadata: Dict[str, Any]) -> Dict[str, Any]:
-        """Collect missing metadata through user dialogs"""
-        metadata = base_metadata.copy()
-        
+    def _generate_smart_quotation_number(self) -> str:
+        """Generate intelligent quotation number"""
         try:
-            # Drawing number
-            drawing_number, ok = QInputDialog.getText(
-                self._parent,
-                'Export Setup - Drawing Information',
-                'Drawing Number (optional):',
-                text=metadata.get('drawing_number', '')
-            )
-            if ok:
-                metadata['drawing_number'] = drawing_number.strip()
+            # Use project reference and date to create professional quotation number
+            date_part = datetime.now().strftime('%y%m')
+            batch_part = self.batch_number[-3:] if len(self.batch_number) >= 3 else self.batch_number
+            return f"QT-{self.project_ref}-{date_part}-{batch_part}"
+        except Exception:
+            return f"QT-{self.project_ref}-{datetime.now().strftime('%y%m')}"
 
-            # Project leader
-            project_leader, ok = QInputDialog.getText(
-                self._parent,
-                'Export Setup - Quality Team',
-                'Project Leader Name:',
-                text=metadata.get('project_leader_name', '')
-            )
-            if ok:
-                metadata['project_leader_name'] = project_leader.strip()
+    def _generate_smart_part_description(self) -> str:
+        """Generate intelligent part description"""
+        try:
+            if self.client_name and self.project_ref:
+                return f"Component for {self.client_name} - Project {self.project_ref}"
+            elif self.project_ref:
+                return f"Component {self.project_ref}"
+            else:
+                return "Production Component"
+        except Exception:
+            return "Production Component"
 
-            # Quality facility
-            quality_facility, ok = QInputDialog.getText(
-                self._parent,
-                'Export Setup - Facility',
-                'Quality Facility:',
-                text=metadata.get('quality_facility', '')
-            )
-            if ok:
-                metadata['quality_facility'] = quality_facility.strip()
+    def _determine_cavity_count(self) -> int:
+        """Determine cavity count from data"""
+        try:
+            if hasattr(self._parent, "results") and self._parent.results:
+                cavities = set()
+                for result in self._parent.results:
+                    cavity = getattr(result, 'cavity', 1)
+                    if cavity:
+                        cavities.add(int(cavity))
+                return len(cavities)
+            else:
+                # Try to determine from table data
+                df = self._parent.table_manager._get_dataframe_from_tables()
+                if 'cavity' in df.columns:
+                    unique_cavities = df['cavity'].nunique()
+                    return max(1, unique_cavities)
+        except Exception:
+            pass
+        return 1
 
-            # Normative standard
-            normative_options = [
-                'ISO 2768-m', 'ISO 1101', 'ASME Y14.5', 'DIN 7167', 
-                'JIS B 0621', 'ISO 5459', 'ASME Y14.5M'
-            ]
-            
-            normative, ok = QInputDialog.getItem(
-                self._parent,
-                'Export Setup - Standards',
-                'Normative Standard:',
-                normative_options,
-                0,
-                False
-            )
-            if ok:
-                metadata['normative'] = normative
-
-            # Set default values for remaining fields
-            metadata.setdefault('project_leader_title', 'Quality Engineer')
-            metadata.setdefault('inspector', metadata.get('project_leader_name', ''))
-            metadata.setdefault('quotation_number', '')
-
-        except Exception as e:
-            self._log(f"⚠️ Error collecting metadata: {str(e)}", "WARNING")
-
-        return metadata
-
-    def _show_export_success(self, export_paths: Dict[str, str], export_dir: str):
-        """Show professional export success message"""
+    def _show_streamlined_export_success(self, export_paths: Dict[str, str], export_dir: str):
+        """Show streamlined professional export success message"""
         file_count = len(export_paths)
         
         # Create file list
         file_info = []
         if 'excel_report' in export_paths:
-            file_info.append(f"📊 Excel PPAP Report: {os.path.basename(export_paths['excel_report'])}")
+            file_info.append(f"📊 Professional PPAP Report: {os.path.basename(export_paths['excel_report'])}")
         if 'json_data' in export_paths:
-            file_info.append(f"📁 JSON Data: {os.path.basename(export_paths['json_data'])}")
+            file_info.append(f"📁 Complete Data: {os.path.basename(export_paths['json_data'])}")
         
         success_msg = (
-            f"🎉 PROFESSIONAL PPAP EXPORT COMPLETED SUCCESSFULLY!\n\n"
-            f"📂 Export Location: {export_dir}\n"
-            f"📋 Files Generated: {file_count}\n\n"
-            f"Generated Files:\n" + "\n".join(file_info) + "\n\n"
-            "✨ The Excel report includes:\n"
-            "   • Professional PPAP-compliant header\n"
-            "   • Complete dimensional analysis data\n"
-            "   • Cavity-specific sheets (if applicable)\n"
-            "   • Analysis summary and statistics\n"
-            "   • Signature areas for quality approval\n\n"
-            "📤 Ready for client presentation and regulatory submission!"
+            f"🎉 PROFESSIONAL PPAP EXPORT COMPLETED!\n\n"
+            f"📂 Location: {export_dir}\n"
+            f"📋 Files: {file_count} generated\n\n"
+            f"Generated:\n" + "\n".join(file_info) + "\n\n"
+            "✨ Professional Features:\n"
+            "   • Enhanced automotive-standard header\n"
+            "   • Smart metadata generation\n"
+            "   • Professional layout and formatting\n"
+            "   • Ready for client presentation\n\n"
+            "📤 Export ready for automotive industry submission!"
         )
 
         QMessageBox.information(self._parent, "Export Successful ✅", success_msg)
