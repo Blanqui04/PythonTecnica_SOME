@@ -30,7 +30,7 @@ class BuildAndDeploy:
         
         build_deps = [
             "cx-Freeze==6.14.9",
-            "pyinstaller==5.8.0"
+            "pyinstaller>=6.15.0"
         ]
         
         for dep in build_deps:

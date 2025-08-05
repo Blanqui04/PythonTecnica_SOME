@@ -15,12 +15,12 @@ if %errorlevel% neq 0 (
 
 echo 1. Preparant entorn de build...
 REM Instal·lar dependències de build
-pip install -r deployment\requirements_build.txt
+pip install -r ..\config\requirements.txt
 
 echo.
 echo 2. Construint aplicació...
 REM Executar build
-python deployment\build_and_deploy.py
+python build_and_deploy.py
 
 echo.
 echo 3. Build completat!
