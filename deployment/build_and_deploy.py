@@ -161,32 +161,135 @@ coll = COLLECT(
         print(f"Deployment package created at: {self.deploy_dir}")
     
     def _create_easy_installer(self):
-        """Crea script d'instal·lació fàcil"""
+        """Crea script d'instal·lació fàcil amb Python automàtic"""
         installer_content = '''@echo off
-echo Installing PythonTecnica_SOME...
+setlocal EnableDelayedExpansion
+
+echo ================================================
+echo    INSTALADOR PythonTecnica_SOME v2.0
+echo ================================================
 echo.
 
-REM Comprovar si Python està instal·lat
-python --version >nul 2>&1
+REM Verificar si s'està executant com a administrador
+net session >nul 2>&1
 if %errorlevel% neq 0 (
-    echo ERROR: Python no està instal·lat. Si us plau, instal·la Python primer.
-    echo Pots descarregar Python des de: https://www.python.org/downloads/
+    echo ERROR: Aquest script necessita permisos d'administrador.
+    echo Si us plau, executa com a "Administrador"
+    echo.
     pause
     exit /b 1
 )
 
+echo Comprovant sistema...
+echo.
+
+REM Comprovar si Python està instal·lat
+set PYTHON_INSTALLED=0
+python --version >nul 2>&1
+if %errorlevel% equ 0 (
+    echo Python ja està instal·lat:
+    python --version
+    set PYTHON_INSTALLED=1
+) else (
+    echo Python no detectat. Procedint amb la instal·lació automàtica...
+)
+
+REM Si Python no està instal·lat, descarregar i instal·lar Python 3.11.9
+if !PYTHON_INSTALLED! equ 0 (
+    echo.
+    echo ================================================
+    echo    INSTAL·LANT PYTHON 3.11.9 (Versió Recomanada)
+    echo ================================================
+    echo.
+    
+    set PYTHON_URL=https://www.python.org/ftp/python/3.11.9/python-3.11.9-amd64.exe
+    set PYTHON_INSTALLER=python-3.11.9-amd64.exe
+    
+    echo Descarregant Python 3.11.9...
+    powershell -Command "& {Invoke-WebRequest -Uri '!PYTHON_URL!' -OutFile '!PYTHON_INSTALLER!'}"
+    
+    if not exist "!PYTHON_INSTALLER!" (
+        echo ERROR: No s'ha pogut descarregar Python.
+        echo Si us plau, descarrega manualment des de: https://www.python.org/downloads/
+        pause
+        exit /b 1
+    )
+    
+    echo Instal·lant Python 3.11.9...
+    echo (Això pot trigar uns minuts...)
+    "!PYTHON_INSTALLER!" /quiet InstallAllUsers=1 PrependPath=1 Include_test=0
+    
+    if %errorlevel% neq 0 (
+        echo ERROR: La instal·lació de Python ha fallat.
+        pause
+        exit /b 1
+    )
+    
+    echo Netejant fitxers temporals...
+    del "!PYTHON_INSTALLER!"
+    
+    echo Python 3.11.9 instal·lat correctament!
+    echo.
+    
+    REM Actualitzar PATH per a aquesta sessió
+    set PATH=%PATH%;C:\Program Files\Python311;C:\Program Files\Python311\Scripts
+    
+    REM Verificar la instal·lació
+    timeout /t 3 /nobreak >nul
+    python --version >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo AVÍS: Python s'ha instal·lat però pot necessitar reiniciar.
+        echo Si l'error persisteix, reinicia el PC i torna a executar aquest script.
+        pause
+        exit /b 1
+    )
+    
+    echo Python verificat correctament!
+)
+
+echo.
+echo ================================================
+echo    INSTAL·LANT PythonTecnica_SOME
+echo ================================================
+echo.
+
+REM Actualitzar pip a la última versió
+echo Actualitzant pip...
+python -m pip install --upgrade pip
+
 REM Instal·lar dependències
-echo Installing Python dependencies...
+echo Instal·lant dependències Python...
 pip install -r requirements.txt
 
+if %errorlevel% neq 0 (
+    echo ERROR: No s'han pogut instal·lar les dependències.
+    echo Verificant connectivitat a internet...
+    ping google.com -n 1 >nul 2>&1
+    if %errorlevel% neq 0 (
+        echo ERROR: No hi ha connexió a internet. Si us plau, connecta't i torna a intentar-ho.
+    )
+    pause
+    exit /b 1
+)
+
 REM Executar instal·lador empresarial
-echo Running enterprise installer...
+echo Configurant instal·lació empresarial...
 python deployment\\enterprise_installer.py app
 
 echo.
-echo Installation completed!
-echo You can now run PythonTecnica_SOME from the Start Menu or Desktop.
-pause
+echo ================================================
+echo    INSTAL·LACIÓ COMPLETADA!
+echo ================================================
+echo.
+echo Python 3.11.9: Instal·lat ✓
+echo Dependències: Instal·lades ✓
+echo PythonTecnica_SOME: Configurat ✓
+echo.
+echo Pots executar l'aplicació des del menú d'inici o escriptori.
+echo Si hi ha problemes, consulta els logs a: logs\\app.log
+echo.
+echo Prem qualsevol tecla per finalitzar...
+pause >nul
 '''
         
         installer_path = self.deploy_dir / "install.bat"
@@ -194,7 +297,7 @@ pause
             f.write(installer_content)
         
         # Copiar requirements.txt
-        req_src = self.project_dir / "requirements.txt"
+        req_src = self.project_dir / "config" / "requirements.txt"
         req_dest = self.deploy_dir / "requirements.txt"
         if req_src.exists():
             shutil.copy2(req_src, req_dest)
