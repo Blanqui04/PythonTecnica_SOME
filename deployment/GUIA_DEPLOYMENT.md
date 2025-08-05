@@ -17,7 +17,7 @@ Aquest document explica com fer el deployment de l'aplicació PythonTecnica_SOME
 
 ```bash
 # 1. Navegar al directori del projecte
-cd C:\Github\PythonTecnica_SOME\PythonTecnica_SOME
+cd C:\Github\PythonTecnica_SOME
 
 # 2. Executar el build
 build.bat
