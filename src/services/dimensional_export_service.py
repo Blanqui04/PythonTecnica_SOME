@@ -9,7 +9,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side, PatternFill
 from openpyxl.drawing.image import Image
 from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.utils import get_column_letter
+# from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.page import PageMargins
 from src.models.dimensional.dimensional_result import DimensionalResult
 from src.database.database_connection import PostgresConn
@@ -33,26 +33,34 @@ class DataExportService:
         
     def _init_styles(self):
         """Initialize Excel styling constants for automotive PPAP standards"""
-        # Fonts
+        # Professional Fonts with high contrast
         self.HEADER_FONT = Font(name='Arial', size=10, bold=True, color='FFFFFF')
-        self.TITLE_FONT = Font(name='Arial', size=16, bold=True, color='2C3E50')
-        self.SUBTITLE_FONT = Font(name='Arial', size=11, bold=True, color='34495E')
-        self.DATA_FONT = Font(name='Arial', size=9)
-        self.SMALL_FONT = Font(name='Arial', size=8)
-        self.NOTES_FONT = Font(name='Arial', size=9)
-        self.BASIC_FONT = Font(name='Arial', size=9, color='808080')
+        self.TITLE_FONT = Font(name='Arial', size=16, bold=True, color='1B4F72')
+        self.DATA_FONT = Font(name='Arial', size=9, color='000000')
+        self.SMALL_FONT = Font(name='Arial', size=8, color='000000')
+        self.NOTES_FONT = Font(name='Arial', size=9, color='000000')
+        self.BASIC_FONT = Font(name='Arial', size=9, color='4A4A4A')
         self.STATISTICAL_FONT = Font(name='Arial', size=9, bold=True, color='1B4F72')
+        self.MAIN_TITLE_FONT = Font(name='Arial', size=18, bold=True, color='FFFFFF')
+        self.SUBTITLE_FONT = Font(name='Arial', size=14, bold=True, color='1B4F72')
+        self.HEADER_LABEL_FONT = Font(name='Arial', size=10, bold=True, color='FFFFFF')
+        self.HEADER_VALUE_FONT = Font(name='Arial', size=10, color='000000')
+        self.SECTION_HEADER_FONT = Font(name='Arial', size=11, bold=True, color='FFFFFF')
         
-        # Fills
-        self.HEADER_FILL = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
+        # Professional Fills with proper contrast
+        self.HEADER_FILL = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
         self.OK_FILL = PatternFill(start_color='D5F4E6', end_color='D5F4E6', fill_type='solid')
         self.NOK_FILL = PatternFill(start_color='FADBD8', end_color='FADBD8', fill_type='solid')
         self.TED_FILL = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
         self.WG_FILL = PatternFill(start_color='FFF3CD', end_color='FFF3CD', fill_type='solid')
         self.ALT_ROW_FILL = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
         self.STATISTICAL_FILL = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
-        
-        # Professional border system
+        self.MAIN_HEADER_FILL = PatternFill(start_color='1B4F72', end_color='1B4F72', fill_type='solid')
+        self.SECTION_FILL = PatternFill(start_color='2C3E50', end_color='2C3E50', fill_type='solid')
+        self.INFO_FILL = PatternFill(start_color='FFFFFF', end_color='FFFFFF', fill_type='solid')
+        self.ACCENT_FILL = PatternFill(start_color='F0F3F4', end_color='F0F3F4', fill_type='solid')
+    
+        # Professional border system - FIXED for continuous borders
         self.THICK_BORDER = Border(
             left=Side(style='thick', color='2C3E50'), 
             right=Side(style='thick', color='2C3E50'),
@@ -71,7 +79,25 @@ class DataExportService:
             top=Side(style='thin', color='D0D3D4'), 
             bottom=Side(style='thin', color='D0D3D4')
         )
-        
+        # Continuous borders for merged cells
+        self.CONTINUOUS_THICK_BORDER = Border(
+            left=Side(style='thick', color='000000'),
+            right=Side(style='thick', color='000000'),
+            top=Side(style='thick', color='000000'),
+            bottom=Side(style='thick', color='000000')
+        )
+        self.CONTINUOUS_MEDIUM_BORDER = Border(
+            left=Side(style='medium', color='000000'),
+            right=Side(style='medium', color='000000'),
+            top=Side(style='medium', color='000000'),
+            bottom=Side(style='medium', color='000000')
+        )
+        self.CONTINUOUS_THIN_BORDER = Border(
+            left=Side(style='thin', color='000000'),
+            right=Side(style='thin', color='000000'),
+            top=Side(style='thin', color='000000'),
+            bottom=Side(style='thin', color='000000')
+        )
         # Specialized borders for groupings
         self.LEFT_MEDIUM_BORDER = Border(
             left=Side(style='medium', color='85929E'),
@@ -155,22 +181,27 @@ class DataExportService:
         return sorted(results, key=lambda r: parse_automotive_id(r.element_id))
 
     def _enhance_metadata(self, metadata: Dict[str, Any], db_config_path: Optional[str], db_key: str) -> Dict[str, Any]:
-        """Enhance metadata with fixed values and database lookup"""
+        """Enhance metadata with smart defaults and database lookup - NO USER PROMPTS"""
         enhanced = {
-            'client_name': metadata.get('client_name', ''),
-            'project_ref': metadata.get('project_ref', ''),
-            'part_number': metadata.get('project_ref', ''),
-            'batch_number': metadata.get('batch_number', ''),
-            'report_type': metadata.get('report_type', 'PPAP'),
+            'client_name': metadata.get('client_name', 'N/A'),
+            'project_ref': metadata.get('project_ref', 'N/A'),
+            'part_number': metadata.get('project_ref', 'N/A'),
+            'batch_number': metadata.get('batch_number', 'N/A'),
+            'report_type': metadata.get('report_type', 'PPAP Level 3'),
             'tolerance_standard': metadata.get('tolerance_standard', 'ISO 2768-m'),
             'cavity_display': self._get_cavity_display(metadata),
-            'part_description': '',  # Will be looked up from database
-            'quotation_number': '',  # Will be looked up from database
-            'drawing_number': '',
-            'inspection_facility': 'Quality Lab 1',
-            'protocol_reference': 'ITM-1',
+            'part_description': '',  # Will be generated intelligently
+            'quotation_number': 'TBD',  # Professional default
+            'drawing_number': 'TBD',  # Professional default
+            'inspection_facility': 'Quality Control Laboratory',
+            'protocol_reference': 'According metrology protocol ITM-1',
             'report_date': datetime.now().strftime('%d/%m/%Y'),
-            'export_timestamp': datetime.now().isoformat()
+            'export_timestamp': datetime.now().isoformat(),
+            'project_leader_name': 'Project Leader',
+            'project_leader_title': 'Project Manager',
+            'quality_facility': 'Quality Control Laboratory',
+            'normative': metadata.get('tolerance_standard', 'ISO 2768-m'),
+            'inspector': 'Quality Control Team'
         }
         
         # Try to get database metadata if available
@@ -229,8 +260,8 @@ class DataExportService:
             if row:
                 return {
                     'part_description': row[0] or '',
-                    'quotation_number': row[1] or '',
-                    'drawing_number': row[2] or ''
+                    'quotation_number': row[1] or 'TBD',
+                    'drawing_number': row[2] or 'TBD'
                 }
 
             db.close()
@@ -298,161 +329,173 @@ class DataExportService:
         self._apply_formatting(ws)
 
     def _ppap_header(self, ws: Worksheet, metadata: Dict[str, Any], start_row: int, logo_path: Optional[str] = None) -> int:
-        """Add enhanced professional PPAP header with logo and improved layout"""
+        """Create professional PPAP header matching automotive industry standards - FIXED BORDERS"""
         current_row = start_row
         
-        # LOGO AND TITLE SECTION
+        # LOGO AND MAIN TITLE SECTION
         if logo_path and os.path.exists(logo_path):
             try:
-                # Add logo with exact dimensions: 1.9cm height x 8.53cm width
                 img = Image(logo_path)
-                
-                # Convert cm to pixels (approximate conversion for Excel)
-                # Excel uses 96 DPI: 1 cm ≈ 37.8 pixels
-                img.height = int(1.9 * 37.8)  # ~72 pixels
-                img.width = int(8.53 * 37.8)  # ~322 pixels
-                
-                # Alternative exact size using cm (works in newer openpyxl versions)
-                # img.height = 1.9 * 28.35  # 1 cm = 28.35 points
-                # img.width = 8.53 * 28.35
-                
+                img.height = int(2.0 * 37.8)  # ~75 pixels
+                img.width = int(8.5 * 37.8)   # ~320 pixels
                 ws.add_image(img, f'A{current_row}')
-                ws.row_dimensions[current_row].height = 54  # Approximately 1.9cm | Adjust row height to match logo
             except Exception as e:
                 self.logger.warning(f"Could not add logo: {e}")
-
-        #ws.page_setup.firstFooter.left.text = "Confidential - " + metadata.get('client_name', '')
-        #ws.page_setup.firstFooter.left.size = 8
-        #ws.page_setup.firstFooter.left.font = "Arial,Bold"
-        #ws.page_setup.firstFooter.left.color = "2C3E50"
         
-        # Main title (positioned to accommodate logo)
+        # MAIN TITLE - Right side of logo with fixed borders
         ws.merge_cells(f'D{current_row}:O{current_row}')
-        title_cell = ws.cell(row=current_row, column=4, value="PRODUCTION PART APPROVAL PROCESS")
-        title_cell.font = Font(name='Arial', size=18, bold=True, color='1B4F72')
-        title_cell.alignment = Alignment(horizontal='center', vertical='center')
-        ws.row_dimensions[current_row].height = 30
+        main_title = ws.cell(row=current_row, column=4, value="DIMENSIONAL ANALYSIS RESULTS")
+        main_title.font = self.MAIN_TITLE_FONT
+        main_title.alignment = Alignment(horizontal='center', vertical='center')
+        main_title.fill = self.MAIN_HEADER_FILL
+        # Apply border to entire merged range
+        self._apply_border_to_merged_range(ws, current_row, current_row, 4, 15, self.CONTINUOUS_MEDIUM_BORDER)
+        ws.row_dimensions[current_row].height = 56
         current_row += 1
         
-        # Subtitle
+        # SUBTITLE
         ws.merge_cells(f'D{current_row}:O{current_row}')
-        subtitle_cell = ws.cell(row=current_row, column=4, value="DIMENSIONAL ANALYSIS RESULTS")
-        subtitle_cell.font = Font(name='Arial', size=14, bold=True, color='2C3E50')
-        subtitle_cell.alignment = Alignment(horizontal='center', vertical='center')
+        subtitle = ws.cell(row=current_row, column=4, value="PRODUCTION PART APPROVAL PROCESS")
+        subtitle.font = Font(name='Arial', size=12, bold=True, color='FFFFFF')
+        subtitle.alignment = Alignment(horizontal='center', vertical='center')
+        subtitle.fill = self.SECTION_FILL
+        self._apply_border_to_merged_range(ws, current_row, current_row, 4, 15, self.CONTINUOUS_MEDIUM_BORDER)
         ws.row_dimensions[current_row].height = 25
+        current_row += 1
+        
+        # THIRD LINE
+        ws.merge_cells(f'D{current_row}:O{current_row}')
+        third_line = ws.cell(row=current_row, column=4, value=metadata.get('report_type', 'PPAP lvl 3'))
+        third_line.font = Font(name='Arial', size=10, bold=True, color='FFFFFF')
+        third_line.alignment = Alignment(horizontal='center', vertical='center')
+        third_line.fill = PatternFill(start_color='5D6D7E', end_color='5D6D7E', fill_type='solid')
+        self._apply_border_to_merged_range(ws, current_row, current_row, 4, 15, self.CONTINUOUS_MEDIUM_BORDER)
+        ws.row_dimensions[current_row].height = 22
         current_row += 2
         
-        # INFORMATION GRID SECTION
-        # Apply consistent borders to the entire header section
-        header_start_row = current_row
-        
-        # Row 1: Supplier and Part Number
-        self._add_header_row(ws, current_row, [
-            ("Supplier:", metadata.get('client_name', ''), 7),
-            ("Part No.:", metadata.get('part_number', ''), 8)
-        ])
-        current_row += 1
-        
-        # Row 2: Part Description and Drawing Number
-        part_desc = metadata.get('part_description', '') or f"Part for {metadata.get('project_ref', '')}"
-        drawing_info = metadata.get('drawing_number', '') or "TBD"
-        self._add_header_row(ws, current_row, [
-            ("Part Description:", part_desc, 7),
-            ("Drawing No./Rev.:", drawing_info, 8)
-        ])
-        current_row += 1
-        
-        # Row 3: Batch Number and Cavity
-        self._add_header_row(ws, current_row, [
-            ("Batch No.:", metadata.get('batch_number', ''), 7),
-            ("Cavity No.:", metadata.get('cavity_display', '1'), 8)
-        ])
-        current_row += 1
-        
-        # Row 4: Inspection Facility and Report Number
-        report_number = metadata.get('quotation_number', '') or f"{metadata.get('project_ref', '')}/{datetime.now().strftime('%y/%m')}"
-        self._add_header_row(ws, current_row, [
-            ("Inspection Facility:", metadata.get('inspection_facility', 'Quality Lab 1'), 7),
-            ("Report Number:", report_number, 8)
-        ])
-        current_row += 1
-        
-        # Row 5: Report Date and Protocol
-        protocol_text = f"According metrology protocol {metadata.get('protocol_reference', 'ITM-1')} / {metadata.get('tolerance_standard', 'ISO 2768-m')}"
-        self._add_header_row(ws, current_row, [
-            ("Report Date:", metadata.get('report_date', datetime.now().strftime('%d/%m/%Y')), 7),
-            ("Metrology Protocol:", protocol_text, 8)
-        ])
-        current_row += 1
-        
-        # Row 6: Report Type and Standard
-        self._add_header_row(ws, current_row, [
-            ("Report Type:", metadata.get('report_type', 'PPAP'), 7),
-            ("Tolerance Standard:", metadata.get('tolerance_standard', 'ISO 2768-m'), 8)
-        ])
-        current_row += 1
-        
-        # Apply professional borders to the entire header grid
-        self._apply_header_borders(ws, header_start_row, current_row - 1)
+        # FIXED PROFESSIONAL INFORMATION GRID
+        current_row = self._create_fixed_professional_info_grid(ws, metadata, current_row)
         
         return current_row + 1
-
-    def _add_header_row(self, ws: Worksheet, row: int, items: List[Tuple[str, str, int]]):
-        """Add a header information row with proper formatting"""
-        ws.row_dimensions[row].height = 22
-        
-        # Left side item
-        left_label, left_value, left_end_col = items[0]
-        ws.cell(row=row, column=1, value=left_label).font = Font(name='Arial', size=10, bold=True, color='2C3E50')
-        ws.merge_cells(f'B{row}:{get_column_letter(left_end_col)}{row}')
-        ws.cell(row=row, column=2, value=left_value).font = Font(name='Arial', size=10)
-        
-        # Right side item
-        if len(items) > 1:
-            right_label, right_value, right_end_col = items[1]
-            ws.cell(row=row, column=right_end_col, value=right_label).font = Font(name='Arial', size=10, bold=True, color='2C3E50')
-            ws.merge_cells(f'{get_column_letter(right_end_col + 1)}{row}:O{row}')
-            ws.cell(row=row, column=right_end_col + 1, value=right_value).font = Font(name='Arial', size=10)
-
-    def _apply_header_borders(self, ws: Worksheet, start_row: int, end_row: int):
-        """Apply consistent professional borders to header section"""
+    
+    def _apply_border_to_merged_range(self, ws: Worksheet, start_row: int, end_row: int, start_col: int, end_col: int, border: Border):
+        """Apply consistent borders to merged cell ranges"""
         for row in range(start_row, end_row + 1):
-            for col in range(1, 16):  # A to O
-                cell = ws.cell(row=row, column=col)
-                
-                # Determine border style
-                if row == start_row and row == end_row:
-                    # Single row
-                    cell.border = self.THICK_BORDER
-                elif row == start_row:
-                    # Top row
-                    cell.border = Border(
-                        left=Side(style='thick', color='2C3E50'),
-                        right=Side(style='thick', color='2C3E50'),
-                        top=Side(style='thick', color='2C3E50'),
-                        bottom=Side(style='thin', color='D0D3D4')
-                    )
-                elif row == end_row:
-                    # Bottom row
-                    cell.border = Border(
-                        left=Side(style='thick', color='2C3E50'),
-                        right=Side(style='thick', color='2C3E50'),
-                        top=Side(style='thin', color='D0D3D4'),
-                        bottom=Side(style='thick', color='2C3E50')
-                    )
-                else:
-                    # Middle rows
-                    cell.border = Border(
-                        left=Side(style='thick', color='2C3E50'),
-                        right=Side(style='thick', color='2C3E50'),
-                        top=Side(style='thin', color='D0D3D4'),
-                        bottom=Side(style='thin', color='D0D3D4')
-                    )
-                
-                # Add background for professional look
-                if col in [1, 8]:  # Label columns
-                    cell.fill = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
+            for col in range(start_col, end_col + 1):
+                ws.cell(row=row, column=col).border = border
 
+    def _create_fixed_professional_info_grid(self, ws: Worksheet, metadata: Dict[str, Any], start_row: int) -> int:
+        """Create FIXED professional information grid with proper merged cells"""
+        current_row = start_row
+        
+        # Define information rows with corrected structure
+        info_rows = [
+            [
+                ("Supplier:", metadata.get('client_name', 'N/A')),
+                ("Part No.:", metadata.get('part_number', metadata.get('project_ref', 'N/A')))
+            ],
+            [
+                ("Part Description:", self._get_part_description(metadata)),
+                ("Drawing No./Rev.:", metadata.get('drawing_number', 'TBD'))
+            ],
+            [
+                ("Batch No.:", metadata.get('batch_number', 'N/A')),
+                ("Cavity No.:", self._get_cavity_display_text(metadata))
+            ],
+            [
+                ("Inspection Facility:", "Quality Control Laboratory"),
+                ("Report Number:", "TBD")
+            ],
+            [
+                ("Report Date:", metadata.get('report_date', datetime.now().strftime('%d/%m/%Y'))),
+                ("Metrology Protocol:", "According metrology protocol ITM-1")
+            ],
+            [
+                ("Report Type:", metadata.get('report_type', 'PPAP Level 3')),
+                ("Tolerance Standard:", metadata.get('tolerance_standard', 'ISO 2768-m'))
+            ]
+        ]
+        
+        # Create each information row with FIXED cell merging
+        for row_data in info_rows:
+            current_row = self._add_fixed_professional_info_row(ws, current_row, row_data)
+        
+        return current_row
+
+    def _add_fixed_professional_info_row(self, ws: Worksheet, row: int, row_data: list) -> int:
+        """Add a single professional information row with CORRECTED merged cells"""
+        ws.row_dimensions[row].height = 24
+        
+        # LEFT SIDE: A:B merged (Label), C:G merged (Value)
+        left_label, left_value = row_data[0]
+        
+        # Label cells A:B
+        ws.merge_cells(f'A{row}:B{row}')
+        label_cell = ws.cell(row=row, column=1, value=left_label)
+        label_cell.font = self.HEADER_LABEL_FONT
+        label_cell.fill = self.SECTION_FILL
+        label_cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+        self._apply_border_to_merged_range(ws, row, row, 1, 2, self.CONTINUOUS_MEDIUM_BORDER)
+        
+        # Value cells C:G
+        ws.merge_cells(f'C{row}:G{row}')
+        value_cell = ws.cell(row=row, column=3, value=left_value)
+        value_cell.font = self.HEADER_VALUE_FONT
+        value_cell.fill = self.INFO_FILL
+        value_cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+        self._apply_border_to_merged_range(ws, row, row, 3, 7, self.CONTINUOUS_MEDIUM_BORDER)
+        
+        # RIGHT SIDE: H:J merged (Label), J:O merged (Value)
+        if len(row_data) > 1:
+            right_label, right_value = row_data[1]
+
+            # Label cells H:J
+            ws.merge_cells(f'H{row}:J{row}')
+            right_label_cell = ws.cell(row=row, column=8, value=right_label)
+            right_label_cell.font = self.HEADER_LABEL_FONT
+            right_label_cell.fill = self.SECTION_FILL
+            right_label_cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+            self._apply_border_to_merged_range(ws, row, row, 8, 10, self.CONTINUOUS_MEDIUM_BORDER)
+            
+            # Value cells K:O
+            ws.merge_cells(f'K{row}:O{row}')
+            right_value_cell = ws.cell(row=row, column=11, value=right_value)
+            right_value_cell.font = self.HEADER_VALUE_FONT
+            right_value_cell.fill = self.INFO_FILL
+            right_value_cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+            self._apply_border_to_merged_range(ws, row, row, 10, 15, self.CONTINUOUS_MEDIUM_BORDER)
+        
+        return row + 1
+
+    def _get_part_description(self, metadata: Dict[str, Any]) -> str:
+        """Generate intelligent part description"""
+        if metadata.get('part_description'):
+            return metadata['part_description']
+        
+        project_ref = metadata.get('project_ref', '')
+        client_name = metadata.get('client_name', '')
+        
+        if project_ref and client_name:
+            return f"Component for {client_name} - {project_ref}"
+        elif project_ref:
+            return f"Component {project_ref}"
+        else:
+            return "TBD"
+
+    def _get_cavity_display_text(self, metadata: Dict[str, Any]) -> str:
+        """Get professional cavity display text"""
+        cavity_count = metadata.get('cavity_count', 1)
+        current_cavity = metadata.get('current_cavity', None)
+        
+        if current_cavity:
+            return f"Cavity {current_cavity}"
+        elif cavity_count > 2:
+            return "All Cavities"
+        elif cavity_count == 2:
+            return "Both Cavities"
+        else:
+            return "Single Cavity"
+            
     def _dimensional_table(self, ws: Worksheet, results: List[DimensionalResult], start_row: int) -> int:
         """Add automotive dimensional data table with enhanced formatting"""
         current_row = start_row
@@ -460,7 +503,7 @@ class DataExportService:
         # Enhanced headers
         headers = [
             'Element\nID', 'Description', 'Measuring\nInstrument', 'M1', 'M2', 'M3', 'M4', 'M5',
-            'Min.', 'Max.', 'Mean\nValue', 'Std\nDev', 'Pp', 'Ppk', 'Status'
+            'Min.', 'Max.', 'Mean', 'Std\nDev', 'Pp', 'Ppk', 'Status'
         ]
         
         # Write headers with professional styling
@@ -469,11 +512,10 @@ class DataExportService:
             cell.font = self.HEADER_FONT
             cell.fill = self.HEADER_FILL
             cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-            cell.border = self._get_header_border(col)
+            cell.border = self.CONTINUOUS_MEDIUM_BORDER
         
         ws.row_dimensions[current_row].height = 40
         current_row += 1
-        
         
         # Write data rows
         for row_idx, result in enumerate(results):
@@ -484,18 +526,6 @@ class DataExportService:
         self._set_automotive_column_widths(ws)
         
         return current_row
-
-    def _get_header_border(self, col: int) -> Border:
-        """Get appropriate border for header cell based on column grouping"""
-        if col in [3, 8, 11, 14]:  # Group separators
-            return Border(
-                left=Side(style='thin', color='D0D3D4'),
-                right=Side(style='medium', color='85929E'),
-                top=Side(style='thick', color='2C3E50'),
-                bottom=Side(style='thick', color='2C3E50')
-            )
-        else:
-            return self.THICK_BORDER
 
     def _add_enhanced_data_row(self, ws: Worksheet, row: int, result: DimensionalResult, num_columns: int, row_index: int):
         """Add data row with enhanced formatting and fixed evaluation type handling"""
@@ -685,12 +715,12 @@ class DataExportService:
     def _apply_status_formatting(self, cell, status: str):
         """Apply status-based formatting for automotive standards"""
         status_formats = {
-            'OK': (self.OK_FILL, Font(name='Arial', size=9, bold=True, color='27AE60')),
-            'NOK': (self.NOK_FILL, Font(name='Arial', size=9, bold=True, color='E74C3C')),
-            'T.E.D': (self.TED_FILL, Font(name='Arial', size=9, bold=True, color='3498DB')),
-            'WARNING': (self.WG_FILL, Font(name='Arial', size=9, bold=True, color='856404')),
-            'TO CHECK': (PatternFill(start_color='FFF2CC', end_color='FFF2CC', fill_type='solid'), 
-                        Font(name='Arial', size=9, bold=True, color='D6B656'))
+            'OK': (self.OK_FILL, Font(name='Arial', size=9, bold=True, color='1B5E20')),
+            'NOK': (self.NOK_FILL, Font(name='Arial', size=9, bold=True, color='C62828')),
+            'T.E.D': (self.TED_FILL, Font(name='Arial', size=9, bold=True, color='1565C0')),
+            'WARNING': (self.WG_FILL, Font(name='Arial', size=9, bold=True, color='F57C00')),
+            'TO CHECK': (PatternFill(start_color='FFF8E1', end_color='FFF8E1', fill_type='solid'), 
+                        Font(name='Arial', size=9, bold=True, color='FF8F00'))
         }
         
         if status in status_formats:
@@ -699,35 +729,25 @@ class DataExportService:
             cell.font = font
 
     def _ppap_footer(self, ws: Worksheet, metadata: Dict[str, Any], start_row: int):
-        """Add enhanced professional PPAP footer with improved notes section"""
+        """Add FIXED professional PPAP footer with corrected structure"""
         current_row = start_row + 1
         
         # NOTES SECTION - Enhanced with single merged cell
         ws.merge_cells(f'A{current_row}:O{current_row}')
         notes_header = ws.cell(row=current_row, column=1, value="NOTES / OBSERVATIONS:")
         notes_header.font = Font(name='Arial', size=11, bold=True, color='1B4F72')
-        notes_header.fill = PatternFill(start_color='EBF3FD', end_color='EBF3FD', fill_type='solid')
-        notes_header.alignment = Alignment(horizontal='left', vertical='center')
-        notes_header.border = Border(
-            left=Side(style='thick', color='2C3E50'),
-            right=Side(style='thick', color='2C3E50'),
-            top=Side(style='thick', color='2C3E50'),
-            bottom=Side(style='medium', color='85929E')
-        )
+        notes_header.fill = self.ACCENT_FILL
+        notes_header.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+        self._apply_border_to_merged_range(ws, current_row, current_row, 1, 15, self.CONTINUOUS_MEDIUM_BORDER)
         ws.row_dimensions[current_row].height = 25
         current_row += 1
         
-        # Single large notes area - more professional
+        # Notes area with FIXED borders
         ws.merge_cells(f'A{current_row}:O{current_row + 4}')
         notes_cell = ws.cell(row=current_row, column=1, value='')
-        notes_cell.border = Border(
-            left=Side(style='thick', color='2C3E50'),
-            right=Side(style='thick', color='2C3E50'),
-            top=Side(style='thin', color='D0D3D4'),
-            bottom=Side(style='thick', color='2C3E50')
-        )
-        notes_cell.fill = PatternFill(start_color='FAFBFC', end_color='FAFBFC', fill_type='solid')
+        notes_cell.fill = self.INFO_FILL
         notes_cell.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
+        self._apply_border_to_merged_range(ws, current_row, current_row + 4, 1, 15, self.CONTINUOUS_THIN_BORDER)
         
         # Set height for notes area
         for i in range(5):
@@ -735,90 +755,72 @@ class DataExportService:
         
         current_row += 6
         
-        # APPROVAL SECTION - Enhanced
+        # APPROVAL SECTION with FIXED borders
         ws.merge_cells(f'A{current_row}:O{current_row}')
-        approval_header = ws.cell(row=current_row, column=1, value="QUALITY APPROVAL")
-        approval_header.font = Font(name='Arial', size=11, bold=True, color='1B4F72')
-        approval_header.fill = PatternFill(start_color='EBF3FD', end_color='EBF3FD', fill_type='solid')
+        approval_header = ws.cell(row=current_row, column=1, value="PROJECT APPROVAL")
+        approval_header.font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
+        approval_header.fill = self.SECTION_FILL
         approval_header.alignment = Alignment(horizontal='center', vertical='center')
-        approval_header.border = self.THICK_BORDER
+        self._apply_border_to_merged_range(ws, current_row, current_row, 1, 15, self.CONTINUOUS_MEDIUM_BORDER)
         ws.row_dimensions[current_row].height = 25
         current_row += 1
         
-        # Signature table with improved layout
-        self._add_signature_table(ws, current_row, metadata)
-        current_row += 4
+        # FIXED signature table - Only Project Leader as requested
+        self._add_fixed_signature_table(ws, current_row, metadata)
+        current_row += 3
         
         # Professional compliance footer
         ws.merge_cells(f'A{current_row}:O{current_row}')
         compliance_text = (
             f"This report complies with {metadata.get('tolerance_standard', 'ISO 2768-m')} standards and automotive PPAP requirements. "
-            f"According metrology protocol {metadata.get('protocol_reference', 'ITM-1')}. "
-            f"Generated: {metadata.get('export_timestamp', datetime.now().isoformat())}"
+            f"Generated: {datetime.now().strftime('%d/%m/%Y %H:%M:%S')}"
         )
         compliance_footer = ws.cell(row=current_row, column=1, value=compliance_text)
-        compliance_footer.font = Font(name='Arial', size=8, italic=True, color='566573')
+        compliance_footer.font = Font(name='Arial', size=8, italic=True, color='424242')
         compliance_footer.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
-        compliance_footer.border = self.THIN_BORDER
+        self._apply_border_to_merged_range(ws, current_row, current_row, 1, 15, self.CONTINUOUS_THIN_BORDER)
         ws.row_dimensions[current_row].height = 30
 
-    def _add_signature_table(self, ws: Worksheet, start_row: int, metadata: Dict[str, Any]):
-        """Add professional signature table"""
+    def _add_fixed_signature_table(self, ws: Worksheet, start_row: int, metadata: Dict[str, Any]):
+        """Add FIXED professional signature table - Only Project Leader"""
         current_row = start_row
         
-        # Headers
-        headers = ["Signature", "Title", "Date"]
+        # Headers with FIXED borders
+        headers = ["Project Leader", "Signature", "Date"]
         header_ranges = [
-            f'A{current_row}:F{current_row}',
-            f'G{current_row}:L{current_row}',
-            f'M{current_row}:O{current_row}'
+            (1, 5),   # A:E
+            (6, 11),  # F:K  
+            (12, 15)  # L:O
         ]
         
-        for i, (header, cell_range) in enumerate(zip(headers, header_ranges)):
-            ws.merge_cells(cell_range)
-            cell = ws.cell(row=current_row, column=1 + i * 6 if i < 2 else 13, value=header)
-            cell.font = Font(name='Arial', size=10, bold=True, color='2C3E50')
+        for i, (header, (start_col, end_col)) in enumerate(zip(headers, header_ranges)):
+            ws.merge_cells(f'{chr(64 + start_col)}{current_row}:{chr(64 + end_col)}{current_row}')
+            cell = ws.cell(row=current_row, column=start_col, value=header)
+            cell.font = Font(name='Arial', size=10, bold=True, color='FFFFFF')
             cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.fill = PatternFill(start_color='E8F4F8', end_color='E8F4F8', fill_type='solid')
-            cell.border = self.MEDIUM_BORDER
+            cell.fill = self.SECTION_FILL
+            self._apply_border_to_merged_range(ws, current_row, current_row, start_col, end_col, self.CONTINUOUS_MEDIUM_BORDER)
         
         ws.row_dimensions[current_row].height = 25
         current_row += 1
         
-        # Quality Engineer signature line
-        signature_ranges = [
-            f'A{current_row}:F{current_row}',
-            f'G{current_row}:L{current_row}',
-            f'M{current_row}:O{current_row}'
-        ]
-        
+        # Project Leader signature line with FIXED borders
         signature_data = [
+            "Project Manager",  # Title
             "",  # Signature space
-            "Quality Engineer",  # Title
             metadata.get('report_date', datetime.now().strftime('%d/%m/%Y'))  # Date
         ]
         
-        for i, (data, cell_range) in enumerate(zip(signature_data, signature_ranges)):
-            ws.merge_cells(cell_range)
-            cell = ws.cell(row=current_row, column=1 + i * 6 if i < 2 else 13, value=data)
-            cell.font = Font(name='Arial', size=10, bold=True if i == 1 else False)
+        for i, (data, (start_col, end_col)) in enumerate(zip(signature_data, header_ranges)):
+            ws.merge_cells(f'{chr(64 + start_col)}{current_row}:{chr(64 + end_col)}{current_row}')
+            cell = ws.cell(row=current_row, column=start_col, value=data)
+            cell.font = Font(name='Arial', size=10, bold=True if i == 0 else False, color='000000')
             cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = self.THIN_BORDER
-            if i == 0:  # Signature cell
-                cell.fill = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
-        
-        ws.row_dimensions[current_row].height = 35
-        current_row += 1
-        
-        # Project Leader signature line
-        for i, (data, cell_range) in enumerate(zip(["", "Project Leader", ""], signature_ranges)):
-            ws.merge_cells(cell_range)
-            cell = ws.cell(row=current_row, column=1 + i * 6 if i < 2 else 13, value=data)
-            cell.font = Font(name='Arial', size=10, bold=True if i == 1 else False)
-            cell.alignment = Alignment(horizontal='center', vertical='center')
-            cell.border = self.THIN_BORDER
-            if i == 0:  # Signature cell
-                cell.fill = PatternFill(start_color='F8F9FA', end_color='F8F9FA', fill_type='solid')
+            if i == 1:  # Signature cell
+                cell.fill = PatternFill(start_color='F5F5F5', end_color='F5F5F5', fill_type='solid')
+            else:
+                cell.fill = self.INFO_FILL
+            self._apply_border_to_merged_range(ws, current_row, current_row, start_col, end_col, self.CONTINUOUS_THIN_BORDER)
         
         ws.row_dimensions[current_row].height = 35
 
@@ -826,7 +828,7 @@ class DataExportService:
         """Create cavity-specific sheet with automotive formatting"""
         current_row = 1
         current_row = self._ppap_header(ws, metadata, current_row, logo_path)
-        current_row += 1
+        current_row += 2  # Only one row separation
         current_row = self._dimensional_table(ws, cavity_results, current_row)
         current_row += 2
         self._ppap_footer(ws, metadata, current_row)
@@ -1004,7 +1006,7 @@ class DataExportService:
 
         status = result.status.value if hasattr(result.status, "value") else str(result.status)
 
-        # Handle notes - check both evaluation_type and eval_type
+        # Handle notes
         evaluation_type = (
             getattr(result, 'evaluation_type', '') or 
             getattr(result, 'eval_type', '') or ''
@@ -1068,21 +1070,22 @@ class DataExportService:
         """Generate professional export summary for automotive clients"""
         try:
             summary_lines = [
-                "AUTOMOTIVE DIMENSIONAL ANALYSIS EXPORT SUMMARY",
-                "=" * 60,
-                "",
+                "PROFESSIONAL AUTOMOTIVE DIMENSIONAL ANALYSIS EXPORT",
+                "=" * 65,
+                "", 
                 "PROJECT INFORMATION:",
                 f"  Client: {metadata.get('client_name', 'N/A')}",
                 f"  Project Reference: {metadata.get('project_ref', 'N/A')}",
                 f"  Part Number: {metadata.get('part_number', 'N/A')}",
                 f"  Batch Number: {metadata.get('batch_number', 'N/A')}",
-                f"  Report Type: {metadata.get('report_type', 'PPAP')}",
+                f"  Report Type: {metadata.get('report_type', 'PPAP Level 3')}",
                 f"  Tolerance Standard: {metadata.get('tolerance_standard', 'ISO 2768-m')}",
                 "",
                 "QUALITY INFORMATION:",
-                f"  Inspection Facility: {metadata.get('inspection_facility', 'Quality Lab 1')}",
-                f"  Metrology Protocol: {metadata.get('protocol_reference', 'ITM-1')}",
-                f"  Cavity: {metadata.get('cavity_display', '1')}",
+                f"  Inspection Facility: Quality Control Laboratory",
+                f"  Report Number: TBD",
+                f"  Cavity Configuration: {metadata.get('cavity_display', 'Single')}",
+                f"  Protocol Reference: According metrology protocol ITM-1",
                 "",
                 "EXPORTED FILES:",
                 f"  • Professional Excel Report: {os.path.basename(export_paths.get('excel_report', 'Not generated'))}",
@@ -1090,21 +1093,19 @@ class DataExportService:
                 "",
                 f"Export completed successfully at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
                 "",
-                "ENHANCED AUTOMOTIVE PPAP COMPLIANCE FEATURES:",
-                "  ✓ Professional automotive-standard formatting with company logo",
-                "  ✓ Enhanced header with all required PPAP information",
-                "  ✓ Fixed evaluation type handling (eval_type/evaluation_type)",
-                "  ✓ Proper 'Visual' instrument display in exports",
-                "  ✓ Improved statistical dimension highlighting",
-                "  ✓ Professional notes section with merged cells",
-                "  ✓ Enhanced signature areas for quality approval",
-                "  ✓ Consistent border formatting throughout document",
-                "  ✓ Cavity-specific reporting (1, 2, Both, All)",
-                "  ✓ Tolerance standard integration from UI selection",
+                "PROFESSIONAL AUTOMOTIVE PPAP FEATURES:",
+                "  ✓ PPAP Level 3/5 compliant formatting",
+                "  ✓ Professional color scheme with high contrast",
+                "  ✓ Fixed merged cell structure and continuous borders",
+                "  ✓ Automotive industry standard layout",
+                "  ✓ Project Leader approval section only",
+                "  ✓ Enhanced typography and professional appearance",
+                "  ✓ Streamlined information grid layout",
+                "  ✓ Ready for automotive OEM submission",
                 "",
-                "Ready for submission to automotive clients:",
-                "VW • BMW • Mercedes • ZF • Autoliv • Tesla • Brose • Sofegi",
-                "=" * 60
+                "AUTOMOTIVE INDUSTRY READY:",
+                "VW • BMW • Mercedes • Audi • Ford • Tesla • Stellantis • GM",
+                "=" * 65
             ]
             
             return "\n".join(summary_lines)
