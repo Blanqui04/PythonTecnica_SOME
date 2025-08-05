@@ -9,7 +9,7 @@ from ..exceptions import TransformationError
 
 class DataTransformer:
     def __init__(self, client, ref_project, config_path='config/config.ini'):
-        self.client = client
+        self.client = client.upper() if isinstance(client, str) else client
         self.ref_project = ref_project
         self.config = configparser.ConfigParser()
         self.config.read(config_path)
@@ -327,7 +327,7 @@ class DataTransformer:
                 'num_processos': ct_count + tract_count,
                 'id_referencia_client': self.ref_project,
                 'num_escandall': ref_id,
-                'id_client': self.client.capitalize() if isinstance(self.client, str) else self.client
+                'id_client': self.client.upper() if isinstance(self.client, str) else self.client
             })
 
         oferta_df = pd.DataFrame(oferta_rows)
