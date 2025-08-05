@@ -1,3 +1,0 @@
-Branques Ernest: Solucionar errors elctures valors numerals i posar el tema del lot com a filtre de automatització al capacity studies, fer export amb pdf
-
-Branques Roger: Estudi Dimensional, mirar aquesta brnaca "Dimensional-w-UI"
