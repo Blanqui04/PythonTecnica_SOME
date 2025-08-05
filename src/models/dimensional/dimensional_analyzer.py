@@ -37,26 +37,25 @@ class DimensionalAnalyzer:
             measurements = record.get("measurements", [])
             if not isinstance(measurements, list):
                 measurements = []
-            
-            # Calculate deviations
-            deviation = [m - nominal for m in measurements] if measurements else []
-            
+
+            if evaluation_type == "Note":
+                avg = None
+                sd = None
+                self.logger.info(f"Note dimension {element_id}: Statistics set to None")
+            else:
+                avg = mean(measurements) if measurements else 0.0
+                sd = stdev(measurements) if measurements and len(measurements) > 1 else 0.0
+
+
+            deviation = [m - nominal for m in measurements] if measurements else []  # Calculate deviations
+
             # Handle tolerances based on evaluation type
             lower_tol, upper_tol, warnings = self._process_tolerances(record, evaluation_type, description, nominal)
             
-            # Calculate statistics
-            if measurements:
-                avg = mean(measurements)
-                sd = stdev(measurements) if len(measurements) > 1 else 0.0
-            else:
-                avg = 0.0
-                sd = 0.0
-            
             # Determine status based on evaluation type
             status, out_of_spec_count = self._determine_status(
-                record, evaluation_type, measurements, nominal, lower_tol, upper_tol
-            )
-            
+                record, evaluation_type, measurements, nominal, lower_tol, upper_tol)
+
             # Create GD&T flags only if needed
             gdt_flags = {}
             if evaluation_type == "GD&T":
@@ -71,10 +70,14 @@ class DimensionalAnalyzer:
                     warnings.append("Single measurement - no statistical analysis")
             
             # Calculate process capability for classified dimensions
-            pp, ppk = self._calculate_process_capability(
-                measurements, avg, sd, nominal, lower_tol, upper_tol, classe, evaluation_type
-            )
-            
+            if evaluation_type == "Note":
+                pp = None
+                ppk = None
+            else:
+                pp, ppk = self._calculate_process_capability(
+                    measurements, avg, sd, nominal, lower_tol, upper_tol, classe, evaluation_type
+                )
+
             return DimensionalResult(
                 element_id=element_id,
                 batch=batch,
@@ -86,8 +89,8 @@ class DimensionalAnalyzer:
                 upper_tolerance=upper_tol if upper_tol != 0.0 else None,
                 measurements=measurements,
                 deviation=deviation,
-                mean=avg,
-                std_dev=sd,
+                mean=avg if evaluation_type != "Note" else None,
+                std_dev=sd if evaluation_type != "Note" else None,
                 out_of_spec_count=out_of_spec_count,
                 status=status,
                 gdt_flags=gdt_flags,
@@ -98,10 +101,9 @@ class DimensionalAnalyzer:
                 warnings=warnings,
                 evaluation_type=evaluation_type,
                 measuring_instrument=measuring_instrument,
-                pp=pp,
-                ppk=ppk,
+                pp=pp if evaluation_type != "Note" else None,
+                ppk=ppk if evaluation_type != "Note" else None,
             )
-            
         except Exception as e:
             self.logger.error(f"Analysis error for {record.get('element_id', 'Unknown')}: {str(e)}")
             return self._create_error_result(record, f"Analysis error: {str(e)}")
@@ -205,20 +207,22 @@ class DimensionalAnalyzer:
         return lower_tol, upper_tol, warnings
     
     def _determine_status(self, record: Dict[str, Any], evaluation_type: str, measurements: List[float], 
-                         nominal: float, lower_tol: float, upper_tol: float) -> tuple[DimensionalStatus, int]:
+                     nominal: float, lower_tol: float, upper_tol: float) -> tuple[DimensionalStatus, int]:
         """Optimized status determination with evaluation type support and TO CHECK for notes"""
         force_status = record.get("force_status", "AUTO")
         
         # Handle Notes first - default to TO_CHECK unless forced
         if evaluation_type == "Note":
             if force_status == "GOOD":
+                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Forced to GOOD")
                 return DimensionalStatus.GOOD, 0
             elif force_status == "BAD":
+                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Forced to BAD")
                 return DimensionalStatus.BAD, len(measurements) if measurements else 0
             else:
-                # Default for notes is TO_CHECK
-                return DimensionalStatus.TO_CHECK, 0
-        
+                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Default TO_CHECK status")
+                return DimensionalStatus.TO_CHECK, 0    # Default for notes is TO_CHECK
+
         # Handle forced status for non-notes
         if force_status == "GOOD":
             return DimensionalStatus.GOOD, 0
@@ -228,6 +232,8 @@ class DimensionalAnalyzer:
             return DimensionalStatus.TED, len(measurements)
         elif force_status == "WARNING":
             return DimensionalStatus.WARNING, len(measurements)
+        elif force_status == "TO CHECK":
+            return DimensionalStatus.TO_CHECK, len(measurements)
         
         # Handle different evaluation types
         if evaluation_type in ["Basic", "Informative"]:
@@ -240,15 +246,12 @@ class DimensionalAnalyzer:
         if lower_tol == 0.0 and upper_tol == 0.0:
             return DimensionalStatus.GOOD, 0  # No tolerance to evaluate against
         
-        # Standard tolerance evaluation
-        out_of_spec = []
+        out_of_spec = []    # Standard tolerance evaluation
         
         if nominal == 0.0 and lower_tol == 0.0 and upper_tol > 0.0:
-            # Unilateral positive tolerance for nominal=0
-            out_of_spec = [m for m in measurements if m < 0 or m > upper_tol]
+            out_of_spec = [m for m in measurements if m < 0 or m > upper_tol]                       # Unilateral positive tolerance for nominal=0
         elif nominal == 0.0 and lower_tol < 0.0 and upper_tol > 0.0:
-            # Bilateral tolerance for nominal=0
-            out_of_spec = [m for m in measurements if abs(m) > max(abs(lower_tol), abs(upper_tol))]
+            out_of_spec = [m for m in measurements if abs(m) > max(abs(lower_tol), abs(upper_tol))] # Bilateral tolerance for nominal=0
         else:
             # Standard bilateral tolerance check
             lower_limit = nominal + lower_tol
