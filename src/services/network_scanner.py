@@ -926,14 +926,14 @@ class NetworkScanner:
             print("❌ El dataset global està buit")
             return
         
-        print(f"\n📊 RESUM DEL DATASET GLOBAL")
+        print("\n📊 RESUM DEL DATASET GLOBAL")
         print(f"{'='*50}")
         print(f"📋 Total files: {len(self.global_dataset):,}")
         print(f"📂 Total columnes: {len(self.global_dataset.columns)}")
         
         # Resum per client
         if 'CLIENT' in self.global_dataset.columns:
-            print(f"\n🏢 DISTRIBUCIÓ PER CLIENT:")
+            print("\n🏢 DISTRIBUCIÓ PER CLIENT:")
             client_counts = self.global_dataset['CLIENT'].value_counts()
             for client, count in client_counts.items():
                 print(f"   {client}: {count:,} files")
@@ -947,7 +947,7 @@ class NetworkScanner:
             print(f"\n🔗 TOTAL REFERÈNCIES ÚNIQUES: {self.global_dataset['REFERENCIA'].nunique()}")
         
         # Columnes disponibles
-        print(f"\n📋 COLUMNES DISPONIBLES:")
+        print("\n📋 COLUMNES DISPONIBLES:")
         for i, col in enumerate(self.global_dataset.columns, 1):
             print(f"   {i:2d}. {col}")
         
@@ -956,16 +956,16 @@ class NetworkScanner:
             try:
                 # Convertir a datetime si és possible
                 dates = pd.to_datetime(self.global_dataset['DATA_HORA'])
-                print(f"\n📅 RANG DE DATES:")
+                print("\n📅 RANG DE DATES:")
                 print(f"   Des de: {dates.min()}")
                 print(f"   Fins a: {dates.max()}")
-            except:
-                print(f"\n📅 Columna DATA_HORA disponible però no es pot processar com a dates")
+            except Exception:
+                print("\n📅 Columna DATA_HORA disponible però no es pot processar com a dates")
 
     def load_db_config(self) -> Dict:
         """Carrega la configuració de la base de dades"""
         try:
-            db_config_path = r"C:\Github\PythonTecnica_SOME\PythonTecnica_SOME\config\database\db_config.json"
+            db_config_path = r"C:\Github\PythonTecnica_SOME\config\database\db_config.json"
             with open(db_config_path, 'r') as f:
                 config = json.load(f)
             
