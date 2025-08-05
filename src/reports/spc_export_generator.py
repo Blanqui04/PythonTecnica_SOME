@@ -1,4 +1,4 @@
-# src/reports/excel_spc_report_generator.py
+# src/reports/excel_spc_export_generator.py
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, Any
@@ -635,52 +635,3 @@ class ExcelSPCReportGenerator:
         ws.oddFooter.left.text = f"Client: {self.client}"
         ws.oddFooter.center.text = f"Reference: {self.ref_project}"
         ws.oddFooter.right.text = "Page &P of &N"
-
-
-# Example usage and test function
-def create_test_report():
-    """Create a test report with sample data"""
-    
-    # Test parameters
-    client = "BMW"
-    ref_project = "SEAT_BELT_BUCKLE_v2.1"
-    batch_number = "LOT2024_001"
-    
-    generator = ExcelSPCReportGenerator(
-        client=client,
-        ref_project=ref_project,
-        batch_number=batch_number
-    )
-    
-    try:
-        output_file = generator.create_report(
-            part_description="Safety Belt Buckle Assembly - Critical Dimension",
-            drawing_number="BMW-SB-2024-001-Rev.C",
-            methodology="CMM + Statistical Analysis",
-            facility="SOME Manufacturing Plant - Barcelona",
-            dimension_class="CC"  # Critical Characteristic
-        )
-        
-        print(f"Excel report successfully created: {output_file}")
-        return output_file
-        
-    except Exception as e:
-        print(f"Error creating test report: {e}")
-        return None
-
-
-if __name__ == "__main__":
-    # Create test report
-    test_file = create_test_report()
-    
-    if test_file:
-        print("\nTest report created successfully!")
-        print(f"File location: {test_file}")
-        print("\nThe report includes:")
-        print("- Professional header with company logo")
-        print("- Statistical summary tables")
-        print("- All generated SPC charts")
-        print("- Notes section for additional comments")
-        print("- Signature section for validation")
-    else:
-        print("Failed to create test report")

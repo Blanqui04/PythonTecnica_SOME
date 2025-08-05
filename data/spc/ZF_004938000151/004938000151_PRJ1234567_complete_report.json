@@ -1,0 +1,88 @@
+{
+  "study_id": "004938000151_PRJ1234567",
+  "timestamp": "2025-08-05T16:20:46.735435",
+  "config": {
+    "min_sample_size": 5,
+    "include_extrapolation": false
+  },
+  "summary_statistics": {
+    "total_elements": 1,
+    "successful_analyses": 1,
+    "failed_analyses": 0,
+    "element_types": {
+      "dimension": 1
+    },
+    "normality": {
+      "normal_distributions": 1,
+      "non_normal_distributions": 0,
+      "normality_percentage": 100.0
+    },
+    "capability_indices": {
+      "cp": {
+        "mean": 6.878048780487804,
+        "min": 6.878048780487804,
+        "max": 6.878048780487804,
+        "acceptable_count": 1
+      },
+      "cpk": {
+        "mean": 4.685326829268291,
+        "min": 4.685326829268291,
+        "max": 4.685326829268291,
+        "acceptable_count": 1
+      },
+      "pp": {
+        "mean": 5.409152412844613,
+        "min": 5.409152412844613,
+        "max": 5.409152412844613
+      },
+      "ppk": {
+        "mean": 3.68471462362975,
+        "min": 3.68471462362975,
+        "max": 3.68471462362975
+      }
+    }
+  },
+  "detailed_results": [
+    {
+      "element_name": "N201",
+      "batch_number": "PRJ1234567",
+      "cavity": "1",
+      "nominal": 0.0,
+      "tolerance": [
+        0.0,
+        0.5
+      ],
+      "original_values": [
+        0.154,
+        0.156,
+        0.185,
+        0.195,
+        0.164,
+        0.167,
+        0.185,
+        0.184,
+        0.158,
+        0.155
+      ],
+      "element_type": "dimension",
+      "statistics": {
+        "mean": 0.17029999999999998,
+        "std_short": 0.01211583924349882,
+        "std_long": 0.015405987292103173,
+        "is_normal": "True",
+        "ad_statistic": 0.6210274811945542,
+        "p_value": 0.10597285180957887,
+        "sample_size": 10
+      },
+      "capability": {
+        "cp": 6.878048780487804,
+        "cpk": 4.685326829268291,
+        "pp": 5.409152412844613,
+        "ppk": 3.68471462362975,
+        "ppm_short": 3.539728299052169e-39,
+        "ppm_long": 1.0466218402238023e-22
+      }
+    }
+  ],
+  "extrapolation_results": []
+}
