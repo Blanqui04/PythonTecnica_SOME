@@ -320,7 +320,7 @@ class DataExportService:
             all_results.extend(cavity_results)
         
         current_row = self._dimensional_table(ws, all_results, current_row)
-        current_row += 2
+        current_row += 1
         
         # Add professional footer
         self._ppap_footer(ws, metadata, current_row)
@@ -376,7 +376,7 @@ class DataExportService:
         # FIXED PROFESSIONAL INFORMATION GRID
         current_row = self._create_fixed_professional_info_grid(ws, metadata, current_row)
         
-        return current_row + 1
+        return current_row
     
     def _apply_border_to_merged_range(self, ws: Worksheet, start_row: int, end_row: int, start_col: int, end_col: int, border: Border):
         """Apply consistent borders to merged cell ranges"""
@@ -391,7 +391,7 @@ class DataExportService:
         # Define information rows with corrected structure
         info_rows = [
             [
-                ("Supplier:", metadata.get('client_name', 'N/A')),
+                ("Client:", metadata.get('client_name', 'N/A')),
                 ("Part No.:", metadata.get('part_number', metadata.get('project_ref', 'N/A')))
             ],
             [
@@ -411,7 +411,7 @@ class DataExportService:
                 ("Metrology Protocol:", "According metrology protocol ITM-1")
             ],
             [
-                ("Report Type:", metadata.get('report_type', 'PPAP Level 3')),
+                ("Report Type:", metadata.get('report_type', 'PPAP Level 3').upper()),
                 ("Tolerance Standard:", metadata.get('tolerance_standard', 'ISO 2768-m'))
             ]
         ]
@@ -539,7 +539,7 @@ class DataExportService:
         )
         evaluation_type = str(evaluation_type).strip().lower()
 
-        # Check if it's a note
+        # Check if it's a note - also check for empty eval_type but note-like description
         is_notes = evaluation_type in ['note', 'notes']
         if not is_notes:
             desc = (getattr(result, 'description', '') or '').lower()
@@ -580,7 +580,7 @@ class DataExportService:
                 pp_val = None
                 ppk_val = None
 
-        # Enhanced measuring instrument formatting - fix for 'visual'
+        # Enhanced measuring instrument formatting - always show for notes too
         measuring_instrument = self._format_instrument(result.measuring_instrument)
 
         data = [
@@ -613,8 +613,7 @@ class DataExportService:
             else:
                 cell.font = self.DATA_FONT
 
-            # Enhanced alignment
-            cell.alignment = self._get_cell_alignment(col, is_notes)
+            cell.alignment = self._get_cell_alignment(col, is_notes)    # Enhanced alignment
 
             # Background fills with enhanced statistical highlighting
             if col == 15:  # Status column
@@ -624,11 +623,18 @@ class DataExportService:
             elif is_alternate and not is_statistical:
                 cell.fill = self.ALT_ROW_FILL
 
-            # Enhanced borders with logical groupings
-            cell.border = self._get_data_cell_border(col)
+            # Fixed border handling for notes and TO CHECK status
+            cell.border = self._get_data_cell_border(col, is_notes, status)
 
-        # Set row height
-        ws.row_dimensions[row].height = 45 if is_notes else 25
+        # Calculate and set row height for notes based on text content
+        if is_notes:
+            description = result.description or ''
+            # Estimate height based on text length and column width (assuming ~40 chars per line)
+            estimated_lines = max(1, len(description) // 40 + 1)
+            row_height = max(45, min(120, 20 + estimated_lines * 15))  # Min 45, max 120
+            ws.row_dimensions[row].height = row_height
+        else:
+            ws.row_dimensions[row].height = 25
 
     def _get_cell_alignment(self, col: int, is_notes: bool) -> Alignment:
         """Get appropriate cell alignment based on column and data type"""
@@ -636,7 +642,7 @@ class DataExportService:
             return Alignment(horizontal='center', vertical='center')
         elif col == 2:  # Description
             if is_notes:
-                return Alignment(horizontal='left', vertical='top', wrap_text=True)
+                return Alignment(horizontal='left', vertical='center', wrap_text=True)
             else:
                 return Alignment(horizontal='center', vertical='center', wrap_text=True)
         elif col == 3:  # Measuring Instrument
@@ -648,30 +654,47 @@ class DataExportService:
         else:
             return Alignment(horizontal='center', vertical='center')
 
-    def _get_data_cell_border(self, col: int) -> Border:
-        """Get appropriate border for data cell based on column grouping"""
-        if col in [4, 9, 12, 15]:  # Group separators
+    def _get_data_cell_border(self, col: int, is_notes: bool = False, status: str = '') -> Border:
+        """Get appropriate border for data cell based on column grouping, notes, and status"""
+        # For notes or TO CHECK status, apply left border on last column (15)
+        if (is_notes or status == 'TO CHECK') and col == 15:
+            return self.LEFT_MEDIUM_BORDER
+        elif col in [4, 9, 12] or (col == 15 and not is_notes and status != 'TO CHECK'):  # Group separators
             return self.LEFT_MEDIUM_BORDER
         else:
             return self.THIN_BORDER
 
     def _format_instrument(self, instrument: Optional[str]) -> str:
-        """Enhanced instrument formatting - fixes visual instrument display"""
+        """Enhanced instrument formatting - fixes visual instrument display and capitalizes 3D"""
         if not instrument:
             return ''
         
-        instrument_str = str(instrument).strip().lower()
+        instrument_str = str(instrument).strip()
+        
+        # First, fix 3D capitalization anywhere in the string
+        import re
+        instrument_str = re.sub(r'3d\b', '3D', instrument_str, flags=re.IGNORECASE)
+        
+        instrument_lower = instrument_str.lower()
         
         # Handle specific instruments
-        if instrument_str == 'visual':
+        if instrument_lower == 'visual':
             return 'Visual'
-        elif instrument_str == 'scanbox':
+        elif instrument_lower == 'scanbox':
             return 'ScanBox'
-        elif instrument_str in ['cmm', 'coordinate_measuring_machine']:
+        elif instrument_lower in ['cmm', 'coordinate_measuring_machine']:
             return 'CMM'
         else:
-            # Capitalize first letter of each word
-            return ' '.join(word.capitalize() for word in instrument_str.split())
+            # Capitalize first letter of each word, but preserve 3D capitalization
+            words = instrument_str.split()
+            capitalized_words = []
+            for word in words:
+                if '3D' in word:
+                    # Keep 3D as is, but capitalize the rest of the word properly
+                    capitalized_words.append(word)
+                else:
+                    capitalized_words.append(word.capitalize())
+            return ' '.join(capitalized_words)
 
     def _normalize_status(self, status) -> str:
         """Normalize status values for automotive industry standards"""
@@ -828,9 +851,9 @@ class DataExportService:
         """Create cavity-specific sheet with automotive formatting"""
         current_row = 1
         current_row = self._ppap_header(ws, metadata, current_row, logo_path)
-        current_row += 2  # Only one row separation
+        current_row += 1  # Only one row separation
         current_row = self._dimensional_table(ws, cavity_results, current_row)
-        current_row += 2
+        current_row += 1
         self._ppap_footer(ws, metadata, current_row)
         self._apply_formatting(ws)
 
@@ -1082,10 +1105,10 @@ class DataExportService:
                 f"  Tolerance Standard: {metadata.get('tolerance_standard', 'ISO 2768-m')}",
                 "",
                 "QUALITY INFORMATION:",
-                f"  Inspection Facility: Quality Control Laboratory",
-                f"  Report Number: TBD",
+                "  Inspection Facility: Quality Control Laboratory",
+                "  Report Number: TBD",
                 f"  Cavity Configuration: {metadata.get('cavity_display', 'Single')}",
-                f"  Protocol Reference: According metrology protocol ITM-1",
+                "  Protocol Reference: According metrology protocol ITM-1",
                 "",
                 "EXPORTED FILES:",
                 f"  • Professional Excel Report: {os.path.basename(export_paths.get('excel_report', 'Not generated'))}",
