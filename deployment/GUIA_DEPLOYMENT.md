@@ -41,10 +41,17 @@ build.bat
 
 ### Pas 3: Distribució a l'Empresa
 
-#### Opció A: Instal·lació Manual per PC
+#### Opció A: Instal·lació Automàtica per PC (Recomanat)
 1. Copiar la carpeta `deployment_package` a cada PC
-2. Executar `install.bat` com a administrador
-3. L'aplicació s'instal·la automàticament
+2. **Executar `install.bat` com a administrador**
+3. L'instal·lador automàticament:
+   - **Detecta si Python està instal·lat**
+   - **Si no, descarrega i instal·la Python 3.11.9 automàticament**
+   - Instal·la totes les dependències necessàries
+   - Configura l'aplicació per a l'empresa
+   - Crea accesos directes
+
+**Important**: L'instal·lador necessita permisos d'administrador i connexió a internet (només si cal instal·lar Python).
 
 #### Opció B: Deployment Centralitzat (Recomanat)
 1. **Pujar a servidor compartit**:
