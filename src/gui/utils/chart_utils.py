@@ -12,53 +12,79 @@ class ChartPathResolver:
         return os.path.join("data", "spc", f"{client}_{ref_project}")
     
     @staticmethod
-    def get_charts_directory(client: str, ref_project: str) -> str:
-        """Get the charts directory path"""
-        return os.path.join(ChartPathResolver.get_study_directory(client, ref_project), "charts")
+    def get_charts_directory(ref_project: str) -> str:
+        """Get the charts directory path - UPDATED for new structure"""
+        return os.path.join("data", "reports", "charts", ref_project)
     
     @staticmethod
-    def get_report_path(client: str, ref_project: str) -> str:
+    def get_report_path(client: str, ref_project: str, batch_number: str = None) -> str:
         """Get the complete report JSON path"""
-        study_dir = ChartPathResolver.get_study_directory(client, ref_project)
-        return os.path.join(study_dir, f"{client}_{ref_project}_complete_report.json")
+        if batch_number:
+            study_dir = ChartPathResolver.get_study_directory(client, ref_project)
+            return os.path.join(study_dir, f"{ref_project}_{batch_number}_complete_report.json")
+        else:
+            study_dir = ChartPathResolver.get_study_directory(client, ref_project)
+            return os.path.join(study_dir, f"{client}_{ref_project}_complete_report.json")
     
     @staticmethod
-    def get_chart_path(client: str, ref_project: str, element_name: str, chart_type: str) -> str:
-        """Get path for a specific chart"""
-        charts_dir = ChartPathResolver.get_charts_directory(client, ref_project)
-        return os.path.join(charts_dir, f"{element_name}_{chart_type}.png")
+    def get_chart_path(ref_project: str, batch_number: str, element_name: str, chart_type: str, cavity: str = None) -> str:
+        """Get path for a specific chart - COMPLETELY FIXED to match chart generation"""
+        charts_dir = ChartPathResolver.get_charts_directory(ref_project)
+        
+        # FIXED: Use exact same filename format as SPCChartManager
+        if cavity and str(cavity).strip():
+            filename = f"{chart_type}_{batch_number}_{element_name}_{cavity}.png"
+        else:
+            filename = f"{chart_type}_{batch_number}_{element_name}.png"
+            
+        return os.path.join(charts_dir, filename)
     
     @staticmethod
-    def get_available_charts(client: str, ref_project: str, element_name: str) -> List[str]:
-        """Get list of available chart types for an element"""
-        charts_dir = ChartPathResolver.get_charts_directory(client, ref_project)
+    def get_available_charts(ref_project: str, batch_number: str, element_name: str, cavity: str = None) -> List[str]:
+        """Get list of available chart types for an element - FIXED pattern matching"""
+        charts_dir = ChartPathResolver.get_charts_directory(ref_project)
         
         if not os.path.exists(charts_dir):
             return []
         
         chart_types = []
-        base_filename = f"{element_name}_"
+        
+        # FIXED: Search pattern based on exact filename format from SPCChartManager
+        if cavity and str(cavity).strip():
+            pattern_suffix = f"_{batch_number}_{element_name}_{cavity}.png"
+        else:
+            pattern_suffix = f"_{batch_number}_{element_name}.png"
+        
+        print(f"DEBUG: Looking for files ending with: {pattern_suffix}")
+        print(f"DEBUG: In directory: {charts_dir}")
+        
+        if os.path.exists(charts_dir):
+            files_found = os.listdir(charts_dir)
+            print(f"DEBUG: Files in directory: {files_found}")
         
         for filename in os.listdir(charts_dir):
-            if filename.startswith(base_filename) and filename.endswith(".png"):
-                chart_type = filename[len(base_filename):-4]  # Remove prefix and .png
+            if filename.endswith(pattern_suffix):
+                # Extract chart type from beginning of filename
+                chart_type = filename.replace(pattern_suffix, "")
                 chart_types.append(chart_type)
+                print(f"DEBUG: Found chart type: {chart_type} from file: {filename}")
         
+        print(f"DEBUG: Available chart types: {chart_types}")
         return chart_types
     
     @staticmethod
-    def validate_study_files(client: str, ref_project: str) -> Tuple[bool, str]:
+    def validate_study_files(client: str, ref_project: str, batch_number: str = None) -> Tuple[bool, str]:
         """Validate that required study files exist"""
         study_dir = ChartPathResolver.get_study_directory(client, ref_project)
         
         if not os.path.exists(study_dir):
             return False, f"Study directory not found: {study_dir}"
         
-        report_path = ChartPathResolver.get_report_path(client, ref_project)
+        report_path = ChartPathResolver.get_report_path(client, ref_project, batch_number)
         if not os.path.exists(report_path):
             return False, f"Report file not found: {report_path}"
         
-        charts_dir = ChartPathResolver.get_charts_directory(client, ref_project)
+        charts_dir = ChartPathResolver.get_charts_directory(ref_project)
         if not os.path.exists(charts_dir):
             return False, f"Charts directory not found: {charts_dir}"
         

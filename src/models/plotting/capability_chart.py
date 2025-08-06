@@ -1,4 +1,4 @@
-# src/models/plotting/capability_chart.py
+# src/models/plotting/capability_chart.py - FIXED VERSION
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from matplotlib.table import Table
@@ -23,7 +23,7 @@ class CapabilityChart(SPCChartBase):
         super().__init__(input_json_path, element_name=element_name, **kwargs)
         self.logger = base_logger.getChild(self.__class__.__name__)
         self.logger.info(
-            f"Initialized CapabilityChart for element: {self.element_name}"
+            f"🔄 Initialized CapabilityChart for element: {self.element_name}"
         )
 
         # Validate required data fields
@@ -31,6 +31,9 @@ class CapabilityChart(SPCChartBase):
 
     def _validate_data(self):
         """Validate that all required data fields are present."""
+        self.logger.info(f"🔍 Validating data for element: {self.element_name}")
+        self.logger.info(f"📊 Available data keys: {list(self.element_data.keys())}")
+        
         required_fields = [
             "mean",
             "std_short",
@@ -46,25 +49,30 @@ class CapabilityChart(SPCChartBase):
         ]
 
         missing_fields = [
-            field for field in required_fields if field not in self.element_data
+            field for field in required_fields if field not in self.element_data or self.element_data[field] is None
         ]
         if missing_fields:
-            error_msg = f"Missing required data fields: {missing_fields}"
+            error_msg = f"❌ Missing required data fields: {missing_fields}"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
 
         # Calculate USL and LSL from nominal and tolerance
         tolerance = self.element_data["tolerance"]
         nominal = self.element_data["nominal"]
+        
+        # Log the values for debugging
+        self.logger.info(f"📏 Nominal: {nominal}")
+        self.logger.info(f"📏 Tolerance: {tolerance}")
+        
         self.lsl = nominal + tolerance[0]  # tolerance[0] is typically negative
         self.usl = nominal + tolerance[1]  # tolerance[1] is typically positive
 
-        self.logger.debug(f"Calculated limits: LSL={self.lsl:.4f}, USL={self.usl:.4f}")
-        self.logger.info(f"Data validation completed for element: {self.element_name}")
+        self.logger.info(f"📏 Calculated limits: LSL={self.lsl:.4f}, USL={self.usl:.4f}")
+        self.logger.info(f"✅ Data validation completed for element: {self.element_name}")
 
     def _get_chart_data(self):
         """Extract and return chart data from element_data."""
-        self.logger.debug("Extracting chart data from element_data")
+        self.logger.debug("📊 Extracting chart data from element_data")
 
         data = {
             "mean": self.element_data["mean"],
@@ -81,7 +89,7 @@ class CapabilityChart(SPCChartBase):
         }
 
         self.logger.debug(
-            f"Chart data extracted: mean={data['mean']:.4f}, "
+            f"📈 Chart data extracted: mean={data['mean']:.4f}, "
             f"std_short={data['std_short']:.4f}, std_long={data['std_long']:.4f}"
         )
 
@@ -89,7 +97,7 @@ class CapabilityChart(SPCChartBase):
 
     def _get_translations(self):
         """Get chart-specific translations."""
-        self.logger.debug("Loading chart-specific translations")
+        self.logger.debug("🌐 Loading chart-specific translations")
 
         base_translations = {
             "short_term": "Short Term",
@@ -107,12 +115,12 @@ class CapabilityChart(SPCChartBase):
         for key, default_value in base_translations.items():
             base_translations[key] = self.labels.get(key, default_value)
 
-        self.logger.debug("Chart translations loaded successfully")
+        self.logger.debug("✅ Chart translations loaded successfully")
         return base_translations
 
     def _calculate_scale_parameters(self, data):
         """Calculate chart scale parameters."""
-        self.logger.debug("Calculating scale parameters for chart")
+        self.logger.debug("📐 Calculating scale parameters for chart")
 
         x_points = [
             data["lsl"],
@@ -131,14 +139,14 @@ class CapabilityChart(SPCChartBase):
         scale_max = x_max + x_margin
 
         self.logger.debug(
-            f"Scale parameters calculated: min={scale_min:.4f}, max={scale_max:.4f}"
+            f"📐 Scale parameters calculated: min={scale_min:.4f}, max={scale_max:.4f}"
         )
 
         return scale_min, scale_max
 
     def _draw_main_chart(self, ax, data, translations):
         """Draw the main capability chart."""
-        self.logger.debug("Drawing main capability chart")
+        self.logger.debug("🎨 Drawing main capability chart")
 
         scale_min, scale_max = self._calculate_scale_parameters(data)
 
@@ -298,11 +306,11 @@ class CapabilityChart(SPCChartBase):
             fontname=self.FONT_NAME,
         )
 
-        self.logger.debug("Main capability chart drawn successfully")
+        self.logger.debug("✅ Main capability chart drawn successfully")
 
     def _create_capability_table(self, axbox, data, translations, table_type="short"):
         """Create capability information table."""
-        self.logger.debug(f"Creating {table_type} term capability table")
+        self.logger.debug(f"📊 Creating {table_type} term capability table")
 
         is_short = table_type == "short"
 
@@ -421,28 +429,31 @@ class CapabilityChart(SPCChartBase):
 
         axbox.add_table(table)
 
-        self.logger.debug(f"{table_type} term capability table created successfully")
+        self.logger.debug(f"✅ {table_type} term capability table created successfully")
 
     def plot(self):
         """Generate the capability chart."""
-        self.logger.info(
-            f"Starting capability chart generation for {self.element_name}"
-        )
+        self.logger.info(f"🚀 Starting capability chart generation for {self.element_name}")
+        self.logger.info(f"💾 Save path: {self.save_path}")
 
         try:
             # Get data and translations
+            self.logger.info("📊 Getting chart data and translations")
             data = self._get_chart_data()
             translations = self._get_translations()
 
             # Create figure with grid layout
+            self.logger.info("🎨 Creating figure with grid layout")
             fig = plt.figure(figsize=(9, 6))
             gs = gridspec.GridSpec(1, 2, width_ratios=[2.2, 1])
 
             # Main chart
+            self.logger.info("🎯 Drawing main chart")
             ax = fig.add_subplot(gs[0])
             self._draw_main_chart(ax, data, translations)
 
             # Tables
+            self.logger.info("📋 Creating capability tables")
             axbox = fig.add_subplot(gs[1])
             axbox.axis("off")
 
@@ -450,11 +461,13 @@ class CapabilityChart(SPCChartBase):
             self._create_capability_table(axbox, data, translations, "long")
 
             plt.tight_layout()
-            self.logger.info("Capability chart generated successfully")
+            self.logger.info("✅ Capability chart generated successfully")
 
         except Exception as e:
-            self.logger.error(f"Error generating capability chart: {e}", exc_info=True)
+            self.logger.error(f"❌ Error generating capability chart: {e}", exc_info=True)
             raise
 
         finally:
+            # CRITICAL: Always call _finalize to save the chart
+            self.logger.info("🔄 Finalizing chart (saving/displaying)")
             self._finalize()

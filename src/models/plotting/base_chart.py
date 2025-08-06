@@ -1,4 +1,4 @@
-# src/models/plotting/base_chart.py
+# src/models/plotting/base_chart.py - FIXED VERSION
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
@@ -30,7 +30,7 @@ class SPCChartBase(ABC):
         element_name: str = None,  # NEW: allows targeting a single element from the JSON
     ):
         self.logger = logger or base_logger.getChild(self.__class__.__name__)
-        self.logger.info(f"Initializing SPCChartBase with input: {input_json_path}")
+        self.logger.info(f"🔄 Initializing {self.__class__.__name__} with input: {input_json_path}")
 
         self.input_json_path = Path(input_json_path)
         self.lang = lang
@@ -43,6 +43,11 @@ class SPCChartBase(ABC):
         )
         self.extra_rcparams = extra_rcparams or {}
 
+        # Debug logging
+        self.logger.info(f"📁 Save path: {self.save_path}")
+        if self.save_path:
+            self.logger.info(f"📂 Save directory: {self.save_path.parent}")
+
         try:
             self.elements_data = self._load_data()
             if not self.elements_data:
@@ -53,13 +58,14 @@ class SPCChartBase(ABC):
                 raise KeyError(f"Element '{self.element_name}' not found in SPC data.")
 
             self.element_data = self.elements_data[self.element_name]
-            self.logger.info(f"Selected SPC element: {self.element_name}")
+            self.logger.info(f"📊 Selected SPC element: {self.element_name}")
+            self.logger.info(f"📈 Element data keys: {list(self.element_data.keys())}")
 
             self.labels = self._load_translations()
             self._configure_style()
 
         except Exception as e:
-            self.logger.error(f"Error during initialization: {e}", exc_info=True)
+            self.logger.error(f"❌ Error during initialization: {e}", exc_info=True)
             raise
 
     def _load_data(self) -> dict:
@@ -73,7 +79,7 @@ class SPCChartBase(ABC):
 
         if not isinstance(data, dict):
             raise ValueError("SPC input JSON must be a dictionary of elements.")
-        self.logger.info(f"Loaded SPC data for {len(data)} element(s).")
+        self.logger.info(f"✅ Loaded SPC data for {len(data)} element(s).")
         return data
 
     def _load_translations(self) -> dict:
@@ -167,11 +173,37 @@ class SPCChartBase(ABC):
         pass
 
     def _finalize(self):
-        if self.save_path:
-            self.logger.info(f"Saving figure to {self.save_path}")
-            plt.savefig(self.save_path, dpi=300, bbox_inches="tight")
-        if self.show:
-            self.logger.info("Showing figure on screen.")
-            plt.show()
-        plt.close()
-        self.logger.debug("Figure closed.")
+        """FIXED: Improved finalization with better error handling and directory creation"""
+        try:
+            if self.save_path:
+                # Ensure the save path is a Path object
+                if not isinstance(self.save_path, Path):
+                    self.save_path = Path(self.save_path)
+                
+                # Create directory if it doesn't exist
+                self.save_path.parent.mkdir(parents=True, exist_ok=True)
+                self.logger.info(f"📁 Ensured directory exists: {self.save_path.parent}")
+                
+                # Save the figure
+                self.logger.info(f"💾 Attempting to save figure to: {self.save_path}")
+                plt.savefig(self.save_path, dpi=300, bbox_inches="tight")
+                
+                # Verify the file was created
+                if self.save_path.exists():
+                    file_size = self.save_path.stat().st_size
+                    self.logger.info(f"✅ Chart saved successfully: {self.save_path} (size: {file_size} bytes)")
+                else:
+                    self.logger.error(f"❌ Chart file was not created: {self.save_path}")
+                    raise RuntimeError(f"Chart file was not created: {self.save_path}")
+            
+            if self.show:
+                self.logger.info("📺 Displaying figure on screen")
+                plt.show()
+                
+        except Exception as e:
+            self.logger.error(f"❌ Error in _finalize(): {e}", exc_info=True)
+            raise
+        finally:
+            # Always close the figure to free memory
+            plt.close()
+            self.logger.debug("🔒 Figure closed")

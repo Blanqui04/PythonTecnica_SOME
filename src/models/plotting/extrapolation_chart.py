@@ -68,12 +68,29 @@ class ExtrapolatedSPCChart(SPCChartBase):
         self.logger.debug("Validating element data for extrapolated chart")
 
         required_fields = [
-            "extrapolated_values",
             "nominal",
-            "tolerance",
+            "tolerance", 
             "mean",
             "std_long",
         ]
+        
+        # Check for either extrapolated_values OR original_values (for real data > 10)
+        has_extrapolated = "extrapolated_values" in self.element_data and \
+                        isinstance(self.element_data["extrapolated_values"], list) and \
+                        len(self.element_data["extrapolated_values"]) > 0
+                        
+        has_real_values = "original_values" in self.element_data and \
+                        isinstance(self.element_data["original_values"], list) and \
+                        len(self.element_data["original_values"]) > 10
+        
+        if not (has_extrapolated or has_real_values):
+            error_msg = (
+                "Element must have either 'extrapolated_values' or 'original_values' with > 10 samples "
+                "for extrapolation chart"
+            )
+            self.logger.error(error_msg)
+            raise ValueError(error_msg)
+
         missing_fields = [
             field for field in required_fields if field not in self.element_data
         ]
@@ -84,16 +101,6 @@ class ExtrapolatedSPCChart(SPCChartBase):
             raise ValueError(error_msg)
 
         # Validate data types and values
-        if (
-            not isinstance(self.element_data["extrapolated_values"], list)
-            or len(self.element_data["extrapolated_values"]) == 0
-        ):
-            error_msg = (
-                "Field 'extrapolated_values' must be a non-empty list of measurements"
-            )
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
-
         if (
             not isinstance(self.element_data["tolerance"], list)
             or len(self.element_data["tolerance"]) != 2
@@ -119,12 +126,32 @@ class ExtrapolatedSPCChart(SPCChartBase):
         """Extract and prepare data for plotting."""
         self.logger.debug("Extracting data for extrapolated chart")
 
+        # Determine which values to use - extrapolated or real values > 10
+        values_to_use = []
+        data_type = "unknown"
+        
+        if "extrapolated_values" in self.element_data and \
+        isinstance(self.element_data["extrapolated_values"], list) and \
+        len(self.element_data["extrapolated_values"]) > 0:
+            values_to_use = self.element_data["extrapolated_values"]
+            data_type = "extrapolated"
+            self.logger.info(f"Using extrapolated values: {len(values_to_use)} samples")
+        elif "original_values" in self.element_data and \
+            isinstance(self.element_data["original_values"], list) and \
+            len(self.element_data["original_values"]) > 10:
+            values_to_use = self.element_data["original_values"]
+            data_type = "real"
+            self.logger.info(f"Using real values: {len(values_to_use)} samples")
+        else:
+            raise ValueError("No suitable data found for extrapolation chart")
+
         data = {
-            "extrapolated_values": np.array(self.element_data["extrapolated_values"]),
+            "extrapolated_values": np.array(values_to_use),
             "nominal": float(self.element_data["nominal"]),
-            "tolerance": self.element_data["tolerance"],
+            "tolerance": self.element_data["tolerance"], 
             "mean": float(self.element_data["mean"]),
             "std_long": float(self.element_data["std_long"]),
+            "data_type": data_type,  # Track what type of data we're using
         }
 
         # Calculate control limits
@@ -135,14 +162,20 @@ class ExtrapolatedSPCChart(SPCChartBase):
             data["nominal"] + data["tolerance"][1]
         )  # Upper Specification Limit
 
-        # Optional statistical indicators
-        data["pp"] = self.element_data.get("pp")
-        data["ppk"] = self.element_data.get("ppk")
-        data["pval"] = self.element_data.get("pval")
-        data["is_normal"] = self.element_data.get("is_normal")
+        # Optional statistical indicators - handle both extrapolated and real data
+        if data_type == "extrapolated":
+            data["pp"] = self.element_data.get("extrapolated_pp") or self.element_data.get("pp")
+            data["ppk"] = self.element_data.get("extrapolated_ppk") or self.element_data.get("ppk") 
+            data["pval"] = self.element_data.get("extrapolated_p_value") or self.element_data.get("pval")
+            data["is_normal"] = (data["pval"] > 0.05) if data["pval"] is not None else None
+        else:  # real data
+            data["pp"] = self.element_data.get("pp")
+            data["ppk"] = self.element_data.get("ppk")
+            data["pval"] = self.element_data.get("p_value") or self.element_data.get("pval")
+            data["is_normal"] = (data["pval"] > 0.05) if data["pval"] is not None else None
 
         self.logger.info(
-            f"Data extracted: {len(data['extrapolated_values'])} measurements, "
+            f"Data extracted ({data_type}): {len(data['extrapolated_values'])} measurements, "
             f"nominal={data['nominal']:.4f}, mean={data['mean']:.4f}, "
             f"std={data['std_long']:.4f}, LSL={data['lsl']:.4f}, USL={data['usl']:.4f}"
         )
@@ -330,10 +363,21 @@ class ExtrapolatedSPCChart(SPCChartBase):
         self.logger.debug("Axis formatting completed")
 
     def _create_subtitle(self, data: Dict[str, Any]) -> str:
-        """Create subtitle with statistical indicators."""
+        """Create subtitle with statistical indicators and data type."""
         self.logger.debug("Creating subtitle with statistical indicators")
 
         subtitle_parts = []
+        
+        # Add data type indicator
+        data_type = data.get("data_type", "unknown")
+        if data_type == "extrapolated":
+            data_type_text = self.labels.get("subtitle_extrapolated", "Extrapolated Data")
+        elif data_type == "real":
+            data_type_text = self.labels.get("subtitle_real", f"Real Data (n={len(data['extrapolated_values'])})")
+        else:
+            data_type_text = "Unknown Data Type"
+        
+        subtitle_parts.append(data_type_text)
 
         # Pp and Ppk values
         if data["pp"] is not None and data["ppk"] is not None:
