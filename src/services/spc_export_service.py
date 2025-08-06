@@ -1,4 +1,4 @@
-# src/services/spc_export_service.py
+# src/services/spc_export_service.py - FIXED VERSION
 import os
 import platform
 import subprocess
@@ -15,6 +15,7 @@ class ExcelReportService:
     """
     Service class that integrates Excel report generation with the existing SPC chart system.
     Provides a complete workflow from data analysis to professional report generation.
+    FIXED: Proper chart path resolution matching the generation logic.
     """
     
     # Dimension classification mappings
@@ -49,7 +50,11 @@ class ExcelReportService:
         self.ref_project = ref_project
         self.batch_number = batch_number
         self.base_path = Path(base_path)
-        self.charts_path = Path(charts_path)
+        
+        # CRITICAL FIX: Align charts path with SPCChartManager output directory
+        # SPCChartManager uses: "./data/reports/charts/{ref_project}"
+        self.charts_path = Path(charts_path) / ref_project
+        
         self.excel_output_path = Path(excel_output_path)
         self.logger = logger or base_logger.getChild(self.__class__.__name__)
         
@@ -59,17 +64,18 @@ class ExcelReportService:
         self.elements_summary = {}
         
         self.logger.info(f"Initialized ExcelReportService for {client}_{ref_project}_{batch_number}")
+        self.logger.info(f"Charts will be read from: {self.charts_path}")
 
     def initialize_services(self) -> bool:
         """Initialize the chart manager and Excel generator services"""
         try:
-            # Initialize chart manager
+            # Initialize chart manager with MATCHING output directory
             self.chart_manager = SPCChartManager(
                 client=self.client,
                 ref_project=self.ref_project,
                 batch_number=self.batch_number,
                 base_path=str(self.base_path),
-                output_dir=str(self.charts_path),
+                output_dir=str(self.charts_path),  # This should match exactly
                 logger=self.logger
             )
             
@@ -78,13 +84,13 @@ class ExcelReportService:
                 self.logger.error("Failed to load chart data")
                 return False
             
-            # Initialize Excel generator
+            # Initialize Excel generator with CORRECTED charts path
             self.excel_generator = ExcelSPCReportGenerator(
                 client=self.client,
                 ref_project=self.ref_project,
                 batch_number=self.batch_number,
                 base_path=str(self.base_path),
-                charts_path=str(self.charts_path),
+                charts_path=str(self.charts_path),  # Use the corrected path
                 output_path=str(self.excel_output_path),
                 logger=self.logger
             )
@@ -93,11 +99,108 @@ class ExcelReportService:
             self.elements_summary = self.chart_manager.get_elements_summary()
             
             self.logger.info("Services initialized successfully")
+            self.logger.info(f"Loaded {len(self.elements_summary)} elements")
+            
+            # DEBUG: Log element keys and their data
+            for element_key, element_data in self.elements_summary.items():
+                self.logger.debug(f"Element: '{element_key}' - cavity: '{element_data.get('cavity', '')}' - original: '{element_data.get('element_name', '')}'")
+            
             return True
             
         except Exception as e:
-            self.logger.error(f"Error initializing services: {e}")
+            self.logger.error(f"Error initializing services: {e}", exc_info=True)
             return False
+
+    def get_chart_path(self, element_key: str, chart_type: str) -> Optional[Path]:
+        """
+        Get the path to a specific chart file.
+        COMPLETELY REWRITTEN to match SPCChartManager's file naming logic.
+        """
+        try:
+            # Get element data from the summary
+            element_data = self.elements_summary.get(element_key, {})
+            
+            # Extract original element name (critical for filename)
+            original_element_name = element_data.get("element_name")
+            cavity = element_data.get("cavity", "")
+            
+            # If we don't have the original name, try to extract it from the composite key
+            if not original_element_name:
+                if " Cavity " in element_key:
+                    original_element_name = element_key.split(" Cavity ")[0]
+                elif "_cavity_" in element_key:
+                    original_element_name = element_key.split("_cavity_")[0]
+                else:
+                    original_element_name = element_key
+                    
+                self.logger.warning(f"Had to extract original element name '{original_element_name}' from composite key '{element_key}'")
+            
+            # CRITICAL: Use the EXACT same naming logic as SPCChartManager.create_chart()
+            # From SPCChartManager: filename = f"{chart_type}_{self.batch_number}_{original_element_name}_{cavity}.png"
+            if cavity and str(cavity).strip():
+                filename = f"{chart_type}_{self.batch_number}_{original_element_name}_{cavity}.png"
+            else:
+                filename = f"{chart_type}_{self.batch_number}_{original_element_name}.png"
+            
+            chart_path = self.charts_path / filename
+            
+            # Enhanced debug logging
+            self.logger.debug("CHART PATH RESOLUTION DEBUG:")
+            self.logger.debug(f"  Element key: '{element_key}'")
+            self.logger.debug(f"  Original element: '{original_element_name}'")
+            self.logger.debug(f"  Cavity: '{cavity}'")
+            self.logger.debug(f"  Chart type: '{chart_type}'")
+            self.logger.debug(f"  Filename: '{filename}'")
+            self.logger.debug(f"  Full path: '{chart_path}'")
+            self.logger.debug(f"  File exists: {chart_path.exists()}")
+            
+            if chart_path.exists():
+                file_size = chart_path.stat().st_size
+                self.logger.info(f"✓ Found chart: {filename} (size: {file_size} bytes)")
+                return chart_path
+            else:
+                self.logger.warning(f"✗ Chart not found: {chart_path}")
+                
+                # DEBUG: List actual files in the directory
+                if self.charts_path.exists():
+                    actual_files = [f.name for f in self.charts_path.glob("*.png")]
+                    self.logger.debug(f"  Actual PNG files in {self.charts_path}:")
+                    for file in actual_files[:10]:  # Show first 10 files
+                        self.logger.debug(f"    {file}")
+                    if len(actual_files) > 10:
+                        self.logger.debug(f"    ... and {len(actual_files) - 10} more files")
+                
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error resolving chart path for {element_key}/{chart_type}: {e}", exc_info=True)
+            return None
+
+    def validate_charts_exist(self) -> Dict[str, List[str]]:
+        """
+        Validate which charts exist for each element.
+        UPDATED: Use the new chart path resolution logic.
+        """
+        available_charts = {}
+        
+        if not self.elements_summary:
+            if not self.initialize_services():
+                return available_charts
+        
+        chart_types = ['capability', 'normality', 'extrapolation', 'individuals', 'moving_range']
+        
+        for element_key in self.elements_summary.keys():
+            element_charts = []
+            for chart_type in chart_types:
+                chart_path = self.get_chart_path(element_key, chart_type)
+                
+                if chart_path and chart_path.exists():
+                    element_charts.append(chart_type)
+            
+            available_charts[element_key] = element_charts
+            self.logger.info(f"Element '{element_key}': {len(element_charts)} charts available ({', '.join(element_charts)})")
+        
+        return available_charts
 
     def generate_complete_report(
         self,
@@ -111,18 +214,7 @@ class ExcelReportService:
     ) -> Tuple[bool, str]:
         """
         Generate a complete SPC report with charts and Excel documentation
-        
-        Args:
-            part_description: Description of the part being analyzed
-            drawing_number: Technical drawing number
-            methodology: Measurement methodology key
-            facility: Manufacturing facility name
-            dimension_class: Dimension classification key
-            generate_charts: Whether to generate charts first
-            open_file: Whether to open the generated file
-            
-        Returns:
-            Tuple[bool, str]: (Success status, file path or error message)
+        UPDATED: Better error reporting and validation.
         """
         try:
             self.logger.info("Starting complete report generation")
@@ -153,13 +245,23 @@ class ExcelReportService:
                 if successful_charts == 0:
                     return False, "No charts were generated successfully"
             
+            # Validate that charts exist before proceeding
+            self.logger.info("Validating chart availability...")
+            available_charts = self.validate_charts_exist()
+            total_available = sum(len(charts) for charts in available_charts.values())
+            
+            if total_available == 0:
+                self.logger.warning("No charts found - report will be created without charts")
+            else:
+                self.logger.info(f"Found {total_available} charts across {len(available_charts)} elements")
+            
             # Resolve methodology and dimension class
             methodology_display = self.METHODOLOGIES.get(methodology.lower(), methodology)
             dimension_class_code = self.DIMENSION_CLASSES.get(dimension_class.lower(), dimension_class)
             
             # Set default facility if not provided
             if not facility:
-                facility = "SOME Manufacturing Facility"
+                facility = "Manufacturing Facility"
             
             # Generate Excel report
             self.logger.info("Generating Excel report...")
@@ -185,7 +287,7 @@ class ExcelReportService:
             
         except Exception as e:
             error_msg = f"Error generating complete report: {e}"
-            self.logger.error(error_msg)
+            self.logger.error(error_msg, exc_info=True)
             return False, error_msg
 
     def generate_charts_only(self, 
@@ -193,13 +295,6 @@ class ExcelReportService:
                            elements: Optional[List[str]] = None) -> Tuple[bool, str]:
         """
         Generate only the SPC charts without Excel report
-        
-        Args:
-            chart_types: List of chart types to generate
-            elements: List of elements to process
-            
-        Returns:
-            Tuple[bool, str]: (Success status, message)
         """
         try:
             if not self.chart_manager:
@@ -227,7 +322,7 @@ class ExcelReportService:
             
         except Exception as e:
             error_msg = f"Error generating charts: {e}"
-            self.logger.error(error_msg)
+            self.logger.error(error_msg, exc_info=True)
             return False, error_msg
 
     def generate_excel_only(self,
@@ -239,17 +334,6 @@ class ExcelReportService:
                           open_file: bool = True) -> Tuple[bool, str]:
         """
         Generate only the Excel report (assumes charts already exist)
-        
-        Args:
-            part_description: Description of the part being analyzed
-            drawing_number: Technical drawing number
-            methodology: Measurement methodology key
-            facility: Manufacturing facility name
-            dimension_class: Dimension classification key
-            open_file: Whether to open the generated file
-            
-        Returns:
-            Tuple[bool, str]: (Success status, file path or error message)
         """
         try:
             if not self.excel_generator:
@@ -261,7 +345,7 @@ class ExcelReportService:
             dimension_class_code = self.DIMENSION_CLASSES.get(dimension_class.lower(), dimension_class)
             
             if not facility:
-                facility = "SOME Manufacturing Facility"
+                facility = "Manufacturing Facility"
             
             # Generate Excel report
             excel_file = self.excel_generator.create_report(
@@ -280,7 +364,7 @@ class ExcelReportService:
             
         except Exception as e:
             error_msg = f"Error generating Excel report: {e}"
-            self.logger.error(error_msg)
+            self.logger.error(error_msg, exc_info=True)
             return False, error_msg
 
     def get_available_elements(self) -> List[str]:
@@ -309,34 +393,6 @@ class ExcelReportService:
             return getattr(self.chart_manager, 'get_study_statistics', lambda: {})()
         except Exception:
             return {}
-
-    def validate_charts_exist(self) -> Dict[str, List[str]]:
-        """
-        Validate which charts exist for each element
-        
-        Returns:
-            Dict mapping element names to lists of available chart types
-        """
-        available_charts = {}
-        
-        if not self.elements_summary:
-            if not self.initialize_services():
-                return available_charts
-        
-        chart_types = ['capability', 'normality', 'extrapolation', 'individuals', 'moving_range']
-        
-        for element_name in self.elements_summary.keys():
-            element_charts = []
-            for chart_type in chart_types:
-                chart_filename = f"{self.ref_project}_{self.batch_number}_{element_name}_{chart_type}.png"
-                chart_path = self.charts_path / chart_filename
-                
-                if chart_path.exists():
-                    element_charts.append(chart_type)
-            
-            available_charts[element_name] = element_charts
-        
-        return available_charts
 
     def open_excel_file(self, file_path: str) -> bool:
         """Open the Excel file with the default application"""
@@ -396,3 +452,54 @@ class ExcelReportService:
         }
         
         return summary
+
+    def debug_chart_paths(self) -> Dict[str, Any]:
+        """
+        Debug method to inspect chart path resolution for troubleshooting.
+        Returns detailed information about expected vs actual chart files.
+        """
+        debug_info = {
+            'charts_directory': str(self.charts_path),
+            'directory_exists': self.charts_path.exists(),
+            'elements': {},
+            'actual_files': [],
+            'expected_patterns': []
+        }
+        
+        # List actual files in charts directory
+        if self.charts_path.exists():
+            debug_info['actual_files'] = [f.name for f in self.charts_path.glob("*.png")]
+        
+        # For each element, show expected paths vs actual
+        chart_types = ['capability', 'normality', 'extrapolation', 'individuals', 'moving_range']
+        
+        for element_key, element_data in self.elements_summary.items():
+            element_debug = {
+                'element_key': element_key,
+                'original_name': element_data.get('element_name', ''),
+                'cavity': element_data.get('cavity', ''),
+                'expected_files': {},
+                'found_files': {}
+            }
+            
+            for chart_type in chart_types:
+                # Get expected filename
+                original_element_name = element_data.get("element_name", element_key)
+                cavity = element_data.get("cavity", "")
+                
+                if cavity and str(cavity).strip():
+                    expected_filename = f"{chart_type}_{self.batch_number}_{original_element_name}_{cavity}.png"
+                else:
+                    expected_filename = f"{chart_type}_{self.batch_number}_{original_element_name}.png"
+                
+                element_debug['expected_files'][chart_type] = expected_filename
+                
+                # Check if file exists
+                chart_path = self.charts_path / expected_filename
+                element_debug['found_files'][chart_type] = chart_path.exists()
+                
+                debug_info['expected_patterns'].append(expected_filename)
+            
+            debug_info['elements'][element_key] = element_debug
+        
+        return debug_info

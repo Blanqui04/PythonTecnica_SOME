@@ -1,4 +1,4 @@
-# src/reports/excel_spc_export_generator.py
+# src/reports/excel_spc_export_generator.py - FIXED VERSION
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, Any
@@ -17,6 +17,7 @@ class ExcelSPCReportGenerator:
     """
     Professional Excel report generator for Statistical Process Control analysis.
     Creates comprehensive reports suitable for automotive industry PPAP documentation.
+    FIXED: Proper chart path resolution and error handling.
     """
     
     # Corporate colors based on SOME company branding
@@ -90,6 +91,7 @@ class ExcelSPCReportGenerator:
         self.styles_created = False
         
         self.logger.info(f"Initialized Excel SPC Report Generator for {client}_{ref_project}_{batch_number}")
+        self.logger.info(f"Charts will be read from: {self.charts_path}")
 
     def create_styles(self):
         """Create all the styles needed for the professional report"""
@@ -182,13 +184,22 @@ class ExcelSPCReportGenerator:
     def load_data(self) -> bool:
         """Load SPC data for the report"""
         try:
-            folder_name = f"{self.client}_{self.ref_project}"
+            # Try primary folder structure first
+            folder_name = f"{self.client}_{self.ref_project}_{self.batch_number}"
             filename = f"{self.ref_project}_{self.batch_number}_complete_report.json"
             report_path = self.base_path / folder_name / filename
             
             if not report_path.exists():
-                self.logger.error(f"SPC report not found: {report_path}")
-                return False
+                # Try alternative folder structure
+                alt_folder_name = f"{self.client}_{self.ref_project}"
+                alt_report_path = self.base_path / alt_folder_name / filename
+                
+                if alt_report_path.exists():
+                    self.logger.info(f"Using alternative path: {alt_report_path}")
+                    report_path = alt_report_path
+                else:
+                    self.logger.error(f"SPC report not found at either path:\n  Primary: {report_path}\n  Alternative: {alt_report_path}")
+                    return False
             
             data_loader = SPCDataLoader(self.ref_project, self.base_path)
             self.elements_data = data_loader.load_complete_report(report_path)
@@ -203,6 +214,51 @@ class ExcelSPCReportGenerator:
         except Exception as e:
             self.logger.error(f"Error loading data: {e}")
             return False
+
+    def get_chart_path(self, element_key: str, chart_type: str) -> Optional[Path]:
+        """
+        Get the path to a specific chart file.
+        CRITICAL FIX: Use the exact same logic as the chart generation.
+        """
+        try:
+            # Get element data to extract original name and cavity
+            element_data = self.elements_data.get(element_key, {})
+            
+            # Extract original element name
+            original_element_name = element_data.get("element_name")
+            cavity = element_data.get("cavity", "")
+            
+            # If we don't have the original name, extract from composite key
+            if not original_element_name:
+                if " Cavity " in element_key:
+                    original_element_name = element_key.split(" Cavity ")[0]
+                elif "_cavity_" in element_key:
+                    original_element_name = element_key.split("_cavity_")[0]
+                else:
+                    original_element_name = element_key
+                
+                self.logger.warning(f"Extracted original element name '{original_element_name}' from key '{element_key}'")
+            
+            # CRITICAL: Match the exact filename format from SPCChartManager
+            # Format: {chart_type}_{batch_number}_{original_element_name}_{cavity}.png
+            if cavity and str(cavity).strip():
+                filename = f"{chart_type}_{self.batch_number}_{original_element_name}_{cavity}.png"
+            else:
+                filename = f"{chart_type}_{self.batch_number}_{original_element_name}.png"
+            
+            chart_path = self.charts_path / filename
+            
+            self.logger.debug(f"Chart path for {element_key}/{chart_type}: {chart_path}")
+            
+            if chart_path.exists():
+                return chart_path
+            else:
+                self.logger.warning(f"Chart not found: {chart_path}")
+                return None
+                
+        except Exception as e:
+            self.logger.error(f"Error getting chart path for {element_key}/{chart_type}: {e}")
+            return None
 
     def create_report(self, 
                      part_description: str = "",
@@ -239,25 +295,41 @@ class ExcelSPCReportGenerator:
             self.create_styles()
             
             # Create a sheet for each element
-            for element_name, element_data in self.elements_data.items():
-                self.logger.info(f"Creating sheet for element: {element_name}")
+            sheets_created = 0
+            for element_key, element_data in self.elements_data.items():
+                self.logger.info(f"Creating sheet for element: {element_key}")
                 
-                # Create worksheet
-                ws = self.workbook.create_sheet(title=element_name[:31])  # Excel sheet name limit
-                
-                # Create the report content for this element
-                self.create_element_sheet(
-                    ws, element_name, element_data,
-                    part_description, drawing_number, 
-                    methodology, facility, dimension_class
-                )
+                try:
+                    # Create worksheet with truncated name if necessary
+                    sheet_name = element_key[:31] if len(element_key) > 31 else element_key
+                    # Replace invalid characters for sheet names
+                    sheet_name = sheet_name.replace('/', '_').replace('\\', '_').replace('[', '').replace(']', '')
+                    
+                    ws = self.workbook.create_sheet(title=sheet_name)
+                    
+                    # Create the report content for this element
+                    self.create_element_sheet(
+                        ws, element_key, element_data,
+                        part_description, drawing_number, 
+                        methodology, facility, dimension_class
+                    )
+                    
+                    sheets_created += 1
+                    self.logger.info(f"✓ Created sheet for element: {element_key}")
+                    
+                except Exception as e:
+                    self.logger.error(f"✗ Failed to create sheet for element {element_key}: {e}")
+                    continue
+            
+            if sheets_created == 0:
+                raise ValueError("No sheets were created successfully")
             
             # Save the workbook
             filename = f"{self.ref_project}_{self.batch_number}_SPC_Report.xlsx"
             output_file = self.output_path / filename
             
             self.workbook.save(output_file)
-            self.logger.info(f"Excel report saved: {output_file}")
+            self.logger.info(f"Excel report saved: {output_file} ({sheets_created} sheets)")
             
             return str(output_file)
             
@@ -267,7 +339,7 @@ class ExcelSPCReportGenerator:
 
     def create_element_sheet(self, 
                            ws: Worksheet, 
-                           element_name: str, 
+                           element_key: str, 
                            element_data: Dict[str, Any],
                            part_description: str,
                            drawing_number: str,
@@ -280,7 +352,7 @@ class ExcelSPCReportGenerator:
         
         # 1. Header section
         current_row = self.create_header_section(
-            ws, current_row, element_name, part_description, 
+            ws, current_row, element_key, part_description, 
             drawing_number, methodology, facility, dimension_class
         )
         
@@ -288,7 +360,7 @@ class ExcelSPCReportGenerator:
         current_row = self.create_statistical_summary(ws, current_row, element_data)
         
         # 3. Charts section
-        current_row = self.create_charts_section(ws, current_row, element_name)
+        current_row = self.create_charts_section(ws, current_row, element_key)
         
         # 4. Notes and signature section
         current_row = self.create_notes_signature_section(ws, current_row)
@@ -302,7 +374,7 @@ class ExcelSPCReportGenerator:
     def create_header_section(self, 
                             ws: Worksheet, 
                             start_row: int, 
-                            element_name: str,
+                            element_key: str,
                             part_description: str,
                             drawing_number: str,
                             methodology: str,
@@ -380,7 +452,7 @@ class ExcelSPCReportGenerator:
         # Element section header
         ws.merge_cells(f'A{current_row}:J{current_row}')
         element_header = ws[f'A{current_row}']
-        element_header.value = f"ELEMENT ANALYSIS: {element_name}"
+        element_header.value = f"ELEMENT ANALYSIS: {element_key}"
         element_header.style = 'section_header'
         
         current_row += 2
@@ -478,8 +550,8 @@ class ExcelSPCReportGenerator:
     def create_charts_section(self, 
                             ws: Worksheet, 
                             start_row: int, 
-                            element_name: str) -> int:
-        """Create the charts section"""
+                            element_key: str) -> int:
+        """Create the charts section with IMPROVED chart path resolution"""
         
         current_row = start_row
         
@@ -491,10 +563,10 @@ class ExcelSPCReportGenerator:
         
         current_row += 2
         
-        # Add each chart
+        # Add each chart with enhanced error handling
         charts_added = 0
         for chart_type, chart_display_name in self.CHART_TYPES.items():
-            chart_path = self.get_chart_path(element_name, chart_type)
+            chart_path = self.get_chart_path(element_key, chart_type)
             
             if chart_path and chart_path.exists():
                 try:
@@ -506,7 +578,7 @@ class ExcelSPCReportGenerator:
                     
                     current_row += 1
                     
-                    # Add chart image
+                    # Add chart image with better error handling
                     img = Image(str(chart_path))
                     
                     # Resize to fit nicely in Excel (maintain aspect ratio)
@@ -531,15 +603,26 @@ class ExcelSPCReportGenerator:
                     
                     charts_added += 1
                     
-                    self.logger.debug(f"Added chart: {chart_display_name}")
+                    self.logger.info(f"✓ Added chart: {chart_display_name} for {element_key}")
                     
                 except Exception as e:
-                    self.logger.error(f"Error adding chart {chart_type}: {e}")
-                    current_row += 1
+                    self.logger.error(f"✗ Error adding chart {chart_type} for {element_key}: {e}")
+                    # Add error message in the sheet
+                    ws[f'A{current_row}'] = f"Error loading {chart_display_name}: {str(e)}"
+                    current_row += 2
+            else:
+                self.logger.warning(f"⚠ Chart not found: {chart_type} for {element_key}")
+                # Add note about missing chart
+                ws[f'A{current_row}'] = f"{chart_display_name}: Chart not available"
+                ws[f'A{current_row}'].style = 'param_name'
+                current_row += 2
         
         if charts_added == 0:
             ws[f'A{current_row}'] = "No charts available for this element"
+            ws[f'A{current_row}'].style = 'param_name'
             current_row += 2
+        else:
+            self.logger.info(f"Added {charts_added}/{len(self.CHART_TYPES)} charts for element {element_key}")
         
         return current_row
 
@@ -593,17 +676,6 @@ class ExcelSPCReportGenerator:
         current_row += 3
         
         return current_row
-
-    def get_chart_path(self, element_name: str, chart_type: str) -> Optional[Path]:
-        """Get the path to a specific chart file"""
-        chart_filename = f"{self.ref_project}_{self.batch_number}_{element_name}_{chart_type}.png"
-        chart_path = self.charts_path / chart_filename
-        
-        if chart_path.exists():
-            return chart_path
-        else:
-            self.logger.warning(f"Chart not found: {chart_path}")
-            return None
 
     def set_column_widths(self, ws: Worksheet):
         """Set appropriate column widths"""
