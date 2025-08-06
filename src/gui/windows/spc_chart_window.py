@@ -29,7 +29,7 @@ from PyQt5.QtGui import QPixmap, QFont
 from src.services.spc_chart_service import SPCChartService
 from src.gui.windows.components.spc_export_dialog import ExcelExportDialog
 from ..logging_config import logger
-from ..utils.chart_utils import ChartPathResolver, ChartDisplayHelper
+from ..utils.chart_utils import ChartPathResolver # ,ChartDisplayHelper
 from ..utils.styles import global_style, get_color_palette
 from ..widgets.buttons import ModernButton, ActionButton, CompactButton
 from ..widgets.inputs import ModernComboBox, ModernTextEdit
@@ -260,12 +260,14 @@ class ChartDisplayWidget(QWidget):
         self.zoom_label.setText(f"{value}%")
         self.update_chart_layout()
 
-    def add_chart(self, chart_path, chart_type):
-        """Add a chart to the display"""
+    def add_chart(self, chart_path, chart_type, element_id=None, cavity=None):
+        """Add a chart to the display - Updated to include element_id and cavity"""
         if os.path.exists(chart_path):
             chart_info = {
                 "path": chart_path,
                 "type": chart_type,
+                "element_id": element_id,
+                "cavity": cavity,
                 "pixmap": QPixmap(chart_path),
             }
             self.charts.append(chart_info)
@@ -350,7 +352,7 @@ class ChartDisplayWidget(QWidget):
             self.create_vertical_layout(zoom_factor)
 
     def create_chart_widget(self, chart_info, zoom_factor, is_grid=False):
-        """Create a widget for displaying a single chart"""
+        """Create a widget for displaying a single chart - Updated to show element and cavity info"""
         chart_widget = QFrame()
         chart_widget.setStyleSheet("""
             QFrame {
@@ -364,8 +366,14 @@ class ChartDisplayWidget(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(12)
 
-        # Chart title - smaller and more proportional
-        title_label = QLabel(chart_info["type"].replace("_", " ").title())
+        # Chart title - enhanced with element and cavity info
+        title_text = chart_info["type"].replace("_", " ").title()
+        if chart_info.get("element_id") and chart_info.get("cavity"):
+            title_text = f"{chart_info['element_id']} - Cavity {chart_info['cavity']} - {title_text}"
+        elif chart_info.get("element_id"):
+            title_text = f"{chart_info['element_id']} - {title_text}"
+            
+        title_label = QLabel(title_text)
         title_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
         title_label.setStyleSheet("""
             QLabel {
@@ -413,6 +421,7 @@ class ModernSPCChartWindow(QDialog):
         self.chart_service = None
         self.elements_data = {}
         self.current_element = None
+        self.current_element_cavity_key = None  # New: track element+cavity combination
         self.colors = get_color_palette()
 
         self.setup_ui()
@@ -420,7 +429,7 @@ class ModernSPCChartWindow(QDialog):
         self.start_chart_generation()
 
     def setup_ui(self):
-        self.setWindowTitle(f"SPC Charts - {self.client} - {self.ref_project}")
+        self.setWindowTitle(f"SPC Charts - {self.client} - {self.ref_project} - Batch: {self.batch_number}")
 
         # Enable window controls (minimize, maximize, close)
         self.setWindowFlags(
@@ -493,8 +502,8 @@ class ModernSPCChartWindow(QDialog):
         title_label.setMinimumHeight(35)  # Ensure enough height for the text
         text_layout.addWidget(title_label)
 
-        # Subtitle with better spacing - NO background color
-        subtitle_label = QLabel(f"Client: {self.client} | Projecte: {self.ref_project} | NºLot: {self.batch_number}")
+        # Subtitle with better spacing - NO background color - Updated to include batch
+        subtitle_label = QLabel(f"Client: {self.client} | Projecte: {self.ref_project} | Batch: {self.batch_number}")
         subtitle_label.setFont(QFont("Segoe UI", 12, QFont.Normal))
         subtitle_label.setStyleSheet("""
             QLabel {
@@ -667,7 +676,7 @@ class ModernSPCChartWindow(QDialog):
         layout = QVBoxLayout()
         layout.setSpacing(10)
 
-        # Element selector
+        # Element selector - Updated to show element+cavity combinations
         self.element_combo = ModernComboBox()
         self.element_combo.setEnabled(False)
         self.element_combo.setMinimumHeight(32)
@@ -956,10 +965,22 @@ class ModernSPCChartWindow(QDialog):
         self.status_label.setStyleSheet("color: #28a745; font-weight: bold;")
         self.progress_bar.setValue(100)
 
-        # Enable controls
+        # Enable controls and populate element selector with element+cavity combinations
         self.element_combo.clear()
-        element_names = list(self.elements_data.keys())
-        self.element_combo.addItems(element_names)
+        element_cavity_keys = []
+        
+        for element_key, element_data in self.elements_data.items():
+            # Create display format: "ElementID - Cavity X" or just "ElementID" if no cavity info
+            if 'cavity' in element_data and element_data['cavity']:
+                display_name = f"{element_key} - Cavity {element_data['cavity']}"
+                element_cavity_key = f"{element_key}_{element_data['cavity']}"
+            else:
+                display_name = element_key
+                element_cavity_key = element_key
+            
+            self.element_combo.addItem(display_name, element_cavity_key)
+            element_cavity_keys.append(element_cavity_key)
+        
         self.element_combo.setEnabled(True)
 
         for checkbox in self.chart_type_checkboxes.values():
@@ -977,9 +998,12 @@ class ModernSPCChartWindow(QDialog):
         self.stats_info.setPlainText(stats_text)
 
         # Load first element
-        if element_names:
-            self.current_element = element_names[0]
-            self.load_element_charts(self.current_element)
+        if element_cavity_keys:
+            self.current_element_cavity_key = element_cavity_keys[0]
+            # Find the original element key for the first entry
+            first_element_key = list(self.elements_data.keys())[0]
+            self.current_element = first_element_key
+            self.load_element_charts(first_element_key)
 
     def on_chart_generation_error(self, error_msg):
         logger.error(f"Chart generation failed: {error_msg}")
@@ -993,10 +1017,34 @@ class ModernSPCChartWindow(QDialog):
             f"No s'han pogut generar els gràfics:\n\n{error_msg}",
         )
 
-    def on_element_changed(self, element_name):
-        if element_name and element_name != self.current_element:
-            self.current_element = element_name
-            self.load_element_charts(element_name)
+    def on_element_changed(self, display_name):
+        """Handle element selection change - Updated for element+cavity combinations"""
+        if not display_name:
+            return
+            
+        # Get the element_cavity_key from the combo box data
+        current_index = self.element_combo.currentIndex()
+        if current_index >= 0:
+            element_cavity_key = self.element_combo.itemData(current_index)
+            if element_cavity_key and element_cavity_key != self.current_element_cavity_key:
+                self.current_element_cavity_key = element_cavity_key
+                
+                # Extract the original element key to find in elements_data
+                # For keys like "Element1_CavityA", we need to find the matching element
+                matching_element_key = None
+                for element_key, element_data in self.elements_data.items():
+                    if 'cavity' in element_data and element_data['cavity']:
+                        if f"{element_key}_{element_data['cavity']}" == element_cavity_key:
+                            matching_element_key = element_key
+                            break
+                    else:
+                        if element_key == element_cavity_key:
+                            matching_element_key = element_key
+                            break
+                
+                if matching_element_key:
+                    self.current_element = matching_element_key
+                    self.load_element_charts(matching_element_key)
 
     def on_chart_selection_changed(self):
         if self.current_element:
@@ -1011,15 +1059,30 @@ class ModernSPCChartWindow(QDialog):
             checkbox.setChecked(False)
 
     def load_element_charts(self, element_name):
+        """Load charts for the selected element - UPDATED to handle cavity properly"""
         if not self.chart_service or element_name not in self.elements_data:
             return
 
         logger.info(f"Loading charts for element: {element_name}")
 
-        # Update element info
+        # Update element info - Enhanced to show cavity information
         element_data = self.elements_data[element_name]
         element_data["element_name"] = element_name
-        info_text = ChartDisplayHelper.format_element_info(element_data)
+        
+        # Get cavity info
+        cavity_info = element_data.get('cavity', '')
+        
+        # Enhanced info formatting to include cavity
+        info_parts = [f"Element: {element_name}"]
+        if cavity_info:
+            info_parts.append(f"Cavity: {cavity_info}")
+        if 'nominal' in element_data:
+            info_parts.append(f"Nominal: {element_data['nominal']:.3f}")
+        if 'tolerance' in element_data and isinstance(element_data['tolerance'], list):
+            tol_minus, tol_plus = element_data['tolerance']
+            info_parts.append(f"Tolerance: {tol_minus:.3f} / +{tol_plus:.3f}")
+        
+        info_text = "\n".join(info_parts)
         self.element_info.setPlainText(info_text)
 
         # Clear and load charts
@@ -1027,11 +1090,18 @@ class ModernSPCChartWindow(QDialog):
 
         for chart_type, checkbox in self.chart_type_checkboxes.items():
             if checkbox.isChecked():
+                # UPDATED: Pass cavity parameter to get_chart_file_path
                 chart_path = self.chart_service.get_chart_file_path(
-                    element_name, chart_type
+                    element_name, chart_type, cavity_info
                 )
+                
                 if os.path.exists(chart_path):
-                    self.chart_display.add_chart(chart_path, chart_type)
+                    self.chart_display.add_chart(
+                        chart_path, 
+                        chart_type, 
+                        element_id=element_name,
+                        cavity=cavity_info
+                    )
                 else:
                     logger.warning(f"Chart not found: {chart_path}")
 
@@ -1049,9 +1119,8 @@ class ModernSPCChartWindow(QDialog):
         return "\n".join(formatted)
 
     def open_results_folder(self):
-        folder_path = ChartPathResolver.get_study_directory(
-            self.client, self.ref_project
-        )
+        """UPDATED: Open the new charts directory structure"""
+        folder_path = ChartPathResolver.get_charts_directory(self.ref_project)
         if os.path.exists(folder_path):
             try:
                 if platform.system() == "Windows":
@@ -1077,7 +1146,6 @@ class ModernSPCChartWindow(QDialog):
             parent=self
         )
         dialog.exec_()
-
 
     def closeEvent(self, event):
         if hasattr(self, "chart_worker") and self.chart_worker.isRunning():

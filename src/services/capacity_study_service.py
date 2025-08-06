@@ -1,5 +1,4 @@
 # src/services/capacity_study_service.py
-
 from src.models.capability.capability_study_manager import (
     CapabilityStudyManager,
     StudyConfig,
@@ -15,7 +14,6 @@ def perform_capability_study(
     min_sample_size: int = 5,
     batch_number: str = None,
 ):
-
     """
     Perform capability study with the provided elements
 
@@ -25,6 +23,7 @@ def perform_capability_study(
         elements: List of elements with their data (from ElementInputWidget)
         extrap_config: Extrapolation configuration dict from GUI
         min_sample_size: Minimum sample size
+        batch_number: Batch number for the study
 
     Returns:
         Study results
@@ -32,11 +31,10 @@ def perform_capability_study(
     # If no elements provided, fall back to default behavior
     if not elements:
         from src.models.capability.sample_data_manager import SampleDataManager
-
         sample_data = SampleDataManager.get_default_sample_data()
     else:
         # Convert elements to the format expected by your capability study
-        sample_data = _convert_elements_to_sample_data(elements)
+        sample_data = _convert_elements_to_sample_data(elements, batch_number)
 
     # Handle extrapolation configuration
     include_extrapolation = False
@@ -54,12 +52,16 @@ def perform_capability_study(
                 extrap_params.get("target_size", 100)
             ],  # Use selected size
         )
-        print(f"YEEEEEEEE [DEBUG] Extrapolation target size from GUI: {extrap_params.get('target_size')}")
+        print(f"[DEBUG] Extrapolation target size from GUI: {extrap_params.get('target_size')}")
 
-
+    # FIX: Updated output directory to include batch_number
+    output_dir = f"data/spc/{client}_{ref_project}"
+    if batch_number:
+        output_dir += f"_{batch_number}"
+    
     config = StudyConfig(
         min_sample_size=min_sample_size,
-        output_directory=f"data/spc/{client}_{ref_project}",
+        output_directory=output_dir,
         include_extrapolation=include_extrapolation,
         extrapolation_config=extrapolation_config,
         export_detailed_results=True,
@@ -77,12 +79,13 @@ def perform_capability_study(
     return results
 
 
-def _convert_elements_to_sample_data(elements):
+def _convert_elements_to_sample_data(elements, batch_number=None):
     """
     Convert elements from ElementInputWidget format to the format expected by CapabilityStudyManager
 
     Args:
         elements: List of dictionaries with element data
+        batch_number: Batch number to assign to all elements
 
     Returns:
         Sample data in the format expected by your capability study manager
@@ -90,12 +93,13 @@ def _convert_elements_to_sample_data(elements):
     sample_data = []
 
     for element in elements:
-        # Convert each element to the format your system expects
+        # FIX: Updated to handle new structure without 'batch' field from element
+        # and use cavity properly
         sample_entry = {
             "element_id": element["element_id"],
             "class": element["class"],
-            "cavity": element["cavity"],
-            "batch_number": element["batch"],
+            "cavity": element["cavity"],  # Now properly handled
+            "batch_number": batch_number,  # Use the batch_number parameter
             "nominal": element["nominal"],
             "tol_minus": element["tol_minus"],
             "tol_plus": element["tol_plus"],

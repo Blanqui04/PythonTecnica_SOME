@@ -136,10 +136,6 @@ class ElementInputWidget(QWidget):
         if self.client and self.project_reference:
             self.load_elements_button.setEnabled(True)
             self.load_elements_button.setToolTip(f"Load elements for {self.client} - {self.project_reference}")
-        
-        # Comentem l'auto-càrrega automàtica - ara l'usuari ha de seleccionar l'element primer
-        # if self.client and self.project_reference:
-        #     self.auto_load_database_measurements()
 
     def init_ui(self):
         # Create main scroll area
@@ -234,13 +230,9 @@ class ElementInputWidget(QWidget):
 
         # Cavity
         basic_info_layout.addWidget(QLabel("Cavity:"), 1, 0)
-        self.cavity_input = ModernLineEdit("Enter cavity information")
-        basic_info_layout.addWidget(self.cavity_input, 1, 1)
-
-        # Batch
-        basic_info_layout.addWidget(QLabel("Batch:"), 1, 2)
-        self.batch_input = ModernLineEdit("Enter batch number")
-        basic_info_layout.addWidget(self.batch_input, 1, 3)
+        self.cavity_input = ModernComboBox()
+        self.cavity_input.addItems(["1", "2", "3", "4", ""])
+        basic_info_layout.addWidget(self.cavity_input, 1, 1, 1, 1)  # Span 1 columns
 
         form_layout.addWidget(basic_info_frame)
 
@@ -319,14 +311,13 @@ class ElementInputWidget(QWidget):
         table_layout = QVBoxLayout(table_group)
         table_layout.setSpacing(16)
 
-        # Table
-        self.table = QTableWidget(0, 9)
+        # Table - Updated to remove Batch column and emphasize Cavity
+        self.table = QTableWidget(0, 8)  # Reduced from 9 to 8 columns
         self.table.setHorizontalHeaderLabels(
             [
                 "Element ID",
+                "Cavity",  # Moved to second position for emphasis
                 "Class",
-                "Cavity",
-                "Batch",
                 "Nominal",
                 "Tol. -",
                 "Tol. +",
@@ -341,22 +332,21 @@ class ElementInputWidget(QWidget):
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setMinimumHeight(400)
 
-        # Set specific column widths
+        # Set specific column widths - updated for new layout
         self.table.setColumnWidth(0, 120)  # Element ID
-        self.table.setColumnWidth(1, 40)  # Class
-        self.table.setColumnWidth(2, 30)  # Cavity
-        self.table.setColumnWidth(3, 80)  # Batch
-        self.table.setColumnWidth(4, 70)  # Nominal
-        self.table.setColumnWidth(5, 40)  # Tol. -
-        self.table.setColumnWidth(6, 40)  # Tol. +
-        self.table.setColumnWidth(7, 220)  # Measured Values
-        self.table.setColumnWidth(8, 80)  # Actions
+        self.table.setColumnWidth(1, 60)   # Cavity (emphasized)
+        self.table.setColumnWidth(2, 40)   # Class
+        self.table.setColumnWidth(3, 70)   # Nominal
+        self.table.setColumnWidth(4, 40)   # Tol. -
+        self.table.setColumnWidth(5, 40)   # Tol. +
+        self.table.setColumnWidth(6, 250)  # Measured Values (increased width)
+        self.table.setColumnWidth(7, 80)   # Actions
 
         table_layout.addWidget(self.table)
         main_layout.addWidget(table_group)
 
     def _create_extrapolation_config(self, main_layout):
-        """Create the extrapolation configuration section"""
+        """Create the extrapolation configuration section - UPDATED with real values option"""
         extrap_group = QGroupBox("Extrapolation Configuration")
         extrap_layout = QVBoxLayout(extrap_group)
         extrap_layout.setSpacing(16)
@@ -369,6 +359,18 @@ class ElementInputWidget(QWidget):
         checkbox_layout.addWidget(self.enable_extrapolation)
         checkbox_layout.addStretch()
         extrap_layout.addLayout(checkbox_layout)
+
+        # NEW: Real values option
+        real_values_layout = QHBoxLayout()
+        self.use_real_values = QCheckBox("Use Real Values (when > 10 samples)")
+        self.use_real_values.setChecked(False)
+        self.use_real_values.setToolTip(
+            "When enabled and real sample size > 10, use actual measured values instead of extrapolating"
+        )
+        self.use_real_values.toggled.connect(self.toggle_real_values_option)
+        real_values_layout.addWidget(self.use_real_values)
+        real_values_layout.addStretch()
+        extrap_layout.addLayout(real_values_layout)
 
         # Extrapolation parameters frame
         self.extrap_params_frame = QFrame()
@@ -401,11 +403,11 @@ class ElementInputWidget(QWidget):
         self.max_attempts.setValue(20)
         extrap_params_layout.addWidget(self.max_attempts, 1, 1)
 
-        # Info label
-        info_label = QLabel(
+        # Info label - updated
+        self.info_label = QLabel(
             "Extrapolation will extend the sample size to achieve the target statistical significance."
         )
-        info_label.setStyleSheet("""
+        self.info_label.setStyleSheet("""
             QLabel {
                 color: #7f8c8d;
                 font-size: 10px;
@@ -413,7 +415,7 @@ class ElementInputWidget(QWidget):
                 margin-top: 8px;
             }
         """)
-        extrap_params_layout.addWidget(info_label, 2, 0, 1, 4)
+        extrap_params_layout.addWidget(self.info_label, 2, 0, 1, 4)
 
         extrap_layout.addWidget(self.extrap_params_frame)
         main_layout.addWidget(extrap_group)
@@ -430,8 +432,9 @@ class ElementInputWidget(QWidget):
             auto_load_group = QGroupBox("Database Auto-Load")
             auto_load_layout = QVBoxLayout(auto_load_group)
             
-            # Info label
-            info_label = QLabel(f"Client: {self.client} | Project: {self.project_reference}")
+            # Info label - updated to show batch comes from main window
+            batch_info = " | Batch: From main window" if self.batch_lot else ""
+            info_label = QLabel(f"Client: {self.client} | Project: {self.project_reference}{batch_info}")
             info_label.setStyleSheet("""
                 QLabel {
                     color: #2c3e50;
@@ -473,11 +476,36 @@ class ElementInputWidget(QWidget):
         main_layout.addLayout(button_layout)
 
     def toggle_extrapolation_controls(self, enabled):
-        """Enable/disable extrapolation controls based on checkbox"""
+        """Toggle extrapolation controls based on checkbox state"""
         self.extrap_params_frame.setEnabled(enabled)
-        self.target_size_combo.setEnabled(enabled)
-        self.target_p_value.setEnabled(enabled)
-        self.max_attempts.setEnabled(enabled)
+        if not enabled:
+            self.use_real_values.setEnabled(False)
+            self.use_real_values.setChecked(False)
+        else:
+            self.use_real_values.setEnabled(True)
+
+    def toggle_real_values_option(self, enabled):
+        """Toggle between real values and extrapolation"""
+        if enabled:
+            # Disable extrapolation parameters when using real values
+            for i in range(self.extrap_params_frame.layout().count()):
+                widget = self.extrap_params_frame.layout().itemAt(i).widget()
+                if widget and not isinstance(widget, QLabel):
+                    widget.setEnabled(False)
+            
+            self.info_label.setText(
+                "Real measured values will be used when sample size > 10 (no extrapolation performed)."
+            )
+        else:
+            # Enable extrapolation parameters
+            for i in range(self.extrap_params_frame.layout().count()):
+                widget = self.extrap_params_frame.layout().itemAt(i).widget()
+                if widget and not isinstance(widget, QLabel):
+                    widget.setEnabled(True)
+                    
+            self.info_label.setText(
+                "Extrapolation will extend the sample size to achieve the target statistical significance."
+            )
 
     def add_element(self):
         # Validació i agregació
@@ -490,23 +518,27 @@ class ElementInputWidget(QWidget):
             element_id = selected_element.split(' (')[0] if ' (' in selected_element else selected_element
         
         element_type = self.class_combo.currentText()
-        cavity = self.cavity_input.text().strip()
-        batch = self.batch_input.text().strip()
+        cavity = self.cavity_input.currentText()
         nominal = self.nominal_input.text().strip()
         tol_minus = self.tol_minus_input.text().strip()
         tol_plus = self.tol_plus_input.text().strip()
         values = [inp.text().strip() for inp in self.values_inputs]
 
-        # Validacions bàsiques
+        # Validacions bàsiques - Enhanced cavity validation
         if not element_id:
             self._show_error("Element ID cannot be empty.")
             return
         if not cavity:
-            self._show_error("Cavity cannot be empty.")
+            self._show_error("Cavity is required. This field identifies the specific dimension being analyzed.")
             return
-        if not batch:
-            self._show_error("Batch number cannot be empty.")
-            return
+        
+        # Check for duplicate element_id + cavity combination
+        for existing_element in self.elements:
+            if (existing_element["element_id"] == element_id and 
+                existing_element["cavity"] == cavity):
+                self._show_error(f"Element '{element_id}' with cavity '{cavity}' already exists. Each element-cavity combination must be unique.")
+                return
+        
         try:
             nominal_f = float(nominal)
             tol_minus_f = float(tol_minus)
@@ -519,12 +551,11 @@ class ElementInputWidget(QWidget):
             self._show_error("Please enter valid numeric values.")
             return
 
-        # Afegim element a la llista
+        # Afegim element a la llista - Updated structure without batch
         element = {
             "element_id": element_id,
+            "cavity": cavity,  # Cavity as key identifier
             "class": element_type,
-            "cavity": cavity,
-            "batch": batch,
             "nominal": nominal_f,
             "tol_minus": tol_minus_f,
             "tol_plus": tol_plus_f,
@@ -539,20 +570,19 @@ class ElementInputWidget(QWidget):
         self._clear_inputs()
 
     def _update_table(self):
-        """Update the table with all elements"""
+        """Update the table with all elements - Updated for new column structure"""
         self.table.setRowCount(len(self.elements))
 
         for row, element in enumerate(self.elements):
             self.table.setItem(row, 0, QTableWidgetItem(element["element_id"]))
-            self.table.setItem(row, 1, QTableWidgetItem(element["class"]))
-            self.table.setItem(row, 2, QTableWidgetItem(element["cavity"]))
-            self.table.setItem(row, 3, QTableWidgetItem(element["batch"]))
-            self.table.setItem(row, 4, QTableWidgetItem(f"{element['nominal']:.3f}"))
-            self.table.setItem(row, 5, QTableWidgetItem(f"{element['tol_minus']:.3f}"))
-            self.table.setItem(row, 6, QTableWidgetItem(f"{element['tol_plus']:.3f}"))
+            self.table.setItem(row, 1, QTableWidgetItem(element["cavity"]))  # Cavity now in column 1
+            self.table.setItem(row, 2, QTableWidgetItem(element["class"]))
+            self.table.setItem(row, 3, QTableWidgetItem(f"{element['nominal']:.3f}"))
+            self.table.setItem(row, 4, QTableWidgetItem(f"{element['tol_minus']:.3f}"))
+            self.table.setItem(row, 5, QTableWidgetItem(f"{element['tol_plus']:.3f}"))
             self.table.setItem(
                 row,
-                7,
+                6,
                 QTableWidgetItem(", ".join(f"{v:.3f}" for v in element["values"])),
             )
 
@@ -561,7 +591,7 @@ class ElementInputWidget(QWidget):
             btn_delete.setProperty("class", "remove-btn")
             btn_delete.setToolTip("Remove this element")
             btn_delete.clicked.connect(lambda _, r=row: self._remove_element(r))
-            self.table.setCellWidget(row, 8, btn_delete)
+            self.table.setCellWidget(row, 7, btn_delete)  # Updated column index
 
     def _remove_element(self, row):
         """Remove element and update table"""
@@ -584,8 +614,8 @@ class ElementInputWidget(QWidget):
     def _clear_inputs(self):
         """Clear all input fields"""
         self.element_selector.setCurrentIndex(0)  # Reset to "Select an element..."
-        self.cavity_input.clear()
-        self.batch_input.clear()
+        # FIX: Don't clear the cavity combo, just reset selection to empty
+        self.cavity_input.setCurrentText("")  # Reset to empty selection instead of clearing all items
         self.nominal_input.clear()
         self.tol_minus_input.clear()
         self.tol_plus_input.clear()
@@ -670,10 +700,6 @@ class ElementInputWidget(QWidget):
 
         # Emit the signal with the elements list and extrapolation config
         self.study_requested.emit(self.elements, extrap_config)
-
-    def _on_element_id_changed(self, text):
-        """DEPRECATED - Substituït per _on_element_selection_changed"""
-        pass
 
     def _on_element_selection_changed(self, selected_text):
         """Activar/desactivar botó Load Data quan canvia la selecció d'element"""
@@ -881,9 +907,8 @@ class ElementInputWidget(QWidget):
                     
                     element = {
                         "element_id": db_element.get('element_id', 'Unknown'),
+                        "cavity": db_element.get('cavity', ''),  # Include cavity from database
                         "class": "CC",  # Valor per defecte
-                        "cavity": db_element.get('cavity', ''),
-                        "batch": db_element.get('batch', ''),
                         "nominal": db_element.get('nominal', 0.0),
                         "tol_minus": db_element.get('tolerance_minus', 0.0),
                         "tol_plus": db_element.get('tolerance_plus', 0.0),
@@ -906,7 +931,7 @@ class ElementInputWidget(QWidget):
             info_text += f"Source: {self.client} - {self.project_reference}\n\n"
             info_text += "Elements loaded:\n"
             for elem in self.elements[:5]:  # Mostrar només els primers 5
-                info_text += f"• {elem['element_id']} (Nominal: {elem['nominal']:.3f})\n"
+                info_text += f"• {elem['element_id']} - Cavity: {elem['cavity']} (Nominal: {elem['nominal']:.3f})\n"
             if len(self.elements) > 5:
                 info_text += f"• ... and {len(self.elements) - 5} more elements"
             
@@ -998,34 +1023,9 @@ class ElementInputWidget(QWidget):
             self.tol_minus_input.setText(str(latest_measurement['tol_neg']))
             self.tol_plus_input.setText(str(latest_measurement['tol_pos']))
             
-            # Si hi ha camps de cavitat i lot, també els podem omplir
-            if hasattr(self, 'cavity_input') and latest_measurement.get('cavitat'):
+            # Si hi ha camps de cavitat, també els podem omplir
+            if latest_measurement.get('cavitat'):
                 self.cavity_input.setText(latest_measurement['cavitat'])
-            
-            # Opcional: Crear un element amb totes les mesures i afegir-lo a la taula
-            element_data = {
-                'element_id': element_id,
-                'class': 'CC',  # Valor per defecte quan es carrega des de BBDD
-                'nominal': latest_measurement['nominal'],
-                'tol_minus': latest_measurement['tol_neg'],  # Usar noms que espera la taula
-                'tol_plus': latest_measurement['tol_pos'],   # Usar noms que espera la taula
-                'values': [m['actual'] for m in measurements],  # Canviat de 'measurements' a 'values'
-                'cavity': latest_measurement.get('cavitat', ''),
-                'batch': latest_measurement.get('id_lot', ''),
-                'last_measured': latest_measurement['data_hora']
-            }
-            
-            # Afegir l'element a la llista si no existeix ja
-            existing_element = next((e for e in self.elements if e['element_id'] == element_id), None)
-            if existing_element:
-                # Actualitzar element existent
-                existing_element.update(element_data)
-            else:
-                # Afegir nou element
-                self.elements.append(element_data)
-            
-            # Refrescar la taula
-            self._update_table()
             
             logger.info(f"Dades carregades per element {element_id}: {len(measurements)} mesures")
             
