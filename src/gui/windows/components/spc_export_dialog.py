@@ -398,12 +398,44 @@ class ExcelExportDialog(QDialog):
         return buttons_frame
 
     def start_export_process(self):
+        """Start the export process with proper dimension class handling"""
+        
+        # CHANGE: Extract dimension class properly from combo box
+        dimension_class_text = self.dimension_class_combo.currentText()
+        
+        # Extract the abbreviation from the full text
+        if "CC (" in dimension_class_text:
+            dimension_class = "CC"
+        elif "SC (" in dimension_class_text:
+            dimension_class = "SC"  
+        elif "IC (" in dimension_class_text:
+            dimension_class = "IC"
+        else:
+            dimension_class = "Standard"
+        
+        # CHANGE: Extract methodology properly
+        methodology_text = self.methodology_combo.currentText()
+        if "CMM" in methodology_text:
+            methodology = "CMM"
+        elif "MSA" in methodology_text:
+            methodology = "MSA"
+        elif "Manual" in methodology_text:
+            methodology = "Manual"
+        elif "Optical" in methodology_text:
+            methodology = "Optical"
+        elif "Laser" in methodology_text:
+            methodology = "Laser"
+        elif "Gauge" in methodology_text:
+            methodology = "Gauge"
+        else:
+            methodology = "CMM"  # Default
+        
         export_config = {
             "part_description": self.part_description_edit.text().strip(),
             "drawing_number": self.drawing_number_edit.text().strip(),
             "facility": self.facility_edit.text().strip(),
-            "methodology": self.methodology_combo.currentText().split(" ")[0].lower(),
-            "dimension_class": self.dimension_class_combo.currentText().split(" ")[0].lower(),
+            "methodology": methodology,  # CHANGED: Use extracted methodology
+            "dimension_class": dimension_class,  # CHANGED: Use extracted dimension class
             "generate_charts": self.generate_charts_cb.isChecked(),
             "open_file": self.open_file_cb.isChecked(),
         }
