@@ -6,17 +6,14 @@ from PyQt5.QtWidgets import (
     QLabel,
     QTableWidget,
     QTableWidgetItem,
-    QFileDialog,
     QMessageBox,
     QHBoxLayout,
     QProgressBar,
-    QTextEdit,
     QComboBox,
     QTabWidget,
     QFrame,
     QSplitter,
     QGroupBox,
-    QGridLayout,
 )
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QColor, QPixmap, QFont
@@ -24,7 +21,6 @@ import pandas as pd
 import os
 import logging
 from typing import List, Optional
-from datetime import datetime
 from .base_dimensional_window import BaseDimensionalWindow
 from .components.dimensional_table_manager import DimensionalTableManager
 from .components.dimensional_session_manager import SessionManager
@@ -116,14 +112,6 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             # Log to file using the standard logger
             log_method = getattr(self.logger, level.lower(), self.logger.info)
             log_method(message)
-
-            # Also log to GUI if available
-            if hasattr(self, "log_area"):
-                timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
-                self.log_area.append(f"[{timestamp}] [{level}] {message}")
-                self.log_area.verticalScrollBar().setValue(
-                    self.log_area.verticalScrollBar().maximum()
-                )
 
         except Exception as e:
             print(f"Logging failed: {str(e)}")
@@ -270,186 +258,233 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.setCentralWidget(container)
 
     def _create_header_section(self) -> QFrame:
-        """Create professional header section"""
+        """Create IMPROVED professional header section - more compact and graceful"""
         header_frame = QFrame()
         header_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        header_frame.setFixedHeight(130)
-        header_frame.setStyleSheet("background-color: #2c3e50;")  # Dark navy background
+        header_frame.setFixedHeight(100)  # Reduced from 130
+        header_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #2c3e50, stop:1 #34495e);
+                border-radius: 8px;
+                border: 1px solid #1a252f;
+            }
+        """)
 
         layout = QHBoxLayout()
-        layout.setContentsMargins(20, 15, 20, 15)
-        layout.setSpacing(20)
+        layout.setContentsMargins(15, 10, 15, 10)  # Reduced margins
+        layout.setSpacing(15)  # Reduced spacing
 
-        # Left: Project information
+        # Left: Project information - more compact
         info_group = QGroupBox("📋 Project Information")
-        info_group.setStyleSheet("color: white; font-weight: bold;")
-        info_layout = QGridLayout()
+        info_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid #415A77;
+                border-radius: 6px;
+                margin: 5px 0;
+                padding: 5px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 2px 8px;
+                background-color: #34495e;
+                border-radius: 4px;
+            }
+        """)
+        
+        info_layout = QVBoxLayout()  # Changed to vertical for more compact
+        info_layout.setSpacing(3)  # Tight spacing
 
-        # Enhanced labels with icons
-        client_label = QLabel(f"🏢 <b>Client:</b> {self.client_name}")
-        client_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        client_label.setStyleSheet("color: white;")
+        # More compact labels
+        client_label = QLabel(f"🏢 {self.client_name}")
+        client_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
+        client_label.setStyleSheet("color: #ecf0f1; margin: 2px;")
 
-        project_label = QLabel(f"📁 <b>Project:</b> {self.project_ref}")
-        project_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        project_label.setStyleSheet("color: white;")
+        project_label = QLabel(f"📁 {self.project_ref}")
+        project_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
+        project_label.setStyleSheet("color: #ecf0f1; margin: 2px;")
 
-        batch_label = QLabel(f"📦 <b>Batch:</b> {self.batch_number}")
-        batch_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        batch_label.setStyleSheet("color: white;")
+        batch_label = QLabel(f"📦 {self.batch_number}")
+        batch_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
+        batch_label.setStyleSheet("color: #ecf0f1; margin: 2px;")
 
-        info_layout.addWidget(client_label, 0, 0)
-        info_layout.addWidget(project_label, 1, 0)
-        info_layout.addWidget(batch_label, 2, 0)
+        info_layout.addWidget(client_label)
+        info_layout.addWidget(project_label)
+        info_layout.addWidget(batch_label)
         info_group.setLayout(info_layout)
 
-        # Center: Report configuration
+        # Center: Configuration - more graceful arrangement
         config_group = QGroupBox("⚙️ Configuration")
-        config_group.setStyleSheet("color: white")
+        config_group.setStyleSheet("""
+            QGroupBox {
+                color: white;
+                font-weight: bold;
+                font-size: 11px;
+                border: 1px solid #415A77;
+                border-radius: 6px;
+                margin: 5px 0;
+                padding: 5px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 2px 8px;
+                background-color: #34495e;
+                border-radius: 4px;
+            }
+        """)
+        
         config_layout = QVBoxLayout()
+        config_layout.setSpacing(5)
 
-        report_layout = QHBoxLayout()
-        report_label = QLabel("📊 Report Type:")
-        report_label.setStyleSheet("color: white;")
-        report_layout.addWidget(report_label)
+        # Report type row
+        report_row = QHBoxLayout()
+        report_label = QLabel("📊")
+        report_label.setStyleSheet("color: #ecf0f1; font-size: 12px;")
+        report_row.addWidget(report_label)
 
         self.report_type_combo = QComboBox()
         self.report_type_combo.addItems([
-            "PPAP",
-            "FOT (First Off Tool)",
-            "Process Validation",
-            "Internal Audit",
-            "Customer Audit",
-            "Tool modification",
-            "Supplier Change",
-            "Material Change",
-            "Annual Requalification",
-            "Serial Production Control",
-            "Temporary Deviation Approval",
-            "Quality Incident",
-            "Customer Complaint",
-            "New Measurement Equipment Validation",
-            "New Operator Validation",
-            "Plant Layout Change",
-            "Process Parameter Change",
-            "New Product Models or Variants",
-            "Internal Benchmarking",
-            "Packaging Validation",
-            "Post-Transport/Logistics Validation",
-            "Extreme Environmental Conditions",
-            "Lifetime/Aging Study",
-            "CAE Simulation vs Real Part",
-            "Third-Party Audit",
-            "Pre-Destructive Test Validation",
-            "Measurement Method Correlation Study",
-            "Subcomponent Validation within Functional Test",
-            "Assembly Tolerance Stack-Up Study"
+            "PPAP", "FOT (First Off Tool)", "Process Validation", "Internal Audit",
+            "Customer Audit", "Tool modification", "Supplier Change", "Material Change",
+            "Annual Requalification", "Serial Production Control", "Temporary Deviation Approval",
+            "Quality Incident", "Customer Complaint", "New Measurement Equipment Validation",
+            "New Operator Validation", "Plant Layout Change", "Process Parameter Change",
+            "New Product Models or Variants", "Internal Benchmarking", "Packaging Validation"
         ])
+        self.report_type_combo.setMinimumWidth(140)
+        self.report_type_combo.setStyleSheet(self._get_compact_combo_style())
+        report_row.addWidget(self.report_type_combo)
+        report_row.addStretch()
 
-        self.report_type_combo.setMinimumWidth(150)
-        self.report_type_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #1B263B;
-                color: white;
-                padding: 6px 10px;
-                border: 1px solid #415A77;
-                border-radius: 6px;
-                font-size: 14px;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #1B263B;
-                selection-background-color: #415A77;
-                color: white;
-            }
-        """)
-        report_layout.addWidget(self.report_type_combo)
-        report_layout.addStretch()
-
-        report_layout.addWidget(self.report_type_combo)
-
-        # Standard Tolerance ComboBox
-        tolerance_label = QLabel("📏 Standard Tolerance:")
-        tolerance_label.setStyleSheet("color: white;")
-        report_layout.addWidget(tolerance_label)
+        # Tolerance row  
+        tolerance_row = QHBoxLayout()
+        tolerance_label = QLabel("📏")
+        tolerance_label.setStyleSheet("color: #ecf0f1; font-size: 12px;")
+        tolerance_row.addWidget(tolerance_label)
 
         self.tolerance_combo = QComboBox()
         self.tolerance_combo.addItems([
-            "ISO 2768-m (General)",
-            "ISO 2768-f (Fine)",
-            "ISO 2768-c (Coarse)",
-            "ISO 2768-v (Very Coarse)",
-            "DIN 6930",
-            "DIN 7168-m",
-            "DIN 16901",
-            "ISO 286-1",
-            "ISO 286-2",
-            "Customer Specific",
-            "Other/Custom"
+            "ISO 2768-m (General)", "ISO 2768-f (Fine)", "ISO 2768-c (Coarse)",
+            "ISO 2768-v (Very Coarse)", "DIN 6930", "DIN 7168-m", "DIN 16901",
+            "ISO 286-1", "ISO 286-2", "Customer Specific", "Other/Custom"
         ])
-        self.tolerance_combo.setMinimumWidth(180)
-        self.tolerance_combo.setStyleSheet("""
-            QComboBox {
-                background-color: #1B263B;
-                color: white;
-                padding: 6px 10px;
-                border: 1px solid #415A77;
-                border-radius: 6px;
-                font-size: 14px;
-            }
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox QAbstractItemView {
-                background-color: #1B263B;
-                selection-background-color: #415A77;
-                color: white;
-            }
-        """)
-        report_layout.addWidget(self.tolerance_combo)
+        self.tolerance_combo.setMinimumWidth(140)
+        self.tolerance_combo.setStyleSheet(self._get_compact_combo_style())
+        tolerance_row.addWidget(self.tolerance_combo)
+        tolerance_row.addStretch()
 
-        config_layout.addLayout(report_layout)
+        config_layout.addLayout(report_row)
+        config_layout.addLayout(tolerance_row)
         config_group.setLayout(config_layout)
 
-        # Right: Company logo
+        # Right: Company logo - more compact
         logo_frame = QFrame()
         logo_layout = QVBoxLayout()
-        logo_layout.setContentsMargins(0, 0, 0, 0)
-        logo_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        logo_layout.setContentsMargins(5, 5, 5, 5)
+        logo_layout.setAlignment(Qt.AlignCenter)
 
         logo_label = QLabel()
         logo_path = "assets/images/gui/logo_some.png"
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path).scaled(
-                280, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation
+                200, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Reduced size
             )
             logo_label.setPixmap(pixmap)
         else:
-            # Fallback professional logo placeholder
-            logo_label.setText("\U0001f3ed\nAUTOMOTIVE\nQUALITY")
+            # More elegant fallback logo
+            logo_label.setText("🏭\nAUTOMOTIVE\nQUALITY")
             logo_label.setAlignment(Qt.AlignCenter)
             logo_label.setStyleSheet("""
                 QLabel {
-                    background-color: #34495e;
+                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                        stop:0 #3498db, stop:1 #2980b9);
                     color: white;
                     border-radius: 8px;
-                    padding: 10px;
+                    padding: 8px;
                     font-weight: bold;
-                    font-size: 12px;
+                    font-size: 10px;
+                    border: 1px solid #2471a3;
                 }
             """)
+            logo_label.setFixedSize(120, 60)
 
         logo_layout.addWidget(logo_label)
         logo_frame.setLayout(logo_layout)
 
+        # Arrange sections with better proportions
         layout.addWidget(info_group, 2)
-        layout.addWidget(config_group, 2)
+        layout.addWidget(config_group, 3)
         layout.addWidget(logo_frame, 1)
 
         header_frame.setLayout(layout)
         return header_frame
+    
+    def _apply_professional_styling(self):
+        """Apply enhanced professional styling throughout the application"""
+        # Set the main window style
+        self.setStyleSheet("""
+            QMainWindow {
+                background-color: #f8f9fa;
+            }
+            QWidget {
+                font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            }
+            QGroupBox {
+                font-weight: 600;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                margin: 8px 0;
+                padding-top: 10px;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 4px 12px;
+                background-color: white;
+                border-radius: 4px;
+                color: #495057;
+            }
+        """)
+    
+    def _get_compact_combo_style(self) -> str:
+        """Compact combo box style for header"""
+        return """
+            QComboBox {
+                background-color: #34495e;
+                color: white;
+                padding: 4px 8px;
+                border: 1px solid #415A77;
+                border-radius: 4px;
+                font-size: 10px;
+                max-height: 24px;
+            }
+            QComboBox:hover {
+                background-color: #415A77;
+                border-color: #3498db;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 20px;
+            }
+            QComboBox::down-arrow {
+                width: 10px;
+                height: 10px;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIgM0w1IDZMOCAzIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==);
+            }
+            QComboBox QAbstractItemView {
+                background-color: #34495e;
+                selection-background-color: #3498db;
+                color: white;
+                border: 1px solid #415A77;
+                border-radius: 4px;
+                font-size: 10px;
+            }
+        """
 
     def _create_control_panel(self) -> QFrame:
         """Create enhanced control panel"""
@@ -468,16 +503,11 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.mode_toggle.setMinimumSize(180, 40)
         self.mode_toggle.clicked.connect(self._toggle_mode)
 
-        self.load_file_button = ModernButton("📁 Load Data File")
-        self.load_file_button.setMinimumSize(140, 40)
-        self.load_file_button.clicked.connect(self.session_manager._load_file)
-
         self.load_db_button = ModernButton("💾 Load from Database")
         self.load_db_button.setMinimumSize(160, 40)
         self.load_db_button.clicked.connect(self._load_data_from_database)
 
         mode_layout.addWidget(self.mode_toggle)
-        mode_layout.addWidget(self.load_file_button)
         mode_layout.addWidget(self.load_db_button)
         mode_group.setLayout(mode_layout)
 
@@ -534,7 +564,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
         self.save_button = ModernButton("💾 Save")
         self.save_button.setMinimumSize(80, 40)
-        self.save_button.clicked.connect(self.session_manager._save_session)
+        self.save_button.clicked.connect(self.session_manager.save_session)
         session_layout.addWidget(self.save_button)
 
         self.load_button = ModernButton("📂 Load")
@@ -564,74 +594,157 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         return control_frame
 
     def _create_content_area(self) -> QSplitter:
-        """Create enhanced content area with splitter - UPDATED with enhanced summary"""
+        """Create IMPROVED content area - removed activity log, cleaner layout"""
         splitter = QSplitter(Qt.Vertical)
 
-        # Enhanced results tabs
+        # Enhanced results tabs with better styling
         self.results_tabs = QTabWidget()
         self.results_tabs.setTabsClosable(True)
         self.results_tabs.tabCloseRequested.connect(self._remove_tab)
-        self.results_tabs.setMinimumHeight(400)
+        self.results_tabs.setStyleSheet("""
+            QTabWidget::pane {
+                border: 1px solid #cbd5e0;
+                border-radius: 8px;
+                background-color: white;
+                margin-top: 2px;
+            }
+            QTabWidget::tab-bar {
+                alignment: left;
+            }
+            QTabBar::tab {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
+                border: 1px solid #dee2e6;
+                padding: 8px 16px;
+                margin-right: 2px;
+                border-top-left-radius: 6px;
+                border-top-right-radius: 6px;
+                font-weight: 500;
+                color: #495057;
+            }
+            QTabBar::tab:selected {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ffffff, stop:1 #f8f9fa);
+                border-bottom-color: white;
+                color: #2c3e50;
+                font-weight: 600;
+            }
+            QTabBar::tab:hover:!selected {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #e3f2fd, stop:1 #bbdefb);
+                border-color: #3498db;
+            }
+            QTabBar::close-button {
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTkgM0wzIDlNMyAzTDkgOSIgc3Ryb2tlPSIjNmM3NTdkIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPg==);
+            }
+            QTabBar::close-button:hover {
+                background-color: rgba(220, 53, 69, 0.1);
+                border-radius: 3px;
+            }
+        """)
 
         # Initialize and add enhanced summary tab
         self._init_summary_widget()
-        self.results_tabs.addTab(self.summary_widget, "📊 Enhanced Summary")
-
+        
+        # Give the splitter all available space to tabs (no activity log)
         splitter.addWidget(self.results_tabs)
-
-        # Enhanced log area
-        log_frame = QFrame()
-        log_frame.setFrameStyle(QFrame.StyledPanel)
-        log_layout = QVBoxLayout()
-        log_layout.setContentsMargins(10, 5, 10, 10)
-
-        log_header = QLabel("📋 Activity Log")
-        log_header.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        log_header.setStyleSheet("color: #2c3e50; margin-bottom: 5px;")
-
-        self.log_area = QTextEdit()
-        self.log_area.setReadOnly(True)
-        self.log_area.setMaximumHeight(150)
-        self.log_area.setFont(QFont("Consolas", 9))
-
-        log_layout.addWidget(log_header)
-        log_layout.addWidget(self.log_area)
-        log_frame.setLayout(log_layout)
-
-        splitter.addWidget(log_frame)
-        splitter.setSizes([700, 150])
+        
+        # Set splitter handle styling for a more professional look
+        splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #dee2e6;
+                border: 1px solid #adb5bd;
+                margin: 2px 0;
+            }
+            QSplitter::handle:hover {
+                background-color: #3498db;
+            }
+        """)
 
         return splitter
 
     def _create_status_section(self) -> QFrame:
-        """Create enhanced status section"""
+        """Create ENHANCED status section with better visual design"""
         status_frame = QFrame()
         status_frame.setFrameStyle(QFrame.StyledPanel)
-        status_frame.setFixedHeight(40)
+        status_frame.setFixedHeight(35)  # Slightly reduced
+        status_frame.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
+                border-top: 1px solid #dee2e6;
+                border-radius: 0 0 8px 8px;
+            }
+        """)
 
         layout = QHBoxLayout()
-        layout.setContentsMargins(15, 5, 15, 5)
+        layout.setContentsMargins(20, 5, 20, 5)
+        layout.setSpacing(20)
 
-        self.status_label = QLabel("✅ Ready")
-        self.status_label.setFont(QFont("Segoe UI", 9))
+        # Status with icon and better styling
+        status_container = QFrame()
+        status_layout = QHBoxLayout()
+        status_layout.setContentsMargins(0, 0, 0, 0)
+        status_layout.setSpacing(8)
 
-        self.stats_label = QLabel("📊 No data loaded")
-        self.stats_label.setFont(QFont("Segoe UI", 9))
+        status_icon = QLabel("🔄")
+        status_icon.setFont(QFont("Segoe UI", 12))
+        status_layout.addWidget(status_icon)
 
-        layout.addWidget(self.status_label)
+        self.status_label = QLabel("Ready")
+        self.status_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        self.status_label.setStyleSheet("color: #2c3e50;")
+        status_layout.addWidget(self.status_label)
+
+        status_container.setLayout(status_layout)
+
+        # Stats with better visual separation
+        stats_container = QFrame()
+        stats_container.setStyleSheet("""
+            QFrame {
+                background-color: rgba(52, 152, 219, 0.1);
+                border: 1px solid rgba(52, 152, 219, 0.3);
+                border-radius: 15px;
+                padding: 2px 12px;
+            }
+        """)
+        stats_layout = QHBoxLayout()
+        stats_layout.setContentsMargins(8, 2, 8, 2)
+
+        self.stats_label = QLabel("No data loaded")
+        self.stats_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
+        self.stats_label.setStyleSheet("color: #2980b9;")
+        stats_layout.addWidget(self.stats_label)
+        stats_container.setLayout(stats_layout)
+
+        layout.addWidget(status_container)
         layout.addStretch()
-        layout.addWidget(self.stats_label)
+        layout.addWidget(stats_container)
 
         status_frame.setLayout(layout)
         return status_frame
 
     def _remove_tab(self, index: int):
-        """Removes the tab at the given index from the results tab widget."""
+        """IMPROVED: Remove tab with better user feedback"""
         if 0 <= index < self.results_tabs.count():
+            tab_name = self.results_tabs.tabText(index)
             widget = self.results_tabs.widget(index)
+            
+            # Prevent closing summary tab
+            if "Summary" in tab_name:
+                QMessageBox.information(
+                    self,
+                    "Cannot Close",
+                    "The Summary tab cannot be closed as it contains essential analysis information."
+                )
+                return
+            
             self.results_tabs.removeTab(index)
-            widget.deleteLater()
-            self._log_message(f"Closed results tab #{index}")
+            if widget:
+                widget.deleteLater()
+            
+            self._log_message(f"📝 Closed tab: {tab_name}")
+
 
     def _run_study(self):
         """Execute the dimensional study - FIXED to avoid double execution"""
@@ -950,9 +1063,9 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         self.progress_bar.setVisible(False)
         self._set_ui_enabled(True)
         QMessageBox.critical(self, "Processing Error", f"Analysis failed:\n{error_msg}")
-    # src/gui/windows/dimensional_study_window.py - function of the class - MODIFY TO NOT ELIMINATE THE SUMMARY WIDGET:
+
     def _clear_all(self):
-        """Clear all data but preserve summary widget - ENHANCED"""
+        """FIXED: Clear all data but preserve summary widget with proper reset"""
         self.logger.debug("Clear all requested")
         reply = QMessageBox.question(
             self,
@@ -963,55 +1076,37 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             "• Reset analysis results\n"
             "• Reset summary statistics\n"
             "• Clear activity logs\n\n"
-            "The summary widget will remain visible but reset to zero.",
+            "The summary widget will remain visible but reset to initial state.",
             QMessageBox.Yes | QMessageBox.No,
             QMessageBox.No,
         )
 
         if reply == QMessageBox.Yes:
             try:
-                self.logger.info("🧹 Clearing all data")
+                self.logger.info("🧹 Clearing all data with enhanced cleanup")
 
-                # Clear result tabs efficiently but preserve summary
-                summary_widget = None
-                for i in range(self.results_tabs.count()):
-                    if "Summary" in self.results_tabs.tabText(i):
-                        summary_widget = self.results_tabs.widget(i)
-                        break
+                # Clear data tabs but preserve summary
+                self._clear_data_tabs_only()
 
-                # Remove all tabs
-                while self.results_tabs.count():
-                    widget = self.results_tabs.widget(0)
-                    self.results_tabs.removeTab(0)
-                    if widget != summary_widget:
-                        widget.deleteLater()
-
-                # Reset summary widget (don't delete it)
-                if summary_widget:
-                    summary_widget.reset_widget()
-                    # Re-add as first tab
-                    self.results_tabs.insertTab(
-                        0, summary_widget, "📊 Enhanced Summary"
-                    )
-                    self.results_tabs.setCurrentIndex(0)
+                # Reset summary widget instead of recreating
+                if hasattr(self, "summary_widget") and self.summary_widget:
+                    self.summary_widget.reset_widget()
+                    # Ensure it's properly positioned
+                    self.summary_widget.ensure_visibility()
                 else:
                     # Create new summary widget if somehow missing
                     self._init_summary_widget()
-                    self.results_tabs.insertTab(
-                        0, self.summary_widget, "📊 Enhanced Summary"
-                    )
-
-                # Clear other components
-                self.log_area.clear()
+                
                 self.results = []
 
                 # Reset UI state
                 self.run_study_button.setEnabled(False)
                 self.export_button.setEnabled(False)
 
-                # Clear table manager data
+                # Clear table manager data if needed
                 if hasattr(self, "table_manager"):
-                    self.table_manager.clear_all_tables()
+                    # Don't clear table manager itself, just reset state
+                    self.table_manager._original_measurements = {}
 
                 # Clear unsaved changes
                 self._clear_unsaved_changes()
@@ -1019,16 +1114,14 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                 # Update status
                 self.stats_label.setText("📊 Data cleared - Ready for new data")
 
-                self.logger.info(
-                    "✅ All data cleared successfully, summary widget preserved"
-                )
+                self.logger.info("✅ All data cleared successfully, summary widget preserved and reset")
                 self._log_message("🧹 All data cleared, ready for new analysis", "INFO")
 
             except Exception as e:
                 self._handle_error("Clear All", e)
 
     def _toggle_mode(self):
-        """Toggle between file and manual entry modes - ENHANCED"""
+        """FIXED: Toggle between file and manual entry modes with proper cleanup"""
         self.manual_mode = not self.manual_mode
 
         # Ensure summary widget exists and is visible
@@ -1043,7 +1136,6 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.add_row_button.setVisible(True)
             self.duplicate_row_button.setVisible(True)
             self.delete_row_button.setVisible(True)
-            self.load_file_button.setVisible(False)
             self.load_db_button.setVisible(False)
             self._log_message("📝 Switched to manual entry mode")
         else:
@@ -1052,40 +1144,55 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.add_row_button.setVisible(False)
             self.duplicate_row_button.setVisible(False)
             self.delete_row_button.setVisible(False)
-            self.load_file_button.setVisible(True)
             self.load_db_button.setVisible(True)
             self.run_study_button.setEnabled(True)
             self._log_message("📁 Switched to file mode")
 
     def _clear_data_tabs_only(self):
-        """Clear only data tabs, preserve summary tab"""
+        """FIXED: Clear only data tabs, preserve summary tab with proper cleanup"""
         try:
             # Find and preserve summary tab
             summary_widget = None
+            summary_tab_text = ""
+            
             for i in range(self.results_tabs.count()):
-                if "Summary" in self.results_tabs.tabText(i):
+                tab_text = self.results_tabs.tabText(i)
+                if "Summary" in tab_text:
                     summary_widget = self.results_tabs.widget(i)
+                    summary_tab_text = tab_text
                     break
 
-            # Remove all tabs
-            while self.results_tabs.count():
-                widget = self.results_tabs.widget(0)
-                self.results_tabs.removeTab(0)
+            # Remove all tabs (but don't delete summary widget)
+            widgets_to_delete = []
+            for i in range(self.results_tabs.count()):
+                widget = self.results_tabs.widget(i)
                 if widget != summary_widget:
+                    widgets_to_delete.append(widget)
+            
+            # Clear tabs
+            self.results_tabs.clear()
+            
+            # Delete non-summary widgets
+            for widget in widgets_to_delete:
+                try:
                     widget.deleteLater()
+                except Exception:
+                    pass
 
             # Restore summary tab as first tab
             if summary_widget:
-                self.results_tabs.insertTab(0, summary_widget, "📊 Enhanced Summary")
+                self.results_tabs.insertTab(0, summary_widget, summary_tab_text)
                 self.results_tabs.setCurrentIndex(0)
+                self._log_message("📊 Summary tab preserved during data clear", "DEBUG")
 
             # Reset relevant data
             self.results = []
-            self.run_study_button.setEnabled(False)
-            self._clear_unsaved_changes()
+            
+            self._log_message("🧹 Data tabs cleared, summary preserved", "DEBUG")
 
         except Exception as e:
             self._log_message(f"❌ Error clearing data tabs: {str(e)}", "ERROR")
+
 
     def _clear_current_data(self):
         """Clear current data without confirmation dialog"""
@@ -1106,78 +1213,121 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self._handle_error("Clear Current Data", e)
 
     def _prepare_manual_table(self):
-        """Prepare table for manual data entry - ENHANCED"""
+        """FIXED: Prepare table for manual data entry with proper formatting"""
         # Clear existing data tabs but preserve summary
         self._clear_data_tabs_only()
 
-        # Create main data entry table
+        # Create main data entry table using table manager
         main_table = self.table_manager._create_results_table()
         self.results_tabs.addTab(main_table, "📝 Data Entry")
 
-        # Set focus to the data entry tab
-        self.results_tabs.setCurrentIndex(1)  # Summary is index 0
+        # Set focus to the data entry tab (summary should be at index 0)
+        self.results_tabs.setCurrentIndex(1)
 
-        # Add initial row
+        # Add initial row with proper formatting
         main_table.setRowCount(1)
         self.table_manager._populate_default_row(main_table, 0)
 
         # Enable editing and run button
         self.run_study_button.setEnabled(True)
+        self._log_message("📝 Manual entry table prepared with proper formatting", "INFO")
 
     def _add_manual_row(self):
-        """Add a new row for manual entry - ENHANCED"""
-        current_table = self.results_tabs.currentWidget()
-        if not isinstance(current_table, QTableWidget):
+        """FIXED: Add a new row for manual entry with proper formatting"""
+        current_widget = self.results_tabs.currentWidget()
+        if not isinstance(current_widget, QTableWidget):
+            self._log_message("⚠️ No active table for adding row", "WARNING")
             return
 
-        row_count = current_table.rowCount()
-        current_table.insertRow(row_count)
-        self.table_manager._populate_default_row(current_table, row_count)
+        try:
+            row_count = current_widget.rowCount()
+            current_widget.insertRow(row_count)
+            
+            # Populate with proper formatting using table manager
+            self.table_manager._populate_default_row(current_widget, row_count)
 
-        # Mark changes and update summary
-        self._mark_unsaved_changes()
-        self.run_study_button.setEnabled(True)
+            # Mark changes and update summary
+            self._mark_unsaved_changes()
+            self.run_study_button.setEnabled(True)
 
-        # Record edit in summary
-        if hasattr(self, "summary_widget") and self.summary_widget:
-            self.summary_widget.record_edit("Added new dimension row")
+            # Record edit in summary
+            if hasattr(self, "summary_widget") and self.summary_widget:
+                self.summary_widget.record_edit("Added new dimension row")
+
+            self._log_message(f"➕ Added new row #{row_count + 1}", "INFO")
+
+        except Exception as e:
+            self._log_message(f"❌ Error adding manual row: {str(e)}", "ERROR")
 
     def _duplicate_row(self):
-        """Duplicate the currently selected row"""
-        current_table = self.results_tabs.currentWidget()
-        if not isinstance(current_table, QTableWidget):
+        """FIXED: Duplicate the currently selected row with proper formatting"""
+        current_widget = self.results_tabs.currentWidget()
+        if not isinstance(current_widget, QTableWidget):
+            QMessageBox.information(
+                self, "No Table", "Please select a data entry table first."
+            )
             return
 
-        current_row = current_table.currentRow()
+        current_row = current_widget.currentRow()
         if current_row == -1:
             QMessageBox.information(
                 self, "No Selection", "Please select a row to duplicate."
             )
             return
 
+        try:
+            # Use table manager's duplicate method for consistency
+            self.table_manager._duplicate_row(current_widget)
+            
+            # Mark changes
+            self._mark_unsaved_changes()
+
+            # Record edit in summary
+            if hasattr(self, "summary_widget") and self.summary_widget:
+                self.summary_widget.record_edit("Duplicated dimension row")
+
+            self._log_message(f"📋 Duplicated row #{current_row + 1}", "INFO")
+        except Exception as e:
+            self._log_message(f"❌ Error duplicating row: {str(e)}", "ERROR")
+            QMessageBox.critical(self, "Duplication Error", f"Failed to duplicate row: {str(e)}")
+
     def _delete_row(self):
-        """Delete the currently selected row"""
-        current_table = self.results_tabs.currentWidget()
-        if not isinstance(current_table, QTableWidget):
+        """FIXED: Delete the currently selected row"""
+        current_widget = self.results_tabs.currentWidget()
+        if not isinstance(current_widget, QTableWidget):
             return
 
-        current_row = current_table.currentRow()
+        current_row = current_widget.currentRow()
         if current_row < 0:
             QMessageBox.information(
                 self, "No Selection", "Please select a row to delete."
             )
             return
 
-        reply = QMessageBox.question(
-            self, "Confirm Delete", "Are you sure you want to delete this row?"
-        )
-        if reply == QMessageBox.Yes:
-            current_table.removeRow(current_row)
-            self._mark_unsaved_changes()
+        try:
+            reply = QMessageBox.question(
+                self, "Confirm Delete", 
+                f"Are you sure you want to delete row #{current_row + 1}?",
+                QMessageBox.Yes | QMessageBox.No
+            )
+            
+            if reply == QMessageBox.Yes:
+                # Get element info before deletion for logging
+                element_item = current_widget.item(current_row, 0)  # element_id column
+                element_id = element_item.text() if element_item else f"Row {current_row + 1}"
+                
+                current_widget.removeRow(current_row)
+                self._mark_unsaved_changes()
 
-        if hasattr(self, "summary_widget"):
-            self.summary_widget.record_edit("Deleted dimension row")
-            self.summary_widget.metrics["dimensions_deleted"] += 1
+                # Record edit in summary
+                if hasattr(self, "summary_widget") and self.summary_widget:
+                    self.summary_widget.record_edit("Deleted dimension row")
+                    self.summary_widget.metrics["dimensions_deleted"] = self.summary_widget.metrics.get("dimensions_deleted", 0) + 1
+
+                self._log_message(f"🗑️ Deleted {element_id}", "INFO")
+
+        except Exception as e:
+            self._log_message(f"❌ Error deleting row: {str(e)}", "ERROR")
 
     def _update_summary_from_tables(self):
         """Update summary widget with current table data - OPTIMIZED"""
@@ -1193,41 +1343,6 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                 self._log_message("📊 Summary updated with table changes", "DEBUG")
         except Exception as e:
             self._log_message(f"❌ Error updating summary: {str(e)}", "ERROR")
-
-    def _load_file(self):
-        """Load measurement data from file"""
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Select Measurement File",
-            "",
-            "Excel Files (*.xlsx *.xls);;CSV Files (*.csv);;All Files (*)",
-        )
-
-        if not file_path:
-            return
-
-        try:
-            self._log_message(f"Loading file: {file_path}")
-
-            if file_path.lower().endswith(".csv"):
-                df = pd.read_csv(file_path)
-            else:
-                df = pd.read_excel(file_path, engine="openpyxl")
-
-            self._populate_table_from_dataframe(df)
-            self._log_message(f"Successfully loaded {len(df)} rows from file")
-            self.run_study_button.setEnabled(True)  # Enable run button
-
-        except Exception as e:
-            error_msg = f"Failed to load file: {str(e)}"
-            self._log_message(error_msg, "ERROR")
-            QMessageBox.critical(self, "File Load Error", error_msg)
-
-        if hasattr(self, "summary_widget"):
-            self.summary_widget.record_edit(
-                f"Loaded data file: {os.path.basename(file_path)}"
-            )
-            self._update_summary_from_tables()
 
     def _load_data_from_database(self):
         """Load measurement data from database table mesuresqualitat where maquina='gompc_projectes'"""
@@ -1501,123 +1616,171 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             return None
 
     def _mark_unsaved_changes(self):
-        """Mark unsaved changes and update summary - OPTIMIZED VERSION"""
+        """FIXED: Mark unsaved changes with optimized summary updates"""
         self.unsaved_changes = True
 
         # Update window title to show unsaved changes
-        if "*" not in self.windowTitle():
-            self.setWindowTitle(f"{self.windowTitle()} *")
+        current_title = self.windowTitle()
+        if "*" not in current_title:
+            self.setWindowTitle(f"{current_title} *")
 
-        # Record edit in summary widget
+        # Record edit in summary widget (lightweight)
         if hasattr(self, "summary_widget") and self.summary_widget:
             try:
                 self.summary_widget.record_edit("Table data modified")
             except Exception as e:
                 self._log_message(f"Could not record edit: {str(e)}", "DEBUG")
 
-        # Update summary with throttling (non-blocking)
-        QTimer.singleShot(500, self._delayed_summary_update)
+        # Schedule delayed summary update to avoid performance issues
+        if not hasattr(self, "_pending_summary_update"):
+            self._pending_summary_update = True
+            QTimer.singleShot(1000, self._delayed_summary_update)  # 1 second delay
+
 
     def _delayed_summary_update(self):
-        """Delayed summary update to avoid performance issues"""
+        """Delayed summary update with automatic reset flag"""
         try:
             if hasattr(self, "summary_widget") and hasattr(self, "table_manager"):
                 df = self.table_manager._get_dataframe_from_tables()
                 if not df.empty:
                     self.summary_widget.update_summary(table_data=df)
+                    self._log_message("📊 Summary updated after delay", "DEBUG")
         except Exception as e:
             self._log_message(f"Delayed summary update failed: {str(e)}", "DEBUG")
+        finally:
+            # Reset the pending update flag
+            if hasattr(self, "_pending_summary_update"):
+                delattr(self, "_pending_summary_update")
 
     def _clear_unsaved_changes(self):
-        """Clear the unsaved changes flag"""
+        """FIXED: Clear the unsaved changes flag with proper title handling"""
         self.unsaved_changes = False
-        title = self.windowTitle()
-        if title.endswith(" *"):
-            self.setWindowTitle(title[:-2])
+        current_title = self.windowTitle()
+        if current_title.endswith(" *"):
+            self.setWindowTitle(current_title[:-2])
 
     def _populate_table_from_dataframe(self, df: pd.DataFrame):
-        """Populate table from dataframe, organizing by cavities"""
-        # Clear existing tabs
-        while self.results_tabs.count():
-            self.results_tabs.removeTab(0)
-
-        # Group by cavity if cavity column exists
-        if "cavity" in df.columns:
-            cavities = sorted(df["cavity"].unique())
+        """Populate table from DataFrame - delegate to session manager with consistent formatting"""
+        if hasattr(self, 'session_manager'):
+            self.session_manager._populate_table_from_dataframe(df)
         else:
-            cavities = [1]  # Default single cavity
-            df["cavity"] = 1
+            self._log("❌ Session manager not available for table population", "ERROR")
 
-        for cavity in cavities:
-            cavity_df = df[df["cavity"] == cavity] if "cavity" in df.columns else df
+    def _populate_table_row_from_series(self, table: QTableWidget, row_idx: int, row_data: pd.Series):
+        """Helper to populate a single row with consistent formatting"""
+        try:
+            # Define formatting constants
+            centered_columns = [2, 9, 10, 11, 17, 18, 19, 20, 21, 22, 23]  # cavity, nominal, tolerances, calculated
+            bold_columns = [9, 10, 11]  # nominal, tolerances
+            dropdown_columns = {
+                3: ("class", self.table_manager.class_options),
+                5: ("measuring_instrument", self.table_manager.instrument_options),
+                6: ("unit", self.table_manager.unit_options),
+                7: ("datum", self.table_manager.datum_options),
+                8: ("evaluation_type", self.table_manager.evaluation_options),
+                24: ("force_status", self.table_manager.force_status_options),
+            }
+            calculated_columns = [17, 18, 19, 20, 21, 22, 23]  # min, max, mean, std, pp, ppk, status
 
-            # Create table for this cavity
-            table = self.table_manager._create_results_table()
-            table.setRowCount(len(cavity_df))
+            # Populate each column
+            for col_idx, col_name in enumerate(self.table_manager.display_columns):
+                if col_idx >= table.columnCount():
+                    break
 
-            # Populate table
-            for row_idx, (_, row) in enumerate(cavity_df.iterrows()):
-                # Handle dropdown columns first
-                dropdown_columns = {
-                    3: ("class", self.table_manager.class_options),
-                    5: ("measuring_instrument", self.table_manager.instrument_options),
-                    6: ("unit", self.table_manager.unit_options),
-                    7: ("datum", self.table_manager.datum_options),
-                    8: ("evaluation_type", self.table_manager.evaluation_options),
-                    22: ("force_status", self.table_manager.force_status_options),
-                }
+                if col_idx in dropdown_columns:
+                    # Create dropdown
+                    field_info = dropdown_columns[col_idx]
+                    combo = QComboBox()
+                    combo.addItems(field_info[1])
 
-                for col_idx, col_name in enumerate(self.table_manager.display_columns):
-                    if col_idx in dropdown_columns:
-                        # Create dropdown for these columns
-                        dropdown_info = dropdown_columns[col_idx]
-                        combo = QComboBox()
-                        combo.addItems(dropdown_info[1])
-
-                        # Set value from dataframe if exists
-                        if col_name in row.index and pd.notna(row[col_name]):
-                            combo.setCurrentText(str(row[col_name]))
+                    # Set value from dataframe if exists
+                    if col_name in row_data.index and pd.notna(row_data[col_name]):
+                        value = str(row_data[col_name]).strip()
+                        if value in field_info[1]:
+                            combo.setCurrentText(value)
                         else:
-                            # Set defaults
-                            if col_name == "unit":
-                                combo.setCurrentText("mm")
-                            elif col_name == "evaluation_type":
-                                combo.setCurrentText("Normal")
-                            elif col_name == "force_status":
-                                combo.setCurrentText("AUTO")
-
-                        combo.setStyleSheet(self.table_manager._get_combo_style())
-                        combo.setMaximumHeight(30)
-                        table.setCellWidget(row_idx, col_idx, combo)
-
+                            # Set appropriate defaults
+                            defaults = {
+                                5: "3D Scanbox",
+                                6: "mm",
+                                8: "Normal",
+                                24: "AUTO"
+                            }
+                            combo.setCurrentText(defaults.get(col_idx, field_info[1][0] if field_info[1] else ""))
                     else:
-                        # Handle regular columns
-                        if col_name in row.index and pd.notna(row[col_name]):
-                            value = str(row[col_name])
-                        else:
-                            value = ""
+                        # Set defaults for empty values
+                        defaults = {
+                            5: "3D Scanbox",
+                            6: "mm", 
+                            8: "Normal",
+                            24: "AUTO"
+                        }
+                        combo.setCurrentText(defaults.get(col_idx, ""))
 
-                        item = QTableWidgetItem(value)
+                    combo.setStyleSheet(self.table_manager._get_combo_style())
+                    combo.setMaximumHeight(30)
+                    table.setCellWidget(row_idx, col_idx, combo)
 
-                        # Make calculated columns read-only (updated indices)
-                        if (
-                            col_idx >= 17 and col_idx != 22
-                        ):  # calculated columns except force_status
-                            item.setFlags(item.flags() ^ Qt.ItemIsEditable)
-                            item.setBackground(QColor(240, 240, 240))
+                elif col_idx in calculated_columns:
+                    # Create calculated column with read-only styling
+                    if col_name in row_data.index and pd.notna(row_data[col_name]):
+                        value = str(row_data[col_name])
+                    else:
+                        value = ""
 
-                        table.setItem(row_idx, col_idx, item)
+                    item = QTableWidgetItem(value)
+                    item.setFlags(item.flags() ^ Qt.ItemIsEditable)
 
-            # Add tab for this cavity
-            if len(cavities) > 1:
-                tab_name = f"🔧 Cavity {cavity} ({len(cavity_df)} items)"
-            else:
-                tab_name = f"📋 All Data ({len(cavity_df)} items)"
-            self.results_tabs.addTab(table, tab_name)
+                    # Apply specific styling for calculated columns
+                    if col_idx == 23:  # Status column
+                        item.setTextAlignment(Qt.AlignCenter)
+                        item.setFont(QFont("Segoe UI", 9, QFont.Bold))
+                        # Status color will be applied during analysis
+                    elif col_idx in [21, 22]:  # Pp, Ppk columns
+                        item.setTextAlignment(Qt.AlignCenter)
+                        item.setBackground(QColor(248, 240, 255))  # Light purple
+                        item.setForeground(QColor(138, 43, 226))   # Purple text
+                        item.setFont(QFont("Segoe UI", 9, QFont.Bold))
+                    else:  # Other calculated columns
+                        if col_idx in centered_columns:
+                            item.setTextAlignment(Qt.AlignCenter)
+                        item.setBackground(QColor(240, 242, 245))  # Light gray
+                        item.setForeground(QColor(40, 44, 52))     # Dark text
+                        item.setFont(QFont("Segoe UI", 9))
+
+                    table.setItem(row_idx, col_idx, item)
+
+                else:
+                    # Create regular input column
+                    if col_name in row_data.index and pd.notna(row_data[col_name]):
+                        value = str(row_data[col_name])
+                    else:
+                        value = ""
+
+                    item = QTableWidgetItem(value)
+
+                    # Apply consistent formatting
+                    if col_idx in centered_columns:
+                        item.setTextAlignment(Qt.AlignCenter)
+                    
+                    if col_idx in bold_columns:
+                        font = QFont("Segoe UI", 9, QFont.Bold)
+                    else:
+                        font = QFont("Segoe UI", 9)
+                    
+                    item.setFont(font)
+                    item.setForeground(QColor(40, 44, 52))  # Consistent dark text
+                    
+                    table.setItem(row_idx, col_idx, item)
+
+        except Exception as e:
+            self._log_message(f"⚠️ Error populating row {row_idx}: {str(e)}", "WARNING")
+
 
     def closeEvent(self, event):
-        """Handle window close event - ENHANCED with summary cleanup"""
+        """FIXED: Handle window close event with proper cleanup"""
         try:
+            # Check for unsaved changes
             if hasattr(self, "unsaved_changes") and self.unsaved_changes:
                 reply = QMessageBox.question(
                     self,
@@ -1637,28 +1800,35 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                     event.ignore()
                     return
 
-            # Clean up summary widget
+            # Auto-save session before closing
+            if hasattr(self, "session_manager") and hasattr(self, "unsaved_changes"):
+                try:
+                    self.session_manager._auto_save_session()
+                except Exception as e:
+                    self._log_message(f"Auto-save failed during close: {str(e)}", "WARNING")
+
+            # Clean up summary widget properly
             if hasattr(self, "summary_widget") and self.summary_widget:
                 try:
                     self.summary_widget.cleanup()
                     self._log_message("Summary widget cleaned up", "DEBUG")
                 except Exception as e:
-                    self._log_message(
-                        f"Summary widget cleanup error: {str(e)}", "DEBUG"
-                    )
+                    self._log_message(f"Summary widget cleanup error: {str(e)}", "DEBUG")
 
             # Clean up processing thread if running
-            if (
-                hasattr(self, "processing_thread")
-                and self.processing_thread
-                and self.processing_thread.isRunning()
-            ):
+            if hasattr(self, "processing_thread") and self.processing_thread and self.processing_thread.isRunning():
                 self.processing_thread.terminate()
-                self.processing_thread.wait()
+                self.processing_thread.wait(3000)  # Wait up to 3 seconds
+
+            # Clean up any pending timers
+            if hasattr(self, "_pending_summary_update"):
+                delattr(self, "_pending_summary_update")
 
             # Log window closing
             self._log_message(
-                f"Window closing - client: {getattr(self, 'client_name', 'Unknown')}, project: {getattr(self, 'project_ref', 'Unknown')}, batch: {getattr(self, 'batch_number', 'Unknown')}",
+                f"Window closing - client: {getattr(self, 'client_name', 'Unknown')}, "
+                f"project: {getattr(self, 'project_ref', 'Unknown')}, "
+                f"batch: {getattr(self, 'batch_number', 'Unknown')}",
                 "INFO",
             )
 
@@ -1671,7 +1841,6 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
     def _set_ui_enabled(self, enabled: bool):
         """Enable/disable UI during processing"""
         self.mode_toggle.setEnabled(enabled)
-        self.load_file_button.setEnabled(enabled)
         self.load_db_button.setEnabled(enabled)
         self.add_row_button.setEnabled(enabled)
         self.duplicate_row_button.setEnabled(enabled)
