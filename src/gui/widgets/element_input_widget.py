@@ -60,16 +60,17 @@ class ElementDataSearchWorker(QObject):
     finished = pyqtSignal(list)  # Registres trobats per l'element
     error = pyqtSignal(str)  # Error message
     
-    def __init__(self, client, project_reference, element_id, batch_lot=None):
+    def __init__(self, client, project_reference, element_id, batch_lot=None, limit=10):
         super().__init__()
         self.client = client
         self.project_reference = project_reference
         self.element_id = element_id
         self.batch_lot = batch_lot
+        self.limit = limit
     
     @pyqtSlot()
     def search_element_data(self):
-        """Cerca les últimes 10 mesures d'un element específic"""
+        """Cerca les últimes N mesures d'un element específic"""
         try:
             service = MeasurementHistoryService()
             # Obtenir només les dades d'aquest element específic
@@ -77,7 +78,7 @@ class ElementDataSearchWorker(QObject):
                 self.client, 
                 self.project_reference, 
                 self.element_id, 
-                limit=10,
+                limit=self.limit,
                 batch_lot=self.batch_lot
             )
             service.close()
@@ -221,6 +222,14 @@ class ElementInputWidget(QWidget):
         self.load_data_button.clicked.connect(self._load_element_data)
         self.load_data_button.setEnabled(False)  # Disabled until element is selected
         basic_info_layout.addWidget(self.load_data_button, 0, 3)
+
+        # Number of measurements selector
+        basic_info_layout.addWidget(QLabel("Num. measures:"), 1, 2)
+        self.num_measurements_combo = ModernComboBox()
+        self.num_measurements_combo.addItems(["5", "10", "15", "20", "30", "50"])
+        self.num_measurements_combo.setCurrentText("10")  # Default value
+        self.num_measurements_combo.setToolTip("Number of latest measurements to load")
+        basic_info_layout.addWidget(self.num_measurements_combo, 1, 3)
 
         # Class
         basic_info_layout.addWidget(QLabel("Class:"), 0, 4)
@@ -514,8 +523,8 @@ class ElementInputWidget(QWidget):
         if selected_element == "Select an element...":
             element_id = ""
         else:
-            # Extreure el nom de l'element (abans del parèntesi amb el count)
-            element_id = selected_element.split(' (')[0] if ' (' in selected_element else selected_element
+            # Extreure el nom de l'element (abans del primer ' - ')
+            element_id = selected_element.split(' - ')[0] if ' - ' in selected_element else selected_element.split(' (')[0]
         
         element_type = self.class_combo.currentText()
         cavity = self.cavity_input.currentText()
@@ -729,8 +738,7 @@ class ElementInputWidget(QWidget):
         # Neteja workers anteriors d'elements si existeixen
         if self.elements_worker:
             try:
-                if not self.elements_worker.isFinished():
-                    self.elements_worker.deleteLater()
+                self.elements_worker.deleteLater()
             except RuntimeError:
                 # Worker ja ha estat eliminat
                 pass
@@ -777,15 +785,21 @@ class ElementInputWidget(QWidget):
             )
             return
         
-        # Extreure el nom real de l'element (abans del parèntesi)
-        element_name = selected_element.split(' (')[0] if ' (' in selected_element else selected_element
-        logger.info(f"Carregant dades per Element: {element_name}, Client: {self.client}, Projecte: {self.project_reference}")
+        # Obtenir l'ID complet de l'element del userData
+        element_id = self.element_selector.currentData()
+        if not element_id:
+            self._show_error("Element ID Error", "Could not retrieve element ID. Please reload elements list.")
+            return
+        
+        # Obtenir el nombre de mesures seleccionat
+        num_measurements = int(self.num_measurements_combo.currentText())
+            
+        logger.info(f"Carregant {num_measurements} mesures per Element ID: {element_id}, Client: {self.client}, Projecte: {self.project_reference}")
         
         # Neteja workers anteriors de dades si existeixen
         if self.data_worker:
             try:
-                if not self.data_worker.isFinished():
-                    self.data_worker.deleteLater()
+                self.data_worker.deleteLater()
             except RuntimeError:
                 # Worker ja ha estat eliminat
                 pass
@@ -801,7 +815,7 @@ class ElementInputWidget(QWidget):
             
         # Crear nous workers per dades
         self.data_thread = QThread()
-        self.data_worker = ElementDataSearchWorker(self.client, self.project_reference, element_name, self.batch_lot)
+        self.data_worker = ElementDataSearchWorker(self.client, self.project_reference, element_id, self.batch_lot, num_measurements)
         self.data_worker.moveToThread(self.data_thread)
         
         # Connections
@@ -974,11 +988,15 @@ class ElementInputWidget(QWidget):
             
             # Afegir elements ordenats
             for element_data in sorted(elements, key=lambda x: x['element']):
-                element_name = element_data['element']
+                # Construir l'ID complet per l'element
+                element_id = f"{element_data['element']}|{element_data['pieza']}|{element_data['datum']}|{element_data['property']}"
                 count = element_data['count']
-                # Mostrar nom de l'element i número de mesures
-                display_text = f"{element_name} ({count} measurements)"
-                self.element_selector.addItem(display_text, element_name)  # userData = element_name
+                
+                # Mostrar informació més detallada de l'element
+                display_text = f"{element_data['element']} - {element_data['datum']} ({count} measurements)"
+                
+                # Guardar l'ID complet com userData
+                self.element_selector.addItem(display_text, element_id)
             
             self._show_info(
                 "Elements Loaded",
@@ -998,7 +1016,7 @@ class ElementInputWidget(QWidget):
             
             if not measurements:
                 selected_element = self.element_selector.currentText()
-                element_name = selected_element.split(' (')[0] if ' (' in selected_element else selected_element
+                element_name = selected_element.split(' - ')[0] if ' - ' in selected_element else selected_element.split(' (')[0]
                 self._show_info(
                     "No Data Found",
                     f"No measurement data found for element '{element_name}'"
@@ -1007,12 +1025,17 @@ class ElementInputWidget(QWidget):
             
             # Mostrar informació de les dades trobades
             element_id = measurements[0]['element']
+            datum = measurements[0]['datum']
+            num_requested = int(self.num_measurements_combo.currentText())
+            
             self._show_info(
                 "Data Loaded",
-                f"Found {len(measurements)} measurements for element '{element_id}'\n"
+                f"Found {len(measurements)} measurements for element '{element_id} - {datum}'\n"
                 f"Latest measurement: {measurements[0]['data_hora']}\n"
+                f"Value: {measurements[0]['valor_mesura']}\n"
                 f"Nominal: {measurements[0]['nominal']}\n"
-                f"Tolerance: {measurements[0]['tol_neg']} / +{measurements[0]['tol_pos']}"
+                f"Tolerance: -{measurements[0]['tol_neg']} / +{measurements[0]['tol_pos']}\n"
+                f"Requested: {num_requested}, Available: {len(measurements)}"
             )
             
             # Auto-poblar els camps amb les dades de la primera mesura (més recent)
@@ -1020,12 +1043,30 @@ class ElementInputWidget(QWidget):
             
             # Setear valors als camps corresponents
             self.nominal_input.setText(str(latest_measurement['nominal']))
-            self.tol_minus_input.setText(str(latest_measurement['tol_neg']))
+            self.tol_minus_input.setText(str(latest_measurement['tol_neg']))  # Ja és positiu des del servei
             self.tol_plus_input.setText(str(latest_measurement['tol_pos']))
             
             # Si hi ha camps de cavitat, també els podem omplir
             if latest_measurement.get('cavitat'):
-                self.cavity_input.setText(latest_measurement['cavitat'])
+                self.cavity_input.setCurrentText(latest_measurement['cavitat'])
+            
+            # Omplir els camps de valors amb les mesures obtingudes
+            measurement_values = [m['valor_mesura'] for m in measurements]
+            
+            # Assegurar-se que tenim els 10 camps per als valors
+            for i in range(10):
+                if i < len(measurement_values):
+                    self.values_inputs[i].setText(str(measurement_values[i]))
+                else:
+                    self.values_inputs[i].setText("")
+            
+            # Si tenim més de 10 mesures, mostrar avís
+            if len(measurement_values) > 10:
+                self._show_info(
+                    "Data Loaded", 
+                    f"Only the first 10 measurements have been loaded into the form.\n"
+                    f"Total measurements available: {len(measurement_values)}"
+                )
             
             logger.info(f"Dades carregades per element {element_id}: {len(measurements)} mesures")
             
