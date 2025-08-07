@@ -225,7 +225,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self.summary_widget.update_complete.connect(self._on_summary_update_complete)
             
             # Add to tabs if not already present
-            self.results_tabs.insertTab(0, self.summary_widget, "📊 Enhanced Summary")
+            self.results_tabs.insertTab(0, self.summary_widget, "📊 Summary")
             self.results_tabs.setCurrentIndex(0)
             
             self._log_message("📊 Optimized summary widget initialized", "INFO")
