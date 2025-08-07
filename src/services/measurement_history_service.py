@@ -109,7 +109,12 @@ class MeasurementHistoryService:
         try:
             if batch_lot:
                 query = """
-                    SELECT DISTINCT element, pieza, datum, property, COUNT(*) as count
+                    SELECT DISTINCT 
+                        COALESCE(element, 'None') as element,
+                        COALESCE(pieza, 'None') as pieza, 
+                        COALESCE(datum, 'None') as datum,
+                        COALESCE(property, 'None') as property,
+                        COUNT(*) as count
                     FROM mesuresqualitat 
                     WHERE client = %s AND id_referencia_client = %s AND id_lot = %s
                     GROUP BY element, pieza, datum, property
@@ -118,7 +123,12 @@ class MeasurementHistoryService:
                 results = self.db_connection.fetchall(query, (client, project_reference, batch_lot))
             else:
                 query = """
-                    SELECT DISTINCT element, pieza, datum, property, COUNT(*) as count
+                    SELECT DISTINCT 
+                        COALESCE(element, 'None') as element,
+                        COALESCE(pieza, 'None') as pieza, 
+                        COALESCE(datum, 'None') as datum,
+                        COALESCE(property, 'None') as property,
+                        COUNT(*) as count
                     FROM mesuresqualitat 
                     WHERE client = %s AND id_referencia_client = %s
                     GROUP BY element, pieza, datum, property
@@ -166,38 +176,63 @@ class MeasurementHistoryService:
             
             element, pieza, datum, property_name = parts
             
+            # Construir la consulta tenint en compte els valors NULL
+            base_conditions = "client = %s AND id_referencia_client = %s"
+            element_conditions = []
+            params = [client, project_reference]
+            
             if batch_lot:
-                query = """
-                    SELECT valor_mesura, data_hora, id_lot, cavitat
-                    FROM mesuresqualitat 
-                    WHERE client = %s AND id_referencia_client = %s AND id_lot = %s
-                    AND element = %s AND pieza = %s AND datum = %s AND property = %s
-                    ORDER BY data_hora DESC
-                    LIMIT %s
-                """
-                results = self.db_connection.fetchall(query, (
-                    client, project_reference, batch_lot, element, pieza, datum, property_name, limit
-                ))
+                base_conditions += " AND id_lot = %s"
+                params.append(batch_lot)
+            
+            # Afegir condicions per element, pieza, datum, property considerant NULL
+            if element is None or element == 'None':
+                element_conditions.append("element IS NULL")
             else:
-                query = """
-                    SELECT valor_mesura, data_hora, id_lot, cavitat
-                    FROM mesuresqualitat 
-                    WHERE client = %s AND id_referencia_client = %s 
-                    AND element = %s AND pieza = %s AND datum = %s AND property = %s
-                    ORDER BY data_hora DESC
-                    LIMIT %s
-                """
-                results = self.db_connection.fetchall(query, (
-                    client, project_reference, element, pieza, datum, property_name, limit
-                ))
+                element_conditions.append("element = %s")
+                params.append(element)
+                
+            if pieza is None or pieza == 'None':
+                element_conditions.append("pieza IS NULL")
+            else:
+                element_conditions.append("pieza = %s")
+                params.append(pieza)
+                
+            if datum is None or datum == 'None':
+                element_conditions.append("datum IS NULL")
+            else:
+                element_conditions.append("datum = %s")
+                params.append(datum)
+                
+            if property_name is None or property_name == 'None':
+                element_conditions.append("property IS NULL")
+            else:
+                element_conditions.append("property = %s")
+                params.append(property_name)
+            
+            all_conditions = base_conditions + " AND " + " AND ".join(element_conditions)
+            params.append(limit)
+            
+            query = f"""
+                SELECT actual, data_hora, id_lot, cavitat, nominal, tolerancia_negativa, tolerancia_positiva
+                FROM mesuresqualitat 
+                WHERE {all_conditions}
+                ORDER BY data_hora DESC
+                LIMIT %s
+            """
+            
+            results = self.db_connection.fetchall(query, tuple(params))
             
             measurements = []
             for row in results:
                 measurements.append({
-                    'valor_mesura': row[0],
+                    'valor_mesura': row[0],  # actual from database
                     'data_hora': row[1],
                     'id_lot': row[2],
                     'cavitat': row[3],
+                    'nominal': row[4] if row[4] is not None else 0.0,
+                    'tol_neg': abs(row[5]) if row[5] is not None else 0.0,  # tolerancia_negativa (make positive)
+                    'tol_pos': row[6] if row[6] is not None else 0.0,       # tolerancia_positiva
                     'element': element,
                     'pieza': pieza,
                     'datum': datum,
