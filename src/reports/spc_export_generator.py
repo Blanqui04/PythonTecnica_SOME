@@ -479,16 +479,16 @@ class ExcelSPCReportGenerator:
                                         ws: Worksheet, 
                                         start_row: int, 
                                         element_data: Dict[str, Any]) -> int:
-        """Create professional statistical summary table"""
+        """Create reorganized statistical summary table with higher rows"""
         
         current_row = start_row
         
-        # Section header - CHANGE: height to 30px  
+        # Section header
         ws.merge_cells(f'A{current_row}:H{current_row}')
         section_cell = ws[f'A{current_row}']
         section_cell.value = "STATISTICAL ANALYSIS RESULTS"
         section_cell.style = 'section_header'
-        ws.row_dimensions[current_row].height = 30  # CHANGED from 35 to 30
+        ws.row_dimensions[current_row].height = 28
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         
         current_row += 1
@@ -512,14 +512,15 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # CHANGE: Add AD-statistic and tolerance to parameters
+        # REORGANIZED Parameters - Column 1: Basic stats, Column 2: Capability indices
         left_params = [
             ('sample_size', 'Sample Size (n)', ''),
-            ('mean', 'Mean (X̄)', '.4f'),
-            ('nominal', 'Nominal Target', '.4f'),
-            ('std_short', 'Short-term Std Dev (s)', '.4f'),
-            ('std_long', 'Long-term Std Dev (σ)', '.4f'),
-            ('ad_value', 'Anderson-Darling Statistic', '.4f')  # ADDED
+            ('nominal', 'Nominal Target', '.3f'),
+            ('tolerance', 'Tolerance Range', '.3f'),
+            ('mean', 'Mean (X̄)', '.2f'),
+            ('std_long', 'Long-term Std Dev (σ)', '.2f'),
+            ('std_short', 'Short-term Std Dev (s)', '.2f'),
+            ('ad_value', 'Anderson-Darling Statistic', '.2f')
         ]
         
         right_params = [
@@ -527,8 +528,9 @@ class ExcelSPCReportGenerator:
             ('cpk', 'CPK', '.3f'),
             ('pp', 'PP', '.3f'),
             ('ppk', 'PPK', '.3f'),
-            ('p_value', 'Normality p-value', '.4f'),
-            ('tolerance', 'Tolerance Range', '.4f')  # ADDED
+            ('ppm_short', 'PPM Defective (Short-term)', '.0f'),
+            ('ppm_long', 'PPM Defective (Long-term)', '.0f'),
+            ('p_value', 'Normality p-value', '.2f')
         ]
         
         max_rows = max(len(left_params), len(right_params))
@@ -539,18 +541,19 @@ class ExcelSPCReportGenerator:
             # Left side
             if i < len(left_params):
                 key, label, fmt = left_params[i]
-                ws[f'A{current_row}'].value = label
-                ws[f'A{current_row}'].style = 'param_label'
-                
-                value = element_data.get(key, 'N/A')
-                if isinstance(value, (int, float)) and value != 'N/A' and fmt:
-                    formatted_value = f"{value:{fmt}}"
-                else:
-                    formatted_value = str(value)
-                
-                ws.merge_cells(f'B{current_row}:D{current_row}')
-                ws[f'B{current_row}'].value = formatted_value
-                ws[f'B{current_row}'].style = 'data_cell'
+                if key:  # Only if not empty
+                    ws[f'A{current_row}'].value = label
+                    ws[f'A{current_row}'].style = 'param_label'
+                    
+                    value = element_data.get(key, 'N/A')
+                    if isinstance(value, (int, float)) and value != 'N/A' and fmt:
+                        formatted_value = f"{value:{fmt}}"
+                    else:
+                        formatted_value = str(value)
+                    
+                    ws.merge_cells(f'B{current_row}:D{current_row}')
+                    ws[f'B{current_row}'].value = formatted_value
+                    ws[f'B{current_row}'].style = 'data_cell'
             
             # Right side  
             if i < len(right_params):
@@ -571,8 +574,8 @@ class ExcelSPCReportGenerator:
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
         
-        # Empty row
-        ws.row_dimensions[current_row].height = 15
+        # Small empty row
+        ws.row_dimensions[current_row].height = 10
         current_row += 1
         return current_row
 
@@ -586,7 +589,7 @@ class ExcelSPCReportGenerator:
         charts_header = ws[f'A{current_row}']
         charts_header.value = "STATISTICAL CONTROL CHARTS"
         charts_header.style = 'section_header'
-        ws.row_dimensions[current_row].height = 30  # CHANGED from 35 to 30
+        ws.row_dimensions[current_row].height = 28
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         
         current_row += 1
@@ -597,11 +600,11 @@ class ExcelSPCReportGenerator:
         # Normality Analysis
         normality_path = self.get_chart_path(element_key, 'normality')
         if normality_path:
-            # Chart title - CHANGE: height to 25px
+            # Chart title
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['normality']
             ws[f'A{current_row}'].style = 'chart_title'
-            ws.row_dimensions[current_row].height = 24  # CHANGED from 30 to 24
+            ws.row_dimensions[current_row].height = 22
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
@@ -615,11 +618,11 @@ class ExcelSPCReportGenerator:
         # Capability Analysis
         capability_path = self.get_chart_path(element_key, 'capability')
         if capability_path:
-            # Chart title - height 25px
+            # Chart title
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['capability']
             ws[f'A{current_row}'].style = 'chart_title'
-            ws.row_dimensions[current_row].height = 25
+            ws.row_dimensions[current_row].height = 22
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
@@ -638,8 +641,8 @@ class ExcelSPCReportGenerator:
         mr_path = self.get_chart_path(element_key, 'moving_range')
         
         if individuals_path or mr_path:
-            # Chart titles - height 25px
-            ws.row_dimensions[current_row].height = 25
+            # Chart titles
+            ws.row_dimensions[current_row].height = 22
             
             if individuals_path:
                 ws.merge_cells(f'A{current_row}:D{current_row}')
@@ -669,14 +672,14 @@ class ExcelSPCReportGenerator:
         ws.row_dimensions[current_row].height = 20
         current_row += 1
         
-        # Distribution chart
+        # Distribution Analysis
         extrapolation_path = self.get_chart_path(element_key, 'extrapolation')
         if extrapolation_path:
-            # Chart title - height 25px
+            # Chart title
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['extrapolation']
             ws[f'A{current_row}'].style = 'chart_title'
-            ws.row_dimensions[current_row].height = 25
+            ws.row_dimensions[current_row].height = 22
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
@@ -711,7 +714,7 @@ class ExcelSPCReportGenerator:
 
         except Exception as e:
             self.logger.error(f"Error adding centered chart: {e}")
-            return start_row + 16  # Fallback row increment
+            return start_row + 14  # Fallback row increment
 
 
     def add_side_by_side_chart(self, ws: Worksheet, chart_path: Path, row: int, position: str) -> int:
@@ -742,14 +745,13 @@ class ExcelSPCReportGenerator:
             # Add image to worksheet
             ws.add_image(img, f'{anchor_col}{spacer_row}')
 
-            # Estimate rows used by chart
-            rows_used = img.height // 15  # No extra row added
-
+            # Return the number of rows used
+            rows_used = img.height // 20
             return spacer_row + rows_used
 
         except Exception as e:
             self.logger.error(f"Error adding side-by-side chart: {e}")
-            return row + 13  # Fallback row increment
+            return row + 12  # Fallback row increment
 
 
     def create_notes_and_signature_section(self, ws: Worksheet, start_row: int) -> int:
@@ -757,40 +759,41 @@ class ExcelSPCReportGenerator:
         
         current_row = start_row
         
-        # Notes section - CHANGE: height to 30px
+        # Notes section
         ws.merge_cells(f'A{current_row}:H{current_row}')
         notes_header = ws[f'A{current_row}']
         notes_header.value = "TECHNICAL NOTES & OBSERVATIONS"
         notes_header.style = 'section_header'
-        ws.row_dimensions[current_row].height = 30  # CHANGED from 35 to 30
+        ws.row_dimensions[current_row].height = 26  # Reduced from 30
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
-        
         current_row += 1
         
-        # Notes area (4 rows high)
-        for i in range(4):
-            ws.row_dimensions[current_row + i].height = 25
+        # Notes area (3 rows instead of 4)
+        for i in range(3):
+            ws.row_dimensions[current_row + i].height = 22  # Reduced from 25
         
-        ws.merge_cells(f'A{current_row}:H{current_row + 3}')
+        ws.merge_cells(f'A{current_row}:H{current_row + 2}')
         notes_cell = ws[f'A{current_row}']
         notes_cell.value = ""
         notes_cell.style = 'notes_style'
-        self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row + 3}')
+        self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row + 2}')
+        current_row += 3
         
-        current_row += 5
+        # Small separation
+        ws.row_dimensions[current_row].height = 8
+        current_row += 1
         
         # Signature section - CHANGE: height to 30px
         ws.merge_cells(f'A{current_row}:H{current_row}')
         signature_header = ws[f'A{current_row}']
         signature_header.value = "QUALITY APPROVAL"
         signature_header.style = 'section_header'
-        ws.row_dimensions[current_row].height = 30  # CHANGED from 35 to 30
+        ws.row_dimensions[current_row].height = 26  # Reduced from 30
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
-        
         current_row += 1
         
-        # Position and Date section - keep at 25px
-        ws.row_dimensions[current_row].height = 25
+        # Position and Date section
+        ws.row_dimensions[current_row].height = 22  # Reduced from 25
         ws[f'A{current_row}'].value = "Position:"
         ws[f'A{current_row}'].style = 'param_label'
         ws.merge_cells(f'B{current_row}:D{current_row}')
@@ -806,8 +809,8 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # Name and Signature section - keep at 25px
-        ws.row_dimensions[current_row].height = 25
+        # Name and Signature section
+        ws.row_dimensions[current_row].height = 22  # Reduced from 25
         ws[f'A{current_row}'].value = "Name:"
         ws[f'A{current_row}'].style = 'param_label'
         ws.merge_cells(f'B{current_row}:D{current_row}')
@@ -819,7 +822,7 @@ class ExcelSPCReportGenerator:
         ws[f'F{current_row}'].style = 'data_cell'
         
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
-        current_row += 3
+        current_row += 1
         
         return current_row
 
@@ -1128,9 +1131,9 @@ class ExcelSPCReportGenerator:
 
         project_info = [
             ["Client:", self.client, "Elements Analyzed:", str(len(self.elements_data))],
-            ["Project Reference:", self.ref_project, "Report Generated:", date_only_str],  # CHANGED: no time
-            ["Batch Number:", self.batch_number, "Part Description:", part_description],  # CHANGED: added part description
-            ["Analysis Date:", date_only_str, "Standard:", standard]  # CHANGED: methodology-based standard
+            ["Project Reference:", self.ref_project, "Report Generated:", date_only_str],
+            ["Batch Number:", self.batch_number, "Part Description:", part_description],
+            ["Analysis Date:", date_only_str, "Standard:", standard]
         ]
         
         for info_row in project_info:
@@ -1139,7 +1142,7 @@ class ExcelSPCReportGenerator:
             # Left side - keep A for label
             ws[f'A{current_row}'].value = info_row[0]
             ws[f'A{current_row}'].style = 'param_label'
-            # CHANGE: Left value spans B:D (3 columns for better space)
+            # Left value spans B:D (3 columns for better space)
             ws.merge_cells(f'B{current_row}:D{current_row}')
             ws[f'B{current_row}'].value = info_row[1]
             ws[f'B{current_row}'].style = 'data_cell'
@@ -1149,7 +1152,7 @@ class ExcelSPCReportGenerator:
             # Right side - keep F for label  
             ws[f'F{current_row}'].value = info_row[2]
             ws[f'F{current_row}'].style = 'param_label'
-            # CHANGE: Right value spans G:J (4 columns to prevent text cutoff)
+            # Right value spans G:J (4 columns to prevent text cutoff)
             ws.merge_cells(f'G{current_row}:J{current_row}')
             ws[f'G{current_row}'].value = info_row[3]
             ws[f'G{current_row}'].style = 'data_cell'
