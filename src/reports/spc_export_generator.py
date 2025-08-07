@@ -352,25 +352,22 @@ class ExcelSPCReportGenerator:
         
         current_row = 1
         
-        # Page 1: Header, Statistical Table, and First Two Charts
+        # Page 1: Header, Statistical Table, and First Two Charts (until before I&MR)
         current_row = self.create_professional_header(
             ws, current_row, element_key, part_description,
             drawing_number, methodology, facility, dimension_class, element_data
         )       
-        # First page charts: Normality and Capability
-        current_row = self.create_first_page_charts(ws, current_row, element_key)
+        
+        # First page charts: Normality and Capability (optimized for page break)
+        current_row = self.create_first_page_charts_optimized(ws, current_row, element_key)
         
         # Page break preparation
         ws.page_setup.fitToPage = True
         ws.page_setup.fitToHeight = False
         ws.page_setup.fitToWidth = 1
         
-        # Page 2: Individual and MR charts, Extrapolation, Notes, and Signature
-        current_row = self.create_second_page_charts(ws, current_row, element_key)
-
-        current_row = self.create_statistical_summary_table(ws, current_row, element_data)
-        
-        current_row = self.create_notes_and_signature_section(ws, current_row)
+        # Page 2: Individual and MR charts, Distribution, Notes, and Signature
+        current_row = self.create_second_page_optimized(ws, current_row, element_key, element_data)
         
         # Apply professional page formatting
         self.setup_professional_page_formatting(ws)
@@ -406,26 +403,26 @@ class ExcelSPCReportGenerator:
         title_cell = ws[f'C{current_row}']
         title_cell.value = "STATISTICAL PROCESS CONTROL"
         title_cell.style = 'doc_title'
-        ws.row_dimensions[current_row].height = 30
+        ws.row_dimensions[current_row].height = 33
         
         current_row += 1
         ws.merge_cells(f'C{current_row}:H{current_row}')
         subtitle_cell = ws[f'C{current_row}']
         subtitle_cell.value = "Capability Analysis Report"
         subtitle_cell.style = 'doc_subtitle'
-        ws.row_dimensions[current_row].height = 20
+        ws.row_dimensions[current_row].height = 25
         
         current_row += 1
-        # Empty row with specified height
+        # Small empty row
         ws.row_dimensions[current_row].height = 15
         current_row += 1
         
-        # CHANGE: Header row height to 40px
+        # Header row
         ws.merge_cells(f'A{current_row}:H{current_row}')
         header_cell = ws[f'A{current_row}']
         header_cell.value = "PART & PROJECT INFORMATION"
         header_cell.style = 'main_header'
-        ws.row_dimensions[current_row].height = 35
+        ws.row_dimensions[current_row].height = 30
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         
         current_row += 1
@@ -434,7 +431,7 @@ class ExcelSPCReportGenerator:
         clean_element_name = self.extract_element_name(element_key)
         cavity_info = element_data.get('cavity', 'N/A')
         
-        # CHANGE: Use full dimension class description
+        # Use full dimension class description
         dimension_display = {
             'cc': 'CC (Critical Characteristic)',
             'sc': 'SC (Significant Characteristic)', 
@@ -446,14 +443,14 @@ class ExcelSPCReportGenerator:
             ["Client:", self.client, "Part Description:", part_description],
             ["Project Reference:", self.ref_project, "Drawing Number:", drawing_number],
             ["Batch Number:", self.batch_number, "Methodology:", methodology],
-            ["Quality Facility:", facility, "Dimension Class:", dimension_display],  # CHANGED
+            ["Quality Facility:", facility, "Dimension Class:", dimension_display],
             ["Element Name:", clean_element_name, "Cavity:", cavity_info]
         ]
         
         for row_data in info_data:
-            ws.row_dimensions[current_row].height = 24  # Keep 24px
+            ws.row_dimensions[current_row].height = 25  # Slightly reduced
 
-            # Labels and values (existing code remains same)
+            # Labels and values
             ws[f'A{current_row}'].value = row_data[0]
             ws[f'A{current_row}'].style = 'param_label'
             ws[f'E{current_row}'].value = row_data[2]
@@ -470,7 +467,7 @@ class ExcelSPCReportGenerator:
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
         
-        # Empty row
+        # Small empty row
         ws.row_dimensions[current_row].height = 15
         current_row += 1
         return current_row
@@ -558,18 +555,19 @@ class ExcelSPCReportGenerator:
             # Right side  
             if i < len(right_params):
                 key, label, fmt = right_params[i]
-                ws[f'E{current_row}'].value = label
-                ws[f'E{current_row}'].style = 'param_label'
-                
-                value = element_data.get(key, 'N/A')
-                if isinstance(value, (int, float)) and value != 'N/A' and fmt:
-                    formatted_value = f"{value:{fmt}}"
-                else:
-                    formatted_value = str(value)
-                
-                ws.merge_cells(f'F{current_row}:H{current_row}')
-                ws[f'F{current_row}'].value = formatted_value
-                ws[f'F{current_row}'].style = 'data_cell'
+                if key:  # Only if not empty
+                    ws[f'E{current_row}'].value = label
+                    ws[f'E{current_row}'].style = 'param_label'
+                    
+                    value = element_data.get(key, 'N/A')
+                    if isinstance(value, (int, float)) and value != 'N/A' and fmt:
+                        formatted_value = f"{value:{fmt}}"
+                    else:
+                        formatted_value = str(value)
+                    
+                    ws.merge_cells(f'F{current_row}:H{current_row}')
+                    ws[f'F{current_row}'].value = formatted_value
+                    ws[f'F{current_row}'].style = 'data_cell'
             
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
@@ -579,22 +577,18 @@ class ExcelSPCReportGenerator:
         current_row += 1
         return current_row
 
-    def create_first_page_charts(self, ws: Worksheet, start_row: int, element_key: str) -> int:
-        """Create first page charts with proper sizing"""
+    def create_first_page_charts_optimized(self, ws: Worksheet, start_row: int, element_key: str) -> int:
+        """Create first page charts optimized to end just before I&MR section for proper page break"""
         
         current_row = start_row
         
-        # Charts section header - CHANGE: height to 30px
+        # Charts section header
         ws.merge_cells(f'A{current_row}:H{current_row}')
         charts_header = ws[f'A{current_row}']
         charts_header.value = "STATISTICAL CONTROL CHARTS"
         charts_header.style = 'section_header'
-        ws.row_dimensions[current_row].height = 28
+        ws.row_dimensions[current_row].height = 25
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
-        
-        current_row += 1
-        # Empty row
-        ws.row_dimensions[current_row].height = 20
         current_row += 1
         
         # Normality Analysis
@@ -604,16 +598,20 @@ class ExcelSPCReportGenerator:
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['normality']
             ws[f'A{current_row}'].style = 'chart_title'
-            ws.row_dimensions[current_row].height = 22
+            ws.row_dimensions[current_row].height = 25
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
-            # CHANGE: Chart fits in 16 normal rows (16 * 15px = 240px height)
-            current_row = self.add_centered_chart(ws, normality_path, current_row)
-        
-        # Empty row
-        ws.row_dimensions[current_row].height = 20
-        current_row += 1
+            # Small spacer row (5-6 points)
+            ws.row_dimensions[current_row].height = 8
+            current_row += 1
+            
+            # Chart
+            current_row = self.add_centered_chart_optimized(ws, normality_path, current_row)
+            
+            # Normal row after chart
+            ws.row_dimensions[current_row].height = 15
+            current_row += 1
         
         # Capability Analysis
         capability_path = self.get_chart_path(element_key, 'capability')
@@ -622,27 +620,35 @@ class ExcelSPCReportGenerator:
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['capability']
             ws[f'A{current_row}'].style = 'chart_title'
-            ws.row_dimensions[current_row].height = 22
+            ws.row_dimensions[current_row].height = 25
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
-            # Chart fits in 16 normal rows
-            current_row = self.add_centered_chart(ws, capability_path, current_row)
+            # Small spacer row (5-6 points)
+            ws.row_dimensions[current_row].height = 8
+            current_row += 1
+            
+            # Chart
+            current_row = self.add_centered_chart_optimized(ws, capability_path, current_row)
+            
+            # Normal row after chart - this should be the last row on page 1
+            ws.row_dimensions[current_row].height = 15
+            current_row += 1
         
         return current_row
 
-    def create_second_page_charts(self, ws: Worksheet, start_row: int, element_key: str) -> int:
-        """Create second page charts with proper sizing"""
+    def create_second_page_optimized(self, ws: Worksheet, start_row: int, element_key: str, element_data: str) -> int:
+        """Create second page with I&MR charts, distribution, notes, and signature - all optimized"""
         
-        current_row = start_row + 3  # Page break spacing
+        # Start of page 2 - Individual and MR charts side by side
+        current_row = start_row + 1
         
-        # Individual and MR charts side by side
         individuals_path = self.get_chart_path(element_key, 'individuals')
         mr_path = self.get_chart_path(element_key, 'moving_range')
         
         if individuals_path or mr_path:
             # Chart titles
-            ws.row_dimensions[current_row].height = 22
+            ws.row_dimensions[current_row].height = 25
             
             if individuals_path:
                 ws.merge_cells(f'A{current_row}:D{current_row}')
@@ -657,21 +663,22 @@ class ExcelSPCReportGenerator:
                 self.apply_complete_borders_to_range(ws, f'E{current_row}', f'H{current_row}')
             
             current_row += 1
-            
-            # CHANGE: Charts fit in 13 normal rows (13 * 15px = 195px height)
+
+            # Small spacer row (5-6 points)
+            ws.row_dimensions[current_row].height = 8
+            current_row += 1
+
+            # Charts
             chart_row = current_row
             if individuals_path:
-                self.add_side_by_side_chart(ws, individuals_path, chart_row, 'left')
+                self.add_side_by_side_chart_optimized(ws, individuals_path, chart_row, 'left')
 
             if mr_path:
-                self.add_side_by_side_chart(ws, mr_path, chart_row, 'right')
-            
-            current_row = chart_row + 13  # 13 rows for the charts
-        
-        # Empty separation row
-        ws.row_dimensions[current_row].height = 20
-        current_row += 1
-        
+                self.add_side_by_side_chart_optimized(ws, mr_path, chart_row, 'right')
+
+            current_row = chart_row + 13  # Charts use 13 rows
+            current_row += 1
+
         # Distribution Analysis
         extrapolation_path = self.get_chart_path(element_key, 'extrapolation')
         if extrapolation_path:
@@ -679,21 +686,30 @@ class ExcelSPCReportGenerator:
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['extrapolation']
             ws[f'A{current_row}'].style = 'chart_title'
-            ws.row_dimensions[current_row].height = 22
+            ws.row_dimensions[current_row].height = 25
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
-            
-            # Chart fits in 16 normal rows
-            current_row = self.add_centered_chart(ws, extrapolation_path, current_row)
-        
-        # Separation row before notes
-        ws.row_dimensions[current_row].height = 20
-        current_row += 1
+
+            # Small spacer row (5-6 points)
+            ws.row_dimensions[current_row].height = 8
+            current_row += 1
+
+            # Chart
+            current_row = self.add_centered_chart_optimized(ws, extrapolation_path, current_row)
+
+            # Normal row after chart
+            ws.row_dimensions[current_row].height = 15
+            current_row += 1
+
+        # Statistical summary table
+        current_row = self.create_statistical_summary_table(ws, current_row, element_data)
+        # Notes and signature section
+        current_row = self.create_notes_and_signature_section_optimized(ws, current_row)
         
         return current_row
 
-    def add_centered_chart(self, ws: Worksheet, chart_path: Path, start_row: int) -> int:
-        """Add a chart centered in column B with fixed dimensions and minimal spacing below title"""
+    def add_centered_chart_optimized(self, ws: Worksheet, chart_path: Path, start_row: int) -> int:
+        """Add a chart centered in column B with optimized dimensions and no extra spacer"""
         try:
             img = Image(str(chart_path))
 
@@ -701,34 +717,25 @@ class ExcelSPCReportGenerator:
             img.width = int(14 * 37.8)   # ≈ 529 px
             img.height = int(9 * 37.8)   # ≈ 340 px
 
-            # Add a minimal spacer row to avoid overlap with title
-            spacer_row = start_row + 1
-            ws.row_dimensions[spacer_row].height = 2  # Very small height (~2 points)
-
             # Anchor the image to column B and the spacer row
-            ws.add_image(img, f'B{spacer_row}')
+            ws.add_image(img, f'B{start_row+1}')
 
-            # Estimate rows used: height / 15 px per row
-            rows_used = (img.height // 15) + 1
-            return spacer_row + rows_used
+            # Estimate rows used: height / 20 px per row
+            rows_used = (img.height // 18)
+            return start_row + rows_used
 
         except Exception as e:
             self.logger.error(f"Error adding centered chart: {e}")
             return start_row + 14  # Fallback row increment
 
-
-    def add_side_by_side_chart(self, ws: Worksheet, chart_path: Path, row: int, position: str) -> int:
-        """Add a compact side-by-side chart with fixed dimensions and minimal spacing"""
+    def add_side_by_side_chart_optimized(self, ws: Worksheet, chart_path: Path, row: int, position: str) -> int:
+        """Add a compact side-by-side chart with optimized dimensions"""
         try:
             img = Image(str(chart_path))
 
             # Set fixed dimensions in cm (convert to pixels: 1 cm ≈ 37.8 px)
             img.width = int(10 * 37.8)   # ≈ 378 px
             img.height = int(6.5 * 37.8) # ≈ 246 px
-
-            # Add a minimal spacer row to avoid overlap with title
-            spacer_row = row + 1
-            ws.row_dimensions[spacer_row].height = 2  # Very small row height
 
             # Determine anchor column based on position
             if position == 'left':
@@ -743,19 +750,18 @@ class ExcelSPCReportGenerator:
                 anchor_col = chr(65 + min(column_offset, 7))  # E-H
 
             # Add image to worksheet
-            ws.add_image(img, f'{anchor_col}{spacer_row}')
+            ws.add_image(img, f'{anchor_col}{row+1}')
 
             # Return the number of rows used
-            rows_used = img.height // 20
-            return spacer_row + rows_used
+            rows_used = (img.height // 20)
+            return row + rows_used
 
         except Exception as e:
             self.logger.error(f"Error adding side-by-side chart: {e}")
             return row + 12  # Fallback row increment
 
-
-    def create_notes_and_signature_section(self, ws: Worksheet, start_row: int) -> int:
-        """Create professional notes and signature section"""
+    def create_notes_and_signature_section_optimized(self, ws: Worksheet, start_row: int) -> int:
+        """Create optimized notes and signature section that fits on the page"""
         
         current_row = start_row
         
@@ -1149,18 +1155,16 @@ class ExcelSPCReportGenerator:
             ws[f'B{current_row}'].font = Font(name='Arial', size=10)
             ws[f'B{current_row}'].alignment = Alignment(horizontal='left', vertical='center')  # Left aligned
             
-            # Right side - keep F for label  
-            ws[f'F{current_row}'].value = info_row[2]
-            ws[f'F{current_row}'].style = 'param_label'
+            # Right side - E:F
+            ws.merge_cells(f'E{current_row}:F{current_row}')
+            ws[f'E{current_row}'].value = info_row[2]
+            ws[f'E{current_row}'].style = 'param_label'
             # Right value spans G:J (4 columns to prevent text cutoff)
             ws.merge_cells(f'G{current_row}:J{current_row}')
             ws[f'G{current_row}'].value = info_row[3]
             ws[f'G{current_row}'].style = 'data_cell'
             ws[f'G{current_row}'].font = Font(name='Arial', size=10)
             ws[f'G{current_row}'].alignment = Alignment(horizontal='left', vertical='center')  # Left aligned
-            
-            # Keep E empty for separation
-            ws[f'E{current_row}'].style = 'data_cell'
             
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'J{current_row}')
             current_row += 1
