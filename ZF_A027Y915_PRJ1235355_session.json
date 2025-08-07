@@ -1,0 +1,317 @@
+{
+  "metadata": {
+    "client_name": "ZF",
+    "project_ref": "A027Y915",
+    "batch_number": "PRJ1235355",
+    "report_type": "PPAP",
+    "tolerance_standard": "ISO 2768-m (General)",
+    "manual_mode": true,
+    "save_timestamp": "2025-08-07T14:19:53.870039",
+    "version": "2.1",
+    "column_count": 25,
+    "display_columns": [
+      "element_id",
+      "batch",
+      "cavity",
+      "class",
+      "description",
+      "measuring_instrument",
+      "unit",
+      "datum",
+      "evaluation_type",
+      "nominal",
+      "lower_tolerance",
+      "upper_tolerance",
+      "measurement_1",
+      "measurement_2",
+      "measurement_3",
+      "measurement_4",
+      "measurement_5",
+      "minimum",
+      "maximum",
+      "mean",
+      "std_deviation",
+      "pp",
+      "ppk",
+      "status",
+      "force_status"
+    ],
+    "column_headers": [
+      "Element ID",
+      "Batch",
+      "Cavity",
+      "Class",
+      "Description",
+      "Measuring Instrument",
+      "Unit",
+      "Datum",
+      "Evaluation Type",
+      "Nominal",
+      "Lower Tolerance",
+      "Upper Tolerance",
+      "Measurement 1",
+      "Measurement 2",
+      "Measurement 3",
+      "Measurement 4",
+      "Measurement 5",
+      "Minimum",
+      "Maximum",
+      "Mean",
+      "Std Deviation",
+      "Pp",
+      "Ppk",
+      "Status",
+      "Force Status"
+    ]
+  },
+  "table_data": [
+    {
+      "tab_name": "📝 Data Entry",
+      "rows": [
+        {
+          "cells": [
+            "Nº001",
+            "PRJ1235355",
+            "1",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "dropdowns": {
+            "3": "",
+            "5": "3D Scanbox",
+            "6": "mm",
+            "7": "",
+            "8": "Normal",
+            "24": "AUTO"
+          },
+          "styling": {
+            "21": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "22": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "23": {
+              "background": "#000000",
+              "is_calculated": true
+            }
+          }
+        },
+        {
+          "cells": [
+            "Nº004",
+            "PRJ1235355",
+            "3",
+            "",
+            "johhny",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "dropdowns": {
+            "3": "",
+            "5": "Visual",
+            "6": "",
+            "7": "",
+            "8": "Note",
+            "24": "AUTO"
+          },
+          "styling": {
+            "21": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "22": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            }
+          }
+        },
+        {
+          "cells": [
+            "Nº003",
+            "PRJ1235355",
+            "3",
+            "",
+            "johhny",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "dropdowns": {
+            "3": "",
+            "5": "Visual",
+            "6": "",
+            "7": "",
+            "8": "Note",
+            "24": "AUTO"
+          },
+          "styling": {
+            "21": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "22": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "23": {
+              "background": "#000000",
+              "is_calculated": true
+            }
+          }
+        },
+        {
+          "cells": [
+            "Nº004",
+            "PRJ1235355",
+            "3",
+            "",
+            "johhny",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            "",
+            ""
+          ],
+          "dropdowns": {
+            "3": "",
+            "5": "Visual",
+            "6": "",
+            "7": "",
+            "8": "Note",
+            "24": "AUTO"
+          },
+          "styling": {
+            "21": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "22": {
+              "background": "#f8f0ff",
+              "is_calculated": true
+            },
+            "23": {
+              "background": "#000000",
+              "is_calculated": true
+            }
+          }
+        }
+      ],
+      "column_count": 25,
+      "row_count": 4
+    }
+  ],
+  "summary_data": {
+    "original_data": {},
+    "metrics": {
+      "total_dimensions": 3,
+      "studies_run": 0,
+      "edits_made": 2,
+      "passed": 0,
+      "failed": 0,
+      "warning": 0,
+      "ted": 0,
+      "to_check": 0,
+      "success_rate": 0.0,
+      "completeness": 0.0,
+      "dimensions_with_measurements": 0,
+      "total_measurements": 0,
+      "normal_dimensions": 0,
+      "gdt_dimensions": 0,
+      "basic_dimensions": 0,
+      "informative_dimensions": 0,
+      "note_dimensions": "3",
+      "unilateral_tolerances": 0,
+      "bilateral_tolerances": 0,
+      "zero_nominal_gdt": 0,
+      "cc_dimensions": 0,
+      "sc_dimensions": 0,
+      "ic_dimensions": 0,
+      "avg_pp": 0.0,
+      "avg_ppk": 0.0,
+      "capability_count": 0,
+      "cavity_breakdown": {
+        "3": 3
+      },
+      "dimensions_modified": 0,
+      "dimensions_added": 0,
+      "dimensions_deleted": 0,
+      "modification_details": [],
+      "session_start": "2025-08-07 14:19:01.685482"
+    },
+    "session_loaded": false
+  },
+  "results_data": []
+}
