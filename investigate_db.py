@@ -64,7 +64,7 @@ def investigate_database():
                 print(f"  {i+1}. Actual: {actual}, Nominal: {nominal}, Tol: {tol_neg}/{tol_pos}, Data: {data_hora}, Cavitat: {cavitat}")
             
             # Provar amb el servei
-            print(f"\nProvant amb el servei get_element_measurement_history:")
+            print("\nProvant amb el servei get_element_measurement_history:")
             measurements = service.get_element_measurement_history("ZF", "A027Y915", element_id, limit=3)
             print(f"Mesures obtingudes: {len(measurements)}")
             
