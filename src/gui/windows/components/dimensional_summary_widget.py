@@ -2,145 +2,16 @@
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTabWidget, QGroupBox, 
     QTextEdit, QProgressBar, QFrame, QGridLayout, QTableWidget, QTableWidgetItem,
-    QScrollArea, QPushButton, QSizePolicy
-)
+    QScrollArea, QPushButton)
 from PyQt5.QtCore import pyqtSignal, Qt, QTimer
-from PyQt5.QtGui import QFont, QColor, QPainter, QPen
+from PyQt5.QtGui import QFont, QColor
 from datetime import datetime
 import pandas as pd
 from typing import List, Optional
 from src.models.dimensional.dimensional_result import DimensionalResult
-
-
-class CircularProgressWidget(QWidget):
-    """Custom circular progress widget for better visualization"""
-    
-    def __init__(self, value: float, max_value: float = 100, color: QColor = QColor("#3498db"), 
-                 text: str = "", size: int = 80):
-        super().__init__()
-        self.value = value
-        self.max_value = max_value
-        self.color = color
-        self.text = text
-        self.setFixedSize(size, size)
-    
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # Background circle
-        pen = QPen(QColor("#ecf0f1"), 8)
-        painter.setPen(pen)
-        painter.drawEllipse(10, 10, self.width() - 20, self.height() - 20)
-        
-        # Progress arc
-        progress_pen = QPen(self.color, 8)
-        progress_pen.setCapStyle(Qt.RoundCap)
-        painter.setPen(progress_pen)
-        
-        angle = int((self.value / self.max_value) * 360 * 16)  # 16ths of a degree
-        painter.drawArc(10, 10, self.width() - 20, self.height() - 20, 90 * 16, -angle)
-        
-        # Center text
-        painter.setPen(QPen(QColor("#2c3e50"), 2))
-        painter.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        painter.drawText(self.rect(), Qt.AlignCenter, self.text)
-    
-    def update_value(self, value: float, text: str = ""):
-        self.value = value
-        if text:
-            self.text = text
-        self.update()
-
-
-class CompactMetricCard(QFrame):
-    """Compact metric card with better space utilization"""
-    
-    def __init__(self, title: str, value: str, icon: str = "📊", color: str = "#3498db"):
-        super().__init__()
-        self.setFrameStyle(QFrame.StyledPanel)
-        self.setFixedHeight(60)
-        self.setMinimumWidth(120)
-        self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-        
-        self.setStyleSheet(f"""
-            QFrame {{
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
-                    stop:0 {color}15, stop:1 {color}08);
-                border: 2px solid {color};
-                border-radius: 6px;
-                margin: 1px;
-            }}
-            QFrame:hover {{
-                border: 2px solid {color};
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1, 
-                    stop:0 {color}25, stop:1 {color}10);
-            }}
-        """)
-
-        layout = QVBoxLayout()
-        layout.setContentsMargins(6, 4, 6, 4)
-        layout.setSpacing(2)
-
-        # Title
-        self.title_label = QLabel(f"{icon} {title}")
-        self.title_label.setFont(QFont("Segoe UI", 8, QFont.Bold))
-        self.title_label.setStyleSheet(f"color: {color}; border: none;")
-        self.title_label.setAlignment(Qt.AlignCenter)
-
-        # Value
-        self.value_label = QLabel(str(value))
-        self.value_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        self.value_label.setStyleSheet(f"color: {color}; border: none;")
-        self.value_label.setAlignment(Qt.AlignCenter)
-
-        layout.addWidget(self.title_label)
-        layout.addWidget(self.value_label)
-        self.setLayout(layout)
-
-    def update_value(self, value: str):
-        self.value_label.setText(str(value))
-
-
-class StatusPieChart(QWidget):
-    """Custom pie chart for status visualization"""
-    
-    def __init__(self, data: dict, size: int = 120):
-        super().__init__()
-        self.data = data
-        self.colors = {
-            "GOOD": QColor("#27ae60"),
-            "BAD": QColor("#e74c3c"),
-            "WARNING": QColor("#f39c12"),
-            "TED": QColor("#3498db"),
-            "TO_CHECK": QColor("#f39c12")
-        }
-        self.setFixedSize(size, size)
-    
-    def paintEvent(self, event):
-        if not self.data or sum(self.data.values()) == 0:
-            return
-            
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        total = sum(self.data.values())
-        current_angle = 0
-        
-        for status, count in self.data.items():
-            if count > 0:
-                angle = int((count / total) * 360 * 16)
-                color = self.colors.get(status, QColor("#95a5a6"))
-                
-                painter.setBrush(color)
-                painter.setPen(QPen(QColor("white"), 2))
-                painter.drawPie(5, 5, self.width() - 10, self.height() - 10, 
-                              current_angle, angle)
-                current_angle += angle
-    
-    def update_data(self, data: dict):
-        self.data = data
-        self.update()
+from src.gui.windows.components.helpers.summary_circular_progress import CircularProgressWidget
+from src.gui.windows.components.helpers.summary_metric_card import CompactMetricCard
+from src.gui.windows.components.helpers.summary_pie_chart import StatusPieChart
 
 
 class SummaryWidget(QWidget):
@@ -286,6 +157,26 @@ class SummaryWidget(QWidget):
 
         layout.addWidget(self.main_tabs)
         self.setLayout(layout)
+
+    def record_edit(self, description: str):
+        """Record an edit action"""
+        try:
+            self.metrics["edits_made"] += 1
+            self._log_message(f"✏️ Edit recorded: {description}")
+        except Exception as e:
+            self._log_message(f"❌ Error recording edit: {str(e)}", "ERROR")
+
+    def reset_widget(self):
+        """Reset widget to initial state"""
+        try:
+            self._reset_metrics()
+            self.original_data = {}
+            self.current_data = {}
+            self.session_loaded = False
+            self._update_all_content()
+            self._log_message("🔄 Summary widget reset successfully")
+        except Exception as e:
+            self._log_message(f"❌ Error resetting widget: {str(e)}", "ERROR")
 
     def _create_session_header(self) -> QWidget:
         """Create compact session info header"""
