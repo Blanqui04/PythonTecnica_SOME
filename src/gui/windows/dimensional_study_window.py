@@ -3,6 +3,7 @@ from pathlib import Path
 from PyQt5.QtWidgets import (
     QWidget,
     QVBoxLayout,
+    QGridLayout,
     QLabel,
     QTableWidget,
     QTableWidgetItem,
@@ -257,247 +258,324 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         container.setLayout(main_layout)
         self.setCentralWidget(container)
 
+    
     def _create_header_section(self) -> QFrame:
-        """Create IMPROVED professional header section - more compact and graceful"""
+        """Create professional header section"""
         header_frame = QFrame()
         header_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        header_frame.setFixedHeight(100)  # Reduced from 130
-        header_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                    stop:0 #2c3e50, stop:1 #34495e);
-                border-radius: 8px;
-                border: 1px solid #1a252f;
-            }
-        """)
+        header_frame.setFixedHeight(130)
+        header_frame.setStyleSheet("background-color: #2c3e50;")  # Dark navy background
 
         layout = QHBoxLayout()
-        layout.setContentsMargins(15, 10, 15, 10)  # Reduced margins
-        layout.setSpacing(15)  # Reduced spacing
+        layout.setContentsMargins(20, 15, 20, 15)
+        layout.setSpacing(20)
 
-        # Left: Project information - more compact
+        # Left: Project information
         info_group = QGroupBox("📋 Project Information")
-        info_group.setStyleSheet("""
-            QGroupBox {
-                color: white;
-                font-weight: bold;
-                font-size: 11px;
-                border: 1px solid #415A77;
-                border-radius: 6px;
-                margin: 5px 0;
-                padding: 5px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 2px 8px;
-                background-color: #34495e;
-                border-radius: 4px;
-            }
-        """)
-        
-        info_layout = QVBoxLayout()  # Changed to vertical for more compact
-        info_layout.setSpacing(3)  # Tight spacing
+        info_group.setStyleSheet("color: white; font-weight: bold;")
+        info_layout = QGridLayout()
 
-        # More compact labels
-        client_label = QLabel(f"🏢 {self.client_name}")
-        client_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
-        client_label.setStyleSheet("color: #ecf0f1; margin: 2px;")
+        # Enhanced labels with icons
+        client_label = QLabel(f"🏢 <b>Client:</b> {self.client_name}")
+        client_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        client_label.setStyleSheet("color: white;")
 
-        project_label = QLabel(f"📁 {self.project_ref}")
-        project_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
-        project_label.setStyleSheet("color: #ecf0f1; margin: 2px;")
+        project_label = QLabel(f"📁 <b>Project:</b> {self.project_ref}")
+        project_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        project_label.setStyleSheet("color: white;")
 
-        batch_label = QLabel(f"📦 {self.batch_number}")
-        batch_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
-        batch_label.setStyleSheet("color: #ecf0f1; margin: 2px;")
+        batch_label = QLabel(f"📦 <b>Batch:</b> {self.batch_number}")
+        batch_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
+        batch_label.setStyleSheet("color: white;")
 
-        info_layout.addWidget(client_label)
-        info_layout.addWidget(project_label)
-        info_layout.addWidget(batch_label)
+        info_layout.addWidget(client_label, 0, 0)
+        info_layout.addWidget(project_label, 1, 0)
+        info_layout.addWidget(batch_label, 2, 0)
         info_group.setLayout(info_layout)
 
-        # Center: Configuration - more graceful arrangement
+        # Center: Report configuration
         config_group = QGroupBox("⚙️ Configuration")
-        config_group.setStyleSheet("""
-            QGroupBox {
-                color: white;
-                font-weight: bold;
-                font-size: 11px;
-                border: 1px solid #415A77;
-                border-radius: 6px;
-                margin: 5px 0;
-                padding: 5px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 2px 8px;
-                background-color: #34495e;
-                border-radius: 4px;
-            }
-        """)
-        
+        config_group.setStyleSheet("color: white")
         config_layout = QVBoxLayout()
-        config_layout.setSpacing(5)
 
-        # Report type row
-        report_row = QHBoxLayout()
-        report_label = QLabel("📊")
-        report_label.setStyleSheet("color: #ecf0f1; font-size: 12px;")
-        report_row.addWidget(report_label)
+        report_layout = QHBoxLayout()
+        report_label = QLabel("📊 Report Type:")
+        report_label.setStyleSheet("color: white;")
+        report_layout.addWidget(report_label)
 
         self.report_type_combo = QComboBox()
         self.report_type_combo.addItems([
-            "PPAP", "FOT (First Off Tool)", "Process Validation", "Internal Audit",
-            "Customer Audit", "Tool modification", "Supplier Change", "Material Change",
-            "Annual Requalification", "Serial Production Control", "Temporary Deviation Approval",
-            "Quality Incident", "Customer Complaint", "New Measurement Equipment Validation",
-            "New Operator Validation", "Plant Layout Change", "Process Parameter Change",
-            "New Product Models or Variants", "Internal Benchmarking", "Packaging Validation"
+            "PPAP",
+            "FOT (First Off Tool)",
+            "Process Validation",
+            "Internal Audit",
+            "Customer Audit",
+            "Tool modification",
+            "Supplier Change",
+            "Material Change",
+            "Annual Requalification",
+            "Serial Production Control",
+            "Temporary Deviation Approval",
+            "Quality Incident",
+            "Customer Complaint",
+            "New Measurement Equipment Validation",
+            "New Operator Validation",
+            "Plant Layout Change",
+            "Process Parameter Change",
+            "New Product Models or Variants",
+            "Internal Benchmarking",
+            "Packaging Validation",
+            "Post-Transport/Logistics Validation",
+            "Extreme Environmental Conditions",
+            "Lifetime/Aging Study",
+            "CAE Simulation vs Real Part",
+            "Third-Party Audit",
+            "Pre-Destructive Test Validation",
+            "Measurement Method Correlation Study",
+            "Subcomponent Validation within Functional Test",
+            "Assembly Tolerance Stack-Up Study"
         ])
-        self.report_type_combo.setMinimumWidth(140)
-        self.report_type_combo.setStyleSheet(self._get_compact_combo_style())
-        report_row.addWidget(self.report_type_combo)
-        report_row.addStretch()
 
-        # Tolerance row  
-        tolerance_row = QHBoxLayout()
-        tolerance_label = QLabel("📏")
-        tolerance_label.setStyleSheet("color: #ecf0f1; font-size: 12px;")
-        tolerance_row.addWidget(tolerance_label)
+        self.report_type_combo.setMinimumWidth(150)
+        self.report_type_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #1B263B;
+                color: white;
+                padding: 6px 10px;
+                border: 1px solid #415A77;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1B263B;
+                selection-background-color: #415A77;
+                color: white;
+            }
+        """)
+        report_layout.addWidget(self.report_type_combo)
+        report_layout.addStretch()
+
+        report_layout.addWidget(self.report_type_combo)
+
+        # Standard Tolerance ComboBox
+        tolerance_label = QLabel("📏 Standard Tolerance:")
+        tolerance_label.setStyleSheet("color: white;")
+        report_layout.addWidget(tolerance_label)
 
         self.tolerance_combo = QComboBox()
         self.tolerance_combo.addItems([
-            "ISO 2768-m (General)", "ISO 2768-f (Fine)", "ISO 2768-c (Coarse)",
-            "ISO 2768-v (Very Coarse)", "DIN 6930", "DIN 7168-m", "DIN 16901",
-            "ISO 286-1", "ISO 286-2", "Customer Specific", "Other/Custom"
+            "ISO 2768-m (General)",
+            "ISO 2768-f (Fine)",
+            "ISO 2768-c (Coarse)",
+            "ISO 2768-v (Very Coarse)",
+            "DIN 6930",
+            "DIN 7168-m",
+            "DIN 16901",
+            "ISO 286-1",
+            "ISO 286-2",
+            "Customer Specific",
+            "Other/Custom"
         ])
-        self.tolerance_combo.setMinimumWidth(140)
-        self.tolerance_combo.setStyleSheet(self._get_compact_combo_style())
-        tolerance_row.addWidget(self.tolerance_combo)
-        tolerance_row.addStretch()
+        self.tolerance_combo.setMinimumWidth(180)
+        self.tolerance_combo.setStyleSheet("""
+            QComboBox {
+                background-color: #1B263B;
+                color: white;
+                padding: 6px 10px;
+                border: 1px solid #415A77;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+            QComboBox::drop-down {
+                border: none;
+            }
+            QComboBox QAbstractItemView {
+                background-color: #1B263B;
+                selection-background-color: #415A77;
+                color: white;
+            }
+        """)
+        report_layout.addWidget(self.tolerance_combo)
 
-        config_layout.addLayout(report_row)
-        config_layout.addLayout(tolerance_row)
+        config_layout.addLayout(report_layout)
         config_group.setLayout(config_layout)
 
-        # Right: Company logo - more compact
+        # Right: Company logo
         logo_frame = QFrame()
         logo_layout = QVBoxLayout()
-        logo_layout.setContentsMargins(5, 5, 5, 5)
-        logo_layout.setAlignment(Qt.AlignCenter)
+        logo_layout.setContentsMargins(0, 0, 0, 0)
+        logo_layout.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
         logo_label = QLabel()
         logo_path = "assets/images/gui/logo_some.png"
         if os.path.exists(logo_path):
             pixmap = QPixmap(logo_path).scaled(
-                200, 70, Qt.KeepAspectRatio, Qt.SmoothTransformation  # Reduced size
+                280, 100, Qt.KeepAspectRatio, Qt.SmoothTransformation
             )
             logo_label.setPixmap(pixmap)
         else:
-            # More elegant fallback logo
-            logo_label.setText("🏭\nAUTOMOTIVE\nQUALITY")
+            # Fallback professional logo placeholder
+            logo_label.setText("\U0001f3ed\nAUTOMOTIVE\nQUALITY")
             logo_label.setAlignment(Qt.AlignCenter)
             logo_label.setStyleSheet("""
                 QLabel {
-                    background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                        stop:0 #3498db, stop:1 #2980b9);
+                    background-color: #34495e;
                     color: white;
                     border-radius: 8px;
-                    padding: 8px;
+                    padding: 10px;
                     font-weight: bold;
-                    font-size: 10px;
-                    border: 1px solid #2471a3;
+                    font-size: 12px;
                 }
             """)
-            logo_label.setFixedSize(120, 60)
 
         logo_layout.addWidget(logo_label)
         logo_frame.setLayout(logo_layout)
 
-        # Arrange sections with better proportions
         layout.addWidget(info_group, 2)
-        layout.addWidget(config_group, 3)
+        layout.addWidget(config_group, 2)
         layout.addWidget(logo_frame, 1)
 
         header_frame.setLayout(layout)
         return header_frame
     
+    def _get_clean_combo_style(self) -> str:
+        """Clean combo box style without ugly borders"""
+        return """
+            QComboBox {
+                background-color: rgba(255, 255, 255, 0.9);
+                color: #2c3e50;
+                padding: 8px 12px;
+                border: none;
+                border-radius: 6px;
+                font-size: 12px;
+                font-weight: 500;
+                min-height: 20px;
+            }
+            QComboBox:hover {
+                background-color: white;
+            }
+            QComboBox:focus {
+                background-color: white;
+            }
+            QComboBox::drop-down {
+                border: none;
+                width: 30px;
+                subcontrol-origin: padding;
+                subcontrol-position: center right;
+            }
+            QComboBox::down-arrow {
+                width: 14px;
+                height: 14px;
+                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQiIGhlaWdodD0iMTQiIHZpZXdCb3g9IjAgMCAxNCAxNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTQgNUw3IDhMMTAgNSIgc3Ryb2tlPSIjMmMzZTUwIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPgo8L3N2Zz4=);
+            }
+            QComboBox QAbstractItemView {
+                background-color: white;
+                selection-background-color: #3498db;
+                color: #2c3e50;
+                border: 1px solid #bdc3c7;
+                border-radius: 6px;
+                font-size: 12px;
+                padding: 2px;
+            }
+            QComboBox QAbstractItemView::item {
+                padding: 8px 12px;
+                min-height: 24px;
+                border: none;
+            }
+            QComboBox QAbstractItemView::item:hover {
+                background-color: #3498db;
+                color: white;
+            }
+            QComboBox QAbstractItemView::item:selected {
+                background-color: #2980b9;
+                color: white;
+            }
+        """
+    
     def _apply_professional_styling(self):
-        """Apply enhanced professional styling throughout the application"""
-        # Set the main window style
+        """Apply clean professional styling without ugly borders"""
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #f8f9fa;
             }
             QWidget {
                 font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+                background-color: #f8f9fa;
             }
+            /* Clean input styling */
+            QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QDoubleSpinBox {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 6px;
+                font-size: 11px;
+            }
+            QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, 
+            QSpinBox:focus, QDoubleSpinBox:focus {
+                border-color: #3498db;
+                background-color: white;
+            }
+            /* Clean table styling */
+            QTableWidget {
+                background-color: white;
+                alternate-background-color: #f8f9fa;
+                gridline-color: #dee2e6;
+                font-size: 10px;
+                border: none;
+            }
+            QHeaderView::section {
+                background-color: #e9ecef;
+                border: 1px solid #dee2e6;
+                padding: 8px;
+                font-weight: 600;
+                font-size: 10px;
+            }
+        """)
+
+    def _create_control_panel(self) -> QFrame:
+        """Create clean control panel without ugly borders"""
+        control_frame = QFrame()
+        control_frame.setFrameStyle(QFrame.NoFrame)  # Remove ugly borders
+        control_frame.setFixedHeight(110)  # Slightly larger
+        control_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;  /* Consistent background */
+                border: none;
+            }
+        """)
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(25, 15, 25, 15)
+        layout.setSpacing(20)
+
+        # Mode control group - clean
+        mode_group = QGroupBox("📝 Input Mode")
+        mode_group.setStyleSheet("""
             QGroupBox {
                 font-weight: 600;
-                border: 2px solid #dee2e6;
+                font-size: 13px;
+                border: none;
                 border-radius: 8px;
                 margin: 8px 0;
-                padding-top: 10px;
+                padding: 10px;
+                background-color: white;
+                color: #2c3e50;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 15px;
-                padding: 4px 12px;
-                background-color: white;
+                padding: 5px 12px;
+                background-color: #f8f9fa;
                 border-radius: 4px;
-                color: #495057;
+                color: #2c3e50;
             }
         """)
-    
-    def _get_compact_combo_style(self) -> str:
-        """Compact combo box style for header"""
-        return """
-            QComboBox {
-                background-color: #34495e;
-                color: white;
-                padding: 4px 8px;
-                border: 1px solid #415A77;
-                border-radius: 4px;
-                font-size: 10px;
-                max-height: 24px;
-            }
-            QComboBox:hover {
-                background-color: #415A77;
-                border-color: #3498db;
-            }
-            QComboBox::drop-down {
-                border: none;
-                width: 20px;
-            }
-            QComboBox::down-arrow {
-                width: 10px;
-                height: 10px;
-                image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIHZpZXdCb3g9IjAgMCAxMCAxMCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTIgM0w1IDZMOCAzIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEuMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPg==);
-            }
-            QComboBox QAbstractItemView {
-                background-color: #34495e;
-                selection-background-color: #3498db;
-                color: white;
-                border: 1px solid #415A77;
-                border-radius: 4px;
-                font-size: 10px;
-            }
-        """
-
-    def _create_control_panel(self) -> QFrame:
-        """Create enhanced control panel"""
-        control_frame = QFrame()
-        control_frame.setFrameStyle(QFrame.StyledPanel)
-        control_frame.setFixedHeight(100)
-
-        layout = QHBoxLayout()
-        layout.setContentsMargins(20, 10, 20, 10)
-
-        # Mode control group
-        mode_group = QGroupBox("📝 Input Mode")
         mode_layout = QHBoxLayout()
+        mode_layout.setContentsMargins(10, 20, 10, 10)
+        mode_layout.setSpacing(10)
 
         self.mode_toggle = ModernButton("🔄 Switch to Manual Entry")
         self.mode_toggle.setMinimumSize(180, 40)
@@ -511,19 +589,37 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         mode_layout.addWidget(self.load_db_button)
         mode_group.setLayout(mode_layout)
 
-        # Manual mode controls (initially hidden)
+        # Manual mode controls (initially hidden) - clean
         manual_group = QGroupBox("✏️ Manual Controls")
+        manual_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 600;
+                font-size: 13px;
+                border: none;
+                border-radius: 8px;
+                margin: 8px 0;
+                padding: 10px;
+                background-color: white;
+                color: #2c3e50;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 5px 12px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                color: #2c3e50;
+            }
+        """)
         manual_layout = QHBoxLayout()
+        manual_layout.setContentsMargins(10, 20, 10, 10)
+        manual_layout.setSpacing(8)
 
         self.add_row_button = CompactButton("➕ Add Row")
         self.duplicate_row_button = CompactButton("📋 Duplicate")
         self.delete_row_button = CompactButton("🗑️ Delete")
 
-        for btn in [
-            self.add_row_button,
-            self.duplicate_row_button,
-            self.delete_row_button,
-        ]:
+        for btn in [self.add_row_button, self.duplicate_row_button, self.delete_row_button]:
             btn.setMinimumSize(100, 40)
             btn.setVisible(False)
 
@@ -536,18 +632,37 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         manual_layout.addWidget(self.delete_row_button)
         manual_group.setLayout(manual_layout)
 
-        # Analysis controls
+        # Analysis controls - clean
         analysis_group = QGroupBox("🔬 Analysis")
+        analysis_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 600;
+                font-size: 13px;
+                border: none;
+                border-radius: 8px;
+                margin: 8px 0;
+                padding: 10px;
+                background-color: white;
+                color: #2c3e50;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 5px 12px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                color: #2c3e50;
+            }
+        """)
         analysis_layout = QHBoxLayout()
+        analysis_layout.setContentsMargins(10, 20, 10, 10)
+        analysis_layout.setSpacing(10)
 
-        self.run_study_button = ModernButton(
-            "\U0001f680 Run Dimensional Study", primary=True
-        )
+        self.run_study_button = ModernButton("\U0001f680 Run Dimensional Study", primary=True)
         self.run_study_button.setMinimumSize(170, 40)
         self.run_study_button.setEnabled(False)
         self.run_study_button.clicked.connect(self._run_study)
 
-        # Progress bar (hidden initially)
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
         self.progress_bar.setMaximumHeight(25)
@@ -558,9 +673,31 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         analysis_layout.addWidget(self.progress_bar)
         analysis_group.setLayout(analysis_layout)
 
-        # Session controls
+        # Session controls - clean
         session_group = QGroupBox("💾 Session")
+        session_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 600;
+                font-size: 13px;
+                border: none;
+                border-radius: 8px;
+                margin: 8px 0;
+                padding: 10px;
+                background-color: white;
+                color: #2c3e50;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 5px 12px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                color: #2c3e50;
+            }
+        """)
         session_layout = QHBoxLayout()
+        session_layout.setContentsMargins(10, 20, 10, 10)
+        session_layout.setSpacing(8)
 
         self.save_button = ModernButton("💾 Save")
         self.save_button.setMinimumSize(80, 40)
@@ -594,66 +731,71 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         return control_frame
 
     def _create_content_area(self) -> QSplitter:
-        """Create IMPROVED content area - removed activity log, cleaner layout"""
+        """Create clean content area with proper tab sizing"""
         splitter = QSplitter(Qt.Vertical)
 
-        # Enhanced results tabs with better styling
+        # Clean tabs without ugly borders
         self.results_tabs = QTabWidget()
         self.results_tabs.setTabsClosable(True)
         self.results_tabs.tabCloseRequested.connect(self._remove_tab)
         self.results_tabs.setStyleSheet("""
             QTabWidget::pane {
-                border: 1px solid #cbd5e0;
+                border: none;
                 border-radius: 8px;
                 background-color: white;
-                margin-top: 2px;
+                margin-top: 0px;
             }
             QTabWidget::tab-bar {
                 alignment: left;
             }
             QTabBar::tab {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #f8f9fa, stop:1 #e9ecef);
-                border: 1px solid #dee2e6;
-                padding: 8px 16px;
-                margin-right: 2px;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
+                background-color: #e9ecef;
+                border: none;
+                padding: 12px 25px;  /* Much larger padding */
+                margin-right: 3px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
                 font-weight: 500;
+                font-size: 12px;  /* Larger font */
                 color: #495057;
+                min-width: 140px;  /* Ensure enough width */
+                max-width: 250px;
             }
             QTabBar::tab:selected {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #ffffff, stop:1 #f8f9fa);
-                border-bottom-color: white;
+                background-color: white;
                 color: #2c3e50;
                 font-weight: 600;
+                font-size: 12px;
             }
             QTabBar::tab:hover:!selected {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-                    stop:0 #e3f2fd, stop:1 #bbdefb);
-                border-color: #3498db;
+                background-color: #dee2e6;
             }
             QTabBar::close-button {
                 image: url(data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTIiIGhlaWdodD0iMTIiIHZpZXdCb3g9IjAgMCAxMiAxMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTkgM0wzIDlNMyAzTDkgOSIgc3Ryb2tlPSIjNmM3NTdkIiBzdHJva2Utd2lkdGg9IjEuNSIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+Cjwvc3ZnPg==);
+                subcontrol-position: right;
+                subcontrol-origin: padding;
+                width: 16px;
+                height: 16px;
+                margin: 4px;
             }
             QTabBar::close-button:hover {
                 background-color: rgba(220, 53, 69, 0.1);
-                border-radius: 3px;
+                border-radius: 8px;
             }
         """)
 
-        # Initialize and add enhanced summary tab
         self._init_summary_widget()
-        
-        # Give the splitter all available space to tabs (no activity log)
         splitter.addWidget(self.results_tabs)
         
-        # Set splitter handle styling for a more professional look
+        # Clean splitter without ugly borders
         splitter.setStyleSheet("""
+            QSplitter {
+                background-color: #f8f9fa;
+                border: none;
+            }
             QSplitter::handle {
-                background-color: #dee2e6;
-                border: 1px solid #adb5bd;
+                background-color: #bdc3c7;
+                border: none;
                 margin: 2px 0;
             }
             QSplitter::handle:hover {
@@ -664,62 +806,23 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
         return splitter
 
     def _create_status_section(self) -> QFrame:
-        """Create ENHANCED status section with better visual design"""
+        """Create enhanced status section"""
         status_frame = QFrame()
         status_frame.setFrameStyle(QFrame.StyledPanel)
-        status_frame.setFixedHeight(35)  # Slightly reduced
-        status_frame.setStyleSheet("""
-            QFrame {
-                background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
-                    stop:0 #f8f9fa, stop:1 #e9ecef);
-                border-top: 1px solid #dee2e6;
-                border-radius: 0 0 8px 8px;
-            }
-        """)
+        status_frame.setFixedHeight(40)
 
         layout = QHBoxLayout()
-        layout.setContentsMargins(20, 5, 20, 5)
-        layout.setSpacing(20)
+        layout.setContentsMargins(15, 5, 15, 5)
 
-        # Status with icon and better styling
-        status_container = QFrame()
-        status_layout = QHBoxLayout()
-        status_layout.setContentsMargins(0, 0, 0, 0)
-        status_layout.setSpacing(8)
+        self.status_label = QLabel("✅ Ready")
+        self.status_label.setFont(QFont("Segoe UI", 9))
 
-        status_icon = QLabel("🔄")
-        status_icon.setFont(QFont("Segoe UI", 12))
-        status_layout.addWidget(status_icon)
+        self.stats_label = QLabel("📊 No data loaded")
+        self.stats_label.setFont(QFont("Segoe UI", 9))
 
-        self.status_label = QLabel("Ready")
-        self.status_label.setFont(QFont("Segoe UI", 10, QFont.Medium))
-        self.status_label.setStyleSheet("color: #2c3e50;")
-        status_layout.addWidget(self.status_label)
-
-        status_container.setLayout(status_layout)
-
-        # Stats with better visual separation
-        stats_container = QFrame()
-        stats_container.setStyleSheet("""
-            QFrame {
-                background-color: rgba(52, 152, 219, 0.1);
-                border: 1px solid rgba(52, 152, 219, 0.3);
-                border-radius: 15px;
-                padding: 2px 12px;
-            }
-        """)
-        stats_layout = QHBoxLayout()
-        stats_layout.setContentsMargins(8, 2, 8, 2)
-
-        self.stats_label = QLabel("No data loaded")
-        self.stats_label.setFont(QFont("Segoe UI", 9, QFont.Medium))
-        self.stats_label.setStyleSheet("color: #2980b9;")
-        stats_layout.addWidget(self.stats_label)
-        stats_container.setLayout(stats_layout)
-
-        layout.addWidget(status_container)
+        layout.addWidget(self.status_label)
         layout.addStretch()
-        layout.addWidget(stats_container)
+        layout.addWidget(self.stats_label)
 
         status_frame.setLayout(layout)
         return status_frame
@@ -744,7 +847,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
                 widget.deleteLater()
             
             self._log_message(f"📝 Closed tab: {tab_name}")
-
+# PART OF THE STUDY WINDOW SO YOU SEE WHERE THE WIDGET SUMMARY GOES
 
     def _run_study(self):
         """Execute the dimensional study - FIXED to avoid double execution"""
