@@ -13,8 +13,8 @@ class SPCChartBase(ABC):
     COLOR_BLAU = "#0072B2"
     COLOR_NEGRE = "#000000"
     COLOR_TARONJA = "#E69F00"
-    COLOR_VERMELL = "#D55E00"
-    COLOR_VERD = "#009E73"
+    COLOR_VERMELL = "#D50E00"
+    COLOR_VERD = "#0C9661"
     COLOR_GRIS = "#999999"
     GOLDEN_RATIO = (1 + 5**0.5) / 2
 
@@ -86,10 +86,10 @@ class SPCChartBase(ABC):
         lang_file = self.i18n_folder / f"{self.lang}.json"
         default_file = self.i18n_folder / "ca.json"
         fallback_labels = {
-            "title": "Gràfica",
+            "title": "Chart",
             "xlabel": "Eix X",
             "ylabel": "Eix Y",
-            "legend": "Llegenda",
+            "legend": "Legend",
         }
 
         if lang_file.exists():

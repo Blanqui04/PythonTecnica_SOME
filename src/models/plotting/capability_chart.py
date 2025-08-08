@@ -292,19 +292,19 @@ class CapabilityChart(SPCChartBase):
         title = translations["process_capability_plot"].format(
             element=self.element_name
         )
-        subtitle = f"{translations['mean_label']}: {data['mean']:.4f}"
+        #subtitle = f"{translations['mean_label']}: {data['mean']:.4f}"
         ax.set_title(title, fontsize=15, pad=28, fontname=self.FONT_NAME)
-        ax.text(
-            0.5,
-            1.02,
-            subtitle,
-            transform=ax.transAxes,
-            ha="center",
-            fontsize=11,
-            color="#444444",
-            va="bottom",
-            fontname=self.FONT_NAME,
-        )
+        #ax.text(
+        #    0.5,
+        #    1.02,
+        #    subtitle,
+        #    transform=ax.transAxes,
+        #    ha="center",
+        #    fontsize=11,
+        #    color="#444444",
+        #    va="bottom",
+        #    fontname=self.FONT_NAME,
+        #)
 
         self.logger.debug("✅ Main capability chart drawn successfully")
 

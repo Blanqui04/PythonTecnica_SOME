@@ -272,12 +272,12 @@ class IChart(SPCChartBase):
             ).format(element=self.element)
 
             # Add process capability to title if available
-            if self.cp is not None and self.cpk is not None:
-                capability_text = self.labels.get(
-                    "process_capability",
-                    "Process Capability: Cp = {cp:.2f}, Cpk = {cpk:.2f}",
-                ).format(cp=self.cp, cpk=self.cpk)
-                chart_title += f"\n{capability_text}"
+            #if self.cp is not None and self.cpk is not None:
+            #    capability_text = self.labels.get(
+            #        "process_capability",
+            #        "Process Capability: Cp = {cp:.2f}, Cpk = {cpk:.2f}",
+            #    ).format(cp=self.cp, cpk=self.cpk)
+            #    chart_title += f"\n{capability_text}"
 
             self._set_titles_and_labels(
                 ax,

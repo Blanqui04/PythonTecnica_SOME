@@ -38,7 +38,7 @@ class ExtrapolatedSPCChart(SPCChartBase):
 
         Args:
             input_json_path: Path to JSON file containing SPC data
-            lang: Language code for translations
+            lang: Language code for translations <- not active
             show: Whether to display the chart
             save_path: Path to save the chart
             i18n_folder: Path to i18n folder
@@ -410,65 +410,49 @@ class ExtrapolatedSPCChart(SPCChartBase):
         self.logger.info("Starting extrapolated SPC chart creation")
 
         try:
-            # Validate data
-            self._validate_data()
+            self._validate_data()       # Validate data
+            data = self._extract_data() # Extract data
 
-            # Extract data
-            data = self._extract_data()
+            # Create figure with adjusted height to accommodate title and subtitle
+            fig, ax = self._create_figure(figsize=(10, 10 / self.GOLDEN_RATIO + 0.5))  # Added extra height
 
-            # Create figure
-            fig, ax = self._create_figure(figsize=(10, 10 / self.GOLDEN_RATIO))
+            x, normal_scaled = self._create_normal_curve(data)      # Create normal distribution curve
+            self._plot_histogram_and_kde(ax, data)                  # Plot histogram and KDE
+            self._plot_normal_curve(ax, x, normal_scaled, data)     # Plot normal curve
+            self._plot_control_limits(ax, data)                     # Plot control limits
+            self._plot_rejection_zones(ax, x, normal_scaled, data)  # Plot rejection zones
+            self._set_axis_limits(ax, x, data)                      # Set axis limits
+            self._format_axes(ax)                                   # Format axes
 
-            # Create normal distribution curve
-            x, normal_scaled = self._create_normal_curve(data)
-
-            # Plot histogram and KDE
-            self._plot_histogram_and_kde(ax, data)
-
-            # Plot normal curve
-            self._plot_normal_curve(ax, x, normal_scaled, data)
-
-            # Plot control limits
-            self._plot_control_limits(ax, data)
-
-            # Plot rejection zones
-            self._plot_rejection_zones(ax, x, normal_scaled, data)
-
-            # Set axis limits
-            self._set_axis_limits(ax, x, data)
-
-            # Format axes
-            self._format_axes(ax)
-
-            # Set labels and title
+            # Set labels and title with adjusted spacing
             xlabel = self.labels.get("distribution_xlabel", "Measured Values")
             ylabel = self.labels.get("distribution_ylabel", "Frequency")
             title = self.labels.get(
                 "distribution_title", "Measurement Distribution - {element}"
             ).format(element=self.element_name)
 
-            self._set_titles_and_labels(ax, title=title, xlabel=xlabel, ylabel=ylabel)
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(ylabel)
+
+            ax.set_title(title, pad=20) # Set title with adjusted y-position  
 
             # Add subtitle with statistical indicators
-            subtitle = self._create_subtitle(data)
-            if subtitle.strip():
-                ax.text(
-                    0.5,
-                    1.01,
-                    subtitle.strip(),
-                    fontsize=11,
-                    fontname=self.FONT_NAME,
-                    color="#444444",
-                    ha="center",
-                    va="bottom",
-                    transform=ax.transAxes,
-                )
+            # subtitle = self._create_subtitle(data)
+            # if subtitle.strip():
+            #    ax.text(
+            #        0.5,
+            #        1.05,  # Adjusted y-position to prevent overlap with title
+            #        subtitle.strip(),
+            #        fontsize=11,
+            #        fontname=self.FONT_NAME,
+            #        color="#444444",
+            #        ha="center",
+            #        va="bottom",
+            #        transform=ax.transAxes,
+            #    )
 
-            # Set legend
-            self._set_legend(ax)
-
-            # Apply tight layout
-            plt.tight_layout()
+            self._set_legend(ax)    # Set legend
+            plt.tight_layout(pad=3.0)   # Apply tight layout with additional padding
 
             self.logger.info("Extrapolated SPC chart created successfully")
 
