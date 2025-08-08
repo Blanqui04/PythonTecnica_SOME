@@ -70,20 +70,20 @@ class NormalityAnalysisChart(SPCChartBase):
         try:
             # Add fallback translations
             fallback_translations = {
-                "normality_analysis": "Anàlisi de normalitat - {element}",
-                "mean": "Mitjana",
-                "p_value": "p-valor",
-                "normality": "Normalitat",
-                "yes": "Sí",
+                "normality_analysis": "Normality analysis - {element}",
+                "mean": "Mean",
+                "p_value": "p-value",
+                "normality": "Normality",
+                "yes": "Yes",
                 "no": "No",
-                "histogram_kde": "Histograma + KDE",
-                "value": "Valor",
-                "frequency": "Freqüència",
+                "histogram_kde": "Histogram + KDE",
+                "value": "Value",
+                "frequency": "Frequency",
                 "qq_plot": "Q-Q plot",
-                "theoretical_quantiles": "Quantils teòrics",
-                "sample_quantiles": "Quantils mostra",
-                "long_term_norm": "Normal llarg termini",
-                "short_term_norm": "Normal curt termini",
+                "theoretical_quantiles": "Theoretical quantiles",
+                "sample_quantiles": "Sample quantiles",
+                "long_term_norm": "Long-term normal dist.",
+                "short_term_norm": "Short-term normal dist.",
             }
 
             # Merge with loaded translations, fallback if key missing
@@ -103,7 +103,7 @@ class NormalityAnalysisChart(SPCChartBase):
 
             # Main title
             fig.suptitle(
-                tr.get("normality_analysis", "Anàlisi de normalitat").format(
+                tr.get("normality_analysis", "Normality analysis").format(
                     element=self.element
                 ),
                 fontsize=16,
@@ -112,26 +112,26 @@ class NormalityAnalysisChart(SPCChartBase):
             )
 
             # Subtitle with AD results if available
-            subtitle = ""
-            if self.pval_ad is not None and self.ad_res is not None:
-                subtitle = (
-                    f"{tr.get('mean', 'Mitjana')}: {mean:.4f}   "
-                    f"AD: {self.ad:.4f}   "
-                    f"{tr.get('p_value', 'p-valor')}: {self.pval_ad:.4f}   "
-                    f"{tr.get('normality', 'Normalitat')}: {tr.get('yes', 'Sí') if self.ad_res else tr.get('no', 'No')}"
-                )
+            #subtitle = ""
+            #if self.pval_ad is not None and self.ad_res is not None:
+            #    subtitle = (
+            #        f"{tr.get('mean', 'Mitjana')}: {mean:.4f}   "
+            #        f"AD: {self.ad:.4f}   "
+            #        f"{tr.get('p_value', 'p-valor')}: {self.pval_ad:.4f}   "
+            #        f"{tr.get('normality', 'Normalitat')}: {tr.get('yes', 'Sí') if self.ad_res else tr.get('no', 'No')}"
+            #    )
 
-            if subtitle:
-                fig.text(
-                    0.5,
-                    0.87,
-                    subtitle,
-                    ha="center",
-                    va="center",
-                    fontsize=11,
-                    fontname=self.FONT_NAME,
-                    color="#444444",
-                )
+            #if subtitle:
+            #    fig.text(
+            #        0.5,
+            #        0.87,
+            #        subtitle,
+            #        ha="center",
+            #        va="center",
+            #        fontsize=11,
+            #        fontname=self.FONT_NAME,
+            #        color="#444444",
+            #    )
 
             # Create plots
             self._plot_histogram_kde(axs[0], mean, std, lsl, usl, tr)
@@ -308,48 +308,15 @@ class NormalityAnalysisChart(SPCChartBase):
             tr.get("qq_plot", "Q-Q plot"), fontsize=13, fontname=self.FONT_NAME
         )
         ax.set_xlabel(
-            tr.get("theoretical_quantiles", "Quantils teòrics"),
+            tr.get("theoretical_quantiles", "Theoretical quantiles"),
             fontsize=11,
             fontname=self.FONT_NAME,
         )
         ax.set_ylabel(
-            tr.get("sample_quantiles", "Quantils mostra"),
+            tr.get("sample_quantiles", "Sample quantiles"),
             fontsize=11,
             fontname=self.FONT_NAME,
         )
 
         for label in ax.get_xticklabels() + ax.get_yticklabels():
             label.set_fontname(self.FONT_NAME)
-
-
-if __name__ == "__main__":
-    import json
-    import tempfile
-    import os
-
-    # Test data
-    test_data = {
-        "TestElement": {
-            "sample_data": [10.1, 10.3, 10.2, 10.4, 10.2, 10.5, 10.1, 10.3, 10.2, 10.4],
-            "nominal": 10.0,
-            "tolerance": [-0.5, 0.5],
-            "element_name": "TestElement",
-            "std_short_term": 0.1,
-            "pval_ad": 0.15,
-            "ad": 0.3,
-            "ad_result": True,
-            "output_dir": "data/charts",
-        }
-    }
-
-    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".json") as tmpfile:
-        json.dump(test_data, tmpfile)
-        tmpfile_path = tmpfile.name
-
-    try:
-        chart = NormalityAnalysisChart(
-            tmpfile_path, lang="ca", show=True, element_name="TestElement"
-        )
-        chart.plot()
-    finally:
-        os.remove(tmpfile_path)

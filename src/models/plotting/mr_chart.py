@@ -235,11 +235,11 @@ class MRChart(SPCChartBase):
             ).format(element=self.element)
 
             # Add estimated sigma to title
-            if self.estimated_sigma is not None:
-                sigma_text = self.labels.get(
-                    "estimated_sigma", "Estimated Sigma = {sigma:.4f}"
-                ).format(sigma=self.estimated_sigma)
-                chart_title += f"\n{sigma_text}"
+            #if self.estimated_sigma is not None:
+            #    sigma_text = self.labels.get(
+            #        "estimated_sigma", "Estimated Sigma = {sigma:.4f}"
+            #    ).format(sigma=self.estimated_sigma)
+            #    chart_title += f"\n{sigma_text}"
 
             self._set_titles_and_labels(
                 ax,
