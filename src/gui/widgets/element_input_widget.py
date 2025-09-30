@@ -1,1106 +1,1103 @@
 # src/gui/widgets/element_input_widget.py
 from PyQt5.QtWidgets import (
-    QWidget,
-    QVBoxLayout,
-    QHBoxLayout,
-    QLabel,
-    QTableWidget,
-    QTableWidgetItem,
-    QMessageBox,
-    QHeaderView,
-    QCheckBox,
-    QSpinBox,
-    QDoubleSpinBox,
-    QGroupBox,
-    QFrame,
-    QGridLayout,
-    QScrollArea,
-    QPushButton,
+    QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
+    QGroupBox, QFrame, QGridLayout, QScrollArea, QPushButton, 
+    QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup,
+    QSplitter, QTabWidget
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QThread, QObject, pyqtSlot
-from PyQt5.QtGui import QFont
-from src.gui.utils.element_input_styles import (
-    get_element_input_styles,
-    get_message_box_style,
-)
-from .buttons import ModernButton, ActionButton, CompactButton
+from PyQt5.QtGui import QFont, QPalette, QColor
+from src.gui.utils.element_input_styles import get_element_input_styles
+from .buttons import ModernButton, CompactButton
 from .inputs import ModernLineEdit, ModernComboBox
 from src.services.measurement_history_service import MeasurementHistoryService
 import logging
+import math
+from scipy import stats
 
 logger = logging.getLogger(__name__)
 
 
-class DatabaseSearchWorker(QObject):
-    """Worker per cercar dades a la base de dades en background"""
-    finished = pyqtSignal(list)  # Elements trobats
-    error = pyqtSignal(str)  # Error message
+class ElementMetricsWidget(QFrame):
+    """Compact widget to display metrics for a single element"""
+    metricsChanged = pyqtSignal(str, dict)
+    removeRequested = pyqtSignal(object)
+    editRequested = pyqtSignal(object)
     
-    def __init__(self, client, project_reference, batch_lot=None):
-        super().__init__()
-        self.client = client
-        self.project_reference = project_reference
-        self.batch_lot = batch_lot
+    def __init__(self, element_data, parent=None):
+        super().__init__(parent)
+        self.element_data = element_data
+        self.element_id = element_data['element_id']
+        self.metrics_inputs = {}
+        self.setup_ui()
     
-    @pyqtSlot()
-    def search_measurements(self):
-        """Cerca les mesures a la base de dades"""
-        try:
-            service = MeasurementHistoryService()
-            elements = service.get_measurement_history(self.client, self.project_reference, limit=10, batch_lot=self.batch_lot)
-            service.close()
-            self.finished.emit(elements)
-        except Exception as e:
-            logger.error(f"Error cercant mesures: {e}")
-            self.error.emit(str(e))
-
-
-class ElementDataSearchWorker(QObject):
-    """Worker per cercar dades específiques d'un element a la base de dades"""
-    finished = pyqtSignal(list)  # Registres trobats per l'element
-    error = pyqtSignal(str)  # Error message
+    def setup_ui(self):
+        self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
+        self.setStyleSheet("""
+            QFrame {
+                background-color: #ffffff;
+                border: 2px solid #dee2e6;
+                border-radius: 6px;
+                padding: 10px;
+                margin: 3px;
+            }
+            QFrame:hover {
+                border-color: #3498db;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        layout.setSpacing(8)
+        
+        # Compact header
+        header_layout = QHBoxLayout()
+        header = QLabel(f"{self.element_id}")
+        header.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        header.setStyleSheet("color: #2c3e50; background: transparent; border: none;")
+        header_layout.addWidget(header)
+        
+        # Cavity and class info inline
+        info = QLabel(f"Cav: {self.element_data.get('cavity', 'N/A')} | {self.element_data.get('class', 'N/A')}")
+        info.setFont(QFont("Segoe UI", 8))
+        info.setStyleSheet("color: #6c757d; background: transparent; border: none;")
+        header_layout.addWidget(info)
+        header_layout.addStretch()
+        layout.addLayout(header_layout)
+        
+        # Compact metrics in 2 columns
+        metrics = self._calculate_metrics()
+        
+        metrics_layout = QGridLayout()
+        metrics_layout.setSpacing(5)
+        metrics_layout.setVerticalSpacing(3)
+        
+        metric_items = [
+            ('Cp', metrics['cp']),
+            ('Cpk', metrics['cpk']),
+            ('σ', metrics['sigma_short']),
+            ('PPM', f"{int(metrics['ppm_short']):,}")
+        ]
+        
+        for i, (label, value) in enumerate(metric_items):
+            row = i // 2
+            col = (i % 2) * 2
+            
+            lbl = QLabel(f"{label}:")
+            lbl.setStyleSheet("color: #495057; font-size: 8pt; background: transparent; border: none;")
+            metrics_layout.addWidget(lbl, row, col)
+            
+            if isinstance(value, str):
+                value_text = value
+                color = "#495057"
+            else:
+                value_text = f"{value:.3f}"
+                color = self._get_metric_color(label, value)
+            
+            value_lbl = QLabel(value_text)
+            value_lbl.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 8pt; background: transparent; border: none;")
+            metrics_layout.addWidget(value_lbl, row, col + 1)
+            
+            self.metrics_inputs[label.lower().replace('σ', 'sigma')] = value if not isinstance(value, str) else 0
+        
+        layout.addLayout(metrics_layout)
+        
+        # Compact action buttons
+        btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(5)
+        
+        edit_btn = QPushButton("✏️")
+        edit_btn.setToolTip("Edit Values")
+        edit_btn.setFixedSize(28, 28)
+        edit_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 12pt;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+        """)
+        edit_btn.clicked.connect(self._edit_values)
+        
+        remove_btn = QPushButton("🗑️")
+        remove_btn.setToolTip("Remove")
+        remove_btn.setFixedSize(28, 28)
+        remove_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                font-size: 12pt;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
+        remove_btn.clicked.connect(self._request_remove)
+        
+        btn_layout.addWidget(edit_btn)
+        btn_layout.addWidget(remove_btn)
+        btn_layout.addStretch()
+        layout.addLayout(btn_layout)
+        
+        self.setLayout(layout)
+        self.setFixedHeight(110)  # Compact height
     
-    def __init__(self, client, project_reference, element_id, batch_lot=None, limit=10):
-        super().__init__()
-        self.client = client
-        self.project_reference = project_reference
-        self.element_id = element_id
-        self.batch_lot = batch_lot
-        self.limit = limit
+    def _calculate_metrics(self):
+        """Calculate all statistical metrics"""
+        values = self.element_data['values']
+        n = len(values)
+        
+        if n == 0:
+            return self._get_empty_metrics()
+        
+        # Basic statistics
+        average = sum(values) / n
+        variance = sum((x - average) ** 2 for x in values) / (n - 1) if n > 1 else 0
+        sigma_long = math.sqrt(variance)
+        
+        # Sigma short (moving range method)
+        if n > 1:
+            moving_ranges = [abs(values[i] - values[i-1]) for i in range(1, n)]
+            avg_mr = sum(moving_ranges) / len(moving_ranges) if moving_ranges else 0
+            sigma_short = avg_mr / 1.128
+        else:
+            sigma_short = 0
+        
+        # Tolerances
+        nominal = self.element_data['nominal']
+        tol_minus = abs(self.element_data['tol_minus'])
+        tol_plus = abs(self.element_data['tol_plus'])
+        USL = nominal + tol_plus
+        LSL = nominal - tol_minus
+        tolerance = USL - LSL
+        
+        # Capability indices
+        if sigma_short > 0:
+            cp = tolerance / (6 * sigma_short)
+            cpu = (USL - average) / (3 * sigma_short)
+            cpl = (average - LSL) / (3 * sigma_short)
+            cpk = min(cpu, cpl)
+        else:
+            cp = cpk = 0
+        
+        if sigma_long > 0:
+            pp = tolerance / (6 * sigma_long)
+            ppu = (USL - average) / (3 * sigma_long)
+            ppl = (average - LSL) / (3 * sigma_long)
+            ppk = min(ppu, ppl)
+        else:
+            pp = ppk = 0
+        
+        # PPM calculations
+        if sigma_short > 0:
+            z_usl_short = (USL - average) / sigma_short
+            z_lsl_short = (average - LSL) / sigma_short
+            ppm_short = (stats.norm.cdf(-z_lsl_short) + (1 - stats.norm.cdf(z_usl_short))) * 1e6
+        else:
+            ppm_short = 0
+        
+        return {
+            'average': average,
+            'sigma_long': sigma_long,
+            'sigma_short': sigma_short,
+            'cp': cp,
+            'cpk': cpk,
+            'pp': pp,
+            'ppk': ppk,
+            'ppm_short': ppm_short
+        }
     
-    @pyqtSlot()
-    def search_element_data(self):
-        """Cerca les últimes N mesures d'un element específic"""
-        try:
-            service = MeasurementHistoryService()
-            # Obtenir només les dades d'aquest element específic
-            measurements = service.get_element_measurement_history(
-                self.client, 
-                self.project_reference, 
-                self.element_id, 
-                limit=self.limit,
-                batch_lot=self.batch_lot
-            )
-            service.close()
-            self.finished.emit(measurements)
-        except Exception as e:
-            logger.error(f"Error cercant dades per element {self.element_id}: {e}")
-            self.error.emit(str(e))
-
-
-class AvailableElementsWorker(QObject):
-    """Worker per cercar elements disponibles a la base de dades"""
-    finished = pyqtSignal(list)  # Elements disponibles trobats
-    error = pyqtSignal(str)  # Error message
+    def _get_empty_metrics(self):
+        """Return zero metrics"""
+        return {
+            'average': 0, 'sigma_long': 0, 'sigma_short': 0,
+            'cp': 0, 'cpk': 0, 'pp': 0, 'ppk': 0,
+            'ppm_short': 0
+        }
     
-    def __init__(self, client, project_reference, batch_lot=None):
-        super().__init__()
-        self.client = client
-        self.project_reference = project_reference
-        self.batch_lot = batch_lot
+    def _get_metric_color(self, metric_type, value):
+        """Get color coding for metrics"""
+        if any(x in metric_type.lower() for x in ['cp', 'pp']):
+            if value >= 1.67:
+                return "#28a745"
+            elif value >= 1.33:
+                return "#17a2b8"
+            elif value >= 1.0:
+                return "#ffc107"
+            else:
+                return "#dc3545"
+        return "#495057"
     
-    @pyqtSlot()
-    def search_available_elements(self):
-        """Cerca tots els elements disponibles per client/projecte"""
-        try:
-            service = MeasurementHistoryService()
-            elements = service.get_available_elements(self.client, self.project_reference, batch_lot=self.batch_lot)
-            service.close()
-            self.finished.emit(elements)
-        except Exception as e:
-            logger.error(f"Error cercant elements disponibles: {e}")
-            self.error.emit(str(e))
+    def _edit_values(self):
+        """Open dialog to edit element values"""
+        from .element_edit_dialog import ElementEditDialog
+        dialog = ElementEditDialog(
+            self.element_id,
+            self.element_data['values'],
+            {
+                'nominal': self.element_data['nominal'],
+                'tol_minus': self.element_data['tol_minus'],
+                'tol_plus': self.element_data['tol_plus']
+            },
+            self
+        )
+        if dialog.exec_():
+            new_values = dialog.get_values()
+            self.element_data['values'] = new_values
+            # Refresh display
+            parent = self.parent()
+            self.setParent(None)
+            self.__init__(self.element_data, parent)
+            self.metricsChanged.emit(self.element_id, self._calculate_metrics())
+    
+    def _request_remove(self):
+        """Request removal of this element"""
+        reply = QMessageBox.question(
+            self, 'Remove Element',
+            f'Remove element {self.element_id}?',
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            self.removeRequested.emit(self)
+    
+    def get_element_data(self):
+        """Return current element data with metrics"""
+        return {
+            **self.element_data,
+            'metrics': self.metrics_inputs
+        }
 
 
 class ElementInputWidget(QWidget):
-    # Signal that will be emitted when the study should be started
-    study_requested = pyqtSignal(list, dict)  # Emits (elements, extrapolation_config)
-
+    study_requested = pyqtSignal(list, dict)
+    metrics_updated = pyqtSignal(dict)
+    
     def __init__(self, parent=None, client=None, project_reference=None, batch_lot=None):
         super().__init__(parent)
-        self.elements = []  # Llista per guardar els elements
+        self.elements = []
+        self.element_widgets = []
         self.client = client
         self.project_reference = project_reference
         self.batch_lot = batch_lot
-        self.measurement_service = None
-        
-        # Separar workers per evitar conflictes
-        self.elements_worker = None
-        self.elements_thread = None
-        self.data_worker = None
-        self.data_thread = None
         
         self.setStyleSheet(get_element_input_styles())
         self.init_ui()
         
-        # Habilitar botó Load Elements si tenim client i projecte
         if self.client and self.project_reference:
             self.load_elements_button.setEnabled(True)
-            self.load_elements_button.setToolTip(f"Load elements for {self.client} - {self.project_reference}")
-
+    
     def init_ui(self):
-        # Create main scroll area
-        scroll_area = QScrollArea()
-        scroll_area.setWidgetResizable(True)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
-        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-
-        # Main content widget
-        content_widget = QWidget()
-        main_layout = QVBoxLayout(content_widget)
-        main_layout.setSpacing(10)
+        main_layout = QVBoxLayout(self)
+        main_layout.setSpacing(15)
         main_layout.setContentsMargins(20, 20, 20, 20)
 
-        # Header
-        header_label = QLabel("Element Input & Capacity Study Configuration")
-        header_label.setStyleSheet("""
-            QLabel {
+        # Create main splitter for better layout
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Left panel - Input form
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setSpacing(15)
+        self._create_input_form(left_layout)
+        splitter.addWidget(left_panel)
+        
+        # Right panel - Elements and extrapolation
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        right_layout.setSpacing(15)
+        self._create_elements_area(right_layout)
+        self._create_extrapolation_config(right_layout)
+        self._create_action_buttons(right_layout)
+        splitter.addWidget(right_panel)
+        
+        # Set splitter proportions
+        splitter.setSizes([500, 700])
+        main_layout.addWidget(splitter)
+    
+    def _create_input_form(self, main_layout):
+        """Create enhanced input form"""
+        form_group = QGroupBox("📝 Add Element")
+        form_group.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        form_group.setStyleSheet("""
+            QGroupBox {
                 color: #2c3e50;
-                font-size: 16px;
-                font-weight: 600;
-                margin-bottom: 10px;
-                padding: 10px;
-                background-color: #ffffff;
-                border: 1px solid #ecf0f1;
+                border: 2px solid #3498db;
                 border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+                background-color: #f8f9fa;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 10px;
+                background-color: #f8f9fa;
             }
         """)
-        header_label.setAlignment(Qt.AlignCenter)
-        main_layout.addWidget(header_label)
-
-        # --- Element Input Form ---
-        self._create_element_input_form(main_layout)
-
-        # --- Elements Table ---
-        self._create_elements_table(main_layout)
-
-        # --- Extrapolation Configuration ---
-        self._create_extrapolation_config(main_layout)
-
-        # --- Action Buttons ---
-        self._create_action_buttons(main_layout)
-
-        # Set up scroll area
-        scroll_area.setWidget(content_widget)
-
-        # Main widget layout
-        widget_layout = QVBoxLayout(self)
-        widget_layout.setContentsMargins(0, 0, 0, 0)
-        widget_layout.addWidget(scroll_area)
-
-    def _create_element_input_form(self, main_layout):
-        """Create the element input form section"""
-        form_group = QGroupBox("Element Configuration")
-        form_layout = QVBoxLayout(form_group)
-        form_layout.setSpacing(16)
-
-        # Basic Information Row
-        basic_info_frame = QFrame()
-        basic_info_frame.setObjectName("card")
-        basic_info_layout = QGridLayout(basic_info_frame)
-        basic_info_layout.setSpacing(16)
-
-        # Element Selector
-        basic_info_layout.addWidget(QLabel("Element:"), 0, 0)
+        
+        layout = QVBoxLayout(form_group)
+        layout.setSpacing(15)
+        
+        # Mode selection
+        mode_frame = QFrame()
+        mode_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        mode_layout = QVBoxLayout(mode_frame)
+        
+        mode_label = QLabel("Data Entry Mode:")
+        mode_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        mode_layout.addWidget(mode_label)
+        
+        mode_btn_layout = QHBoxLayout()
+        self.mode_group = QButtonGroup()
+        
+        self.manual_radio = QRadioButton("✏️ Manual Entry")
+        self.manual_radio.setChecked(True)
+        self.manual_radio.toggled.connect(self._toggle_entry_mode)
+        self.mode_group.addButton(self.manual_radio)
+        mode_btn_layout.addWidget(self.manual_radio)
+        
+        self.database_radio = QRadioButton("🗄️ Load from Database")
+        self.database_radio.toggled.connect(self._toggle_entry_mode)
+        self.mode_group.addButton(self.database_radio)
+        mode_btn_layout.addWidget(self.database_radio)
+        
+        mode_layout.addLayout(mode_btn_layout)
+        layout.addWidget(mode_frame)
+        
+        # Element information section
+        info_frame = QFrame()
+        info_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 15px;
+            }
+        """)
+        info_layout = QGridLayout(info_frame)
+        info_layout.setSpacing(10)
+        
+        # Row 1: Element name/selector
+        info_layout.addWidget(QLabel("Element:"), 0, 0)
+        self.element_name_input = ModernLineEdit("Enter element name")
         self.element_selector = ModernComboBox()
         self.element_selector.addItem("Select an element...")
-        basic_info_layout.addWidget(self.element_selector, 0, 1)
+        self.element_selector.hide()
+        info_layout.addWidget(self.element_name_input, 0, 1, 1, 2)
+        info_layout.addWidget(self.element_selector, 0, 1, 1, 2)
         
-        # Connect signal to enable/disable Load Data button
-        self.element_selector.currentTextChanged.connect(self._on_element_selection_changed)
+        # Row 2: Cavity
+        info_layout.addWidget(QLabel("Cavity:"), 1, 0)
+        self.cavity_input = ModernLineEdit("e.g., A, B, C...")
+        info_layout.addWidget(self.cavity_input, 1, 1, 1, 2)
         
-        # Load Elements Button (to populate the selector)
-        self.load_elements_button = CompactButton("📋 Load Elements")
-        self.load_elements_button.setToolTip("Load available elements for this client/project")
-        self.load_elements_button.clicked.connect(self._load_available_elements)
-        self.load_elements_button.setEnabled(False)  # Disabled until client/project available
-        basic_info_layout.addWidget(self.load_elements_button, 0, 2)
+        # Row 3: Class and Sigma
+        info_layout.addWidget(QLabel("Class:"), 2, 0)
+        self.class_input = ModernLineEdit("Enter class")
+        info_layout.addWidget(self.class_input, 2, 1)
         
-        # Load Data Button
-        self.load_data_button = CompactButton("🔄 Load Data")
-        self.load_data_button.setToolTip("Load measurement data for selected element")
-        self.load_data_button.clicked.connect(self._load_element_data)
-        self.load_data_button.setEnabled(False)  # Disabled until element is selected
-        basic_info_layout.addWidget(self.load_data_button, 0, 3)
-
-        # Number of measurements selector
-        basic_info_layout.addWidget(QLabel("Num. measures:"), 1, 2)
-        self.num_measurements_combo = ModernComboBox()
-        self.num_measurements_combo.addItems(["5", "10", "15", "20", "30", "50"])
-        self.num_measurements_combo.setCurrentText("10")  # Default value
-        self.num_measurements_combo.setToolTip("Number of latest measurements to load")
-        basic_info_layout.addWidget(self.num_measurements_combo, 1, 3)
-
-        # Class
-        basic_info_layout.addWidget(QLabel("Class:"), 0, 4)
-        self.class_combo = ModernComboBox()
-        self.class_combo.addItems(["CC", "SC", "IC", "None"])
-        basic_info_layout.addWidget(self.class_combo, 0, 5)
-
-        # Cavity
-        basic_info_layout.addWidget(QLabel("Cavity:"), 1, 0)
-        self.cavity_input = ModernComboBox()
-        self.cavity_input.addItems(["1", "2", "3", "4", ""])
-        basic_info_layout.addWidget(self.cavity_input, 1, 1, 1, 1)  # Span 1 columns
-
-        form_layout.addWidget(basic_info_frame)
-
-        # Tolerances Row
-        tolerance_frame = QFrame()
-        tolerance_frame.setObjectName("card")
-        tolerance_layout = QGridLayout(tolerance_frame)
-        tolerance_layout.setSpacing(16)
-
-        # Nominal Value
-        tolerance_layout.addWidget(QLabel("Nominal Value:"), 0, 0)
-        self.nominal_input = ModernLineEdit("0.000")
-        tolerance_layout.addWidget(self.nominal_input, 0, 1)
-
-        # Lower Tolerance
-        tolerance_layout.addWidget(QLabel("Lower Tolerance:"), 0, 2)
-        self.tol_minus_input = ModernLineEdit("-0.000")
-        tolerance_layout.addWidget(self.tol_minus_input, 0, 3)
-
-        # Upper Tolerance
-        tolerance_layout.addWidget(QLabel("Upper Tolerance:"), 0, 4)
-        self.tol_plus_input = ModernLineEdit("+0.000")
-        tolerance_layout.addWidget(self.tol_plus_input, 0, 5)
-
-        form_layout.addWidget(tolerance_frame)
-
-        # Measured Values Section
-        values_frame = QFrame()
-        values_frame.setObjectName("card")
-        values_layout = QVBoxLayout(values_frame)
-
-        values_label = QLabel("Measured Values (10 required):")
-        values_label.setStyleSheet("QLabel { font-weight: 600; margin-bottom: 8px; }")
-        values_layout.addWidget(values_label)
-
-        # Create grid for measured values
-        values_grid = QGridLayout()
-        values_grid.setSpacing(8)
-        self.values_inputs = []
-
-        for i in range(10):
-            row = i // 5
-            col = i % 5
-
-            # Label for each input
-            label = QLabel(f"Value {i + 1}:")
-            label.setStyleSheet("QLabel { font-size: 9px; color: #7f8c8d; }")
-            values_grid.addWidget(label, row * 2, col)
-
-            # Input field
-            inp = ModernLineEdit("0.000")
-            inp.setMinimumWidth(80)
-            inp.setMaximumWidth(120)
-            self.values_inputs.append(inp)
-            values_grid.addWidget(inp, row * 2 + 1, col)
-
-        values_layout.addLayout(values_grid)
-        form_layout.addWidget(values_frame)
-
-        # Add Element Button
-        button_layout = QHBoxLayout()
-        button_layout.addStretch()
-
-        self.add_button = ActionButton("Add Element")
-        self.add_button.clicked.connect(self.add_element)
-        button_layout.addWidget(self.add_button)
-
-        button_layout.addStretch()
-        form_layout.addLayout(button_layout)
-
-        main_layout.addWidget(form_group)
-
-    def _create_elements_table(self, main_layout):
-        """Create the elements table section"""
-        table_group = QGroupBox("Added Elements")
-        table_layout = QVBoxLayout(table_group)
-        table_layout.setSpacing(16)
-
-        # Table - Updated to remove Batch column and emphasize Cavity
-        self.table = QTableWidget(0, 8)  # Reduced from 9 to 8 columns
-        self.table.setHorizontalHeaderLabels(
-            [
-                "Element ID",
-                "Cavity",  # Moved to second position for emphasis
-                "Class",
-                "Nominal",
-                "Tol. -",
-                "Tol. +",
-                "Measured Values",
-                "Actions",
-            ]
-        )
-
-        # Set table properties
-        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
-        self.table.setAlternatingRowColors(True)
-        self.table.setSelectionBehavior(QTableWidget.SelectRows)
-        self.table.setMinimumHeight(400)
-
-        # Set specific column widths - updated for new layout
-        self.table.setColumnWidth(0, 120)  # Element ID
-        self.table.setColumnWidth(1, 60)   # Cavity (emphasized)
-        self.table.setColumnWidth(2, 40)   # Class
-        self.table.setColumnWidth(3, 70)   # Nominal
-        self.table.setColumnWidth(4, 40)   # Tol. -
-        self.table.setColumnWidth(5, 40)   # Tol. +
-        self.table.setColumnWidth(6, 250)  # Measured Values (increased width)
-        self.table.setColumnWidth(7, 80)   # Actions
-
-        table_layout.addWidget(self.table)
-        main_layout.addWidget(table_group)
-
-    def _create_extrapolation_config(self, main_layout):
-        """Create the extrapolation configuration section - UPDATED with real values option"""
-        extrap_group = QGroupBox("Extrapolation Configuration")
-        extrap_layout = QVBoxLayout(extrap_group)
-        extrap_layout.setSpacing(16)
-
-        # Enable extrapolation checkbox
-        checkbox_layout = QHBoxLayout()
-        self.enable_extrapolation = QCheckBox("Enable Extrapolation Analysis")
-        self.enable_extrapolation.setChecked(True)
-        self.enable_extrapolation.toggled.connect(self.toggle_extrapolation_controls)
-        checkbox_layout.addWidget(self.enable_extrapolation)
-        checkbox_layout.addStretch()
-        extrap_layout.addLayout(checkbox_layout)
-
-        # NEW: Real values option
-        real_values_layout = QHBoxLayout()
-        self.use_real_values = QCheckBox("Use Real Values (when > 10 samples)")
-        self.use_real_values.setChecked(False)
-        self.use_real_values.setToolTip(
-            "When enabled and real sample size > 10, use actual measured values instead of extrapolating"
-        )
-        self.use_real_values.toggled.connect(self.toggle_real_values_option)
-        real_values_layout.addWidget(self.use_real_values)
-        real_values_layout.addStretch()
-        extrap_layout.addLayout(real_values_layout)
-
-        # Extrapolation parameters frame
-        self.extrap_params_frame = QFrame()
-        self.extrap_params_frame.setObjectName("card")
-        extrap_params_layout = QGridLayout(self.extrap_params_frame)
-        extrap_params_layout.setSpacing(16)
-
-        # Target sample size
-        extrap_params_layout.addWidget(QLabel("Target Sample Size:"), 0, 0)
-        self.target_size_combo = ModernComboBox()
-        self.target_size_combo.addItems(
-            ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100", "125", "150"]
-        )
-        self.target_size_combo.setCurrentText("100")
-        extrap_params_layout.addWidget(self.target_size_combo, 0, 1)
-
-        # Target p-value
-        extrap_params_layout.addWidget(QLabel("Target P-Value:"), 0, 2)
-        self.target_p_value = QDoubleSpinBox()
-        self.target_p_value.setRange(0.01, 0.99)
-        self.target_p_value.setSingleStep(0.01)
-        self.target_p_value.setValue(0.05)
-        self.target_p_value.setDecimals(2)
-        extrap_params_layout.addWidget(self.target_p_value, 0, 3)
-
-        # Max attempts
-        extrap_params_layout.addWidget(QLabel("Maximum Attempts:"), 1, 0)
-        self.max_attempts = QSpinBox()
-        self.max_attempts.setRange(10, 1000)
-        self.max_attempts.setValue(20)
-        extrap_params_layout.addWidget(self.max_attempts, 1, 1)
-
-        # Info label - updated
-        self.info_label = QLabel(
-            "Extrapolation will extend the sample size to achieve the target statistical significance."
-        )
-        self.info_label.setStyleSheet("""
-            QLabel {
-                color: #7f8c8d;
-                font-size: 10px;
-                font-style: italic;
-                margin-top: 8px;
+        self.sigma_combo = ModernComboBox()
+        self.sigma_combo.addItems(["5σ", "6σ"])
+        self.sigma_combo.setCurrentIndex(1)  # Default to 6σ
+        info_layout.addWidget(self.sigma_combo, 2, 2)
+        
+        # Row 4: Nominal and tolerances
+        info_layout.addWidget(QLabel("Nominal:"), 3, 0)
+        self.nominal_input = ModernLineEdit("0.0000")
+        info_layout.addWidget(self.nominal_input, 3, 1, 1, 2)
+        
+        info_layout.addWidget(QLabel("Tolerance -:"), 4, 0)
+        self.tol_minus_input = ModernLineEdit("-0.0000")
+        info_layout.addWidget(self.tol_minus_input, 4, 1, 1, 2)
+        
+        info_layout.addWidget(QLabel("Tolerance +:"), 5, 0)
+        self.tol_plus_input = ModernLineEdit("+0.0000")
+        info_layout.addWidget(self.tol_plus_input, 5, 1, 1, 2)
+        
+        layout.addWidget(info_frame)
+        
+        # Database buttons
+        self.db_buttons_frame = QFrame()
+        self.db_buttons_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 10px;
             }
         """)
-        extrap_params_layout.addWidget(self.info_label, 2, 0, 1, 4)
-
-        extrap_layout.addWidget(self.extrap_params_frame)
-        main_layout.addWidget(extrap_group)
-
+        db_btn_layout = QHBoxLayout(self.db_buttons_frame)
+        
+        self.load_elements_button = QPushButton("📋 Load Elements")
+        self.load_elements_button.setStyleSheet("""
+            QPushButton {
+                background-color: #17a2b8;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #138496;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        self.load_elements_button.clicked.connect(self._load_available_elements)
+        self.load_elements_button.setEnabled(False)
+        db_btn_layout.addWidget(self.load_elements_button)
+        
+        self.load_data_button = QPushButton("🔄 Load Values")
+        self.load_data_button.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        self.load_data_button.clicked.connect(self._load_element_data)
+        self.load_data_button.setEnabled(False)
+        db_btn_layout.addWidget(self.load_data_button)
+        
+        self.db_buttons_frame.hide()
+        layout.addWidget(self.db_buttons_frame)
+        
+        # Values section
+        values_frame = QFrame()
+        values_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 15px;
+            }
+        """)
+        values_layout = QVBoxLayout(values_frame)
+        
+        values_header = QHBoxLayout()
+        values_label = QLabel("📊 Measured Values (min. 5)")
+        values_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        values_header.addWidget(values_label)
+        
+        add_values_btn = QPushButton("➕ Add More")
+        add_values_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 6px 12px;
+                font-size: 9pt;
+            }
+            QPushButton:hover {
+                background-color: #545b62;
+            }
+        """)
+        add_values_btn.clicked.connect(lambda: self._add_value_inputs(5))
+        values_header.addWidget(add_values_btn)
+        values_header.addStretch()
+        
+        values_layout.addLayout(values_header)
+        
+        # Scrollable values area
+        values_scroll = QScrollArea()
+        values_scroll.setWidgetResizable(True)
+        values_scroll.setMaximumHeight(200)
+        values_scroll.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #e9ecef;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+            }
+        """)
+        
+        self.values_widget = QWidget()
+        self.values_layout = QGridLayout()
+        self.values_layout.setSpacing(8)
+        self.values_inputs = []
+        self._add_value_inputs(10)  # Start with 10 inputs
+        
+        self.values_widget.setLayout(self.values_layout)
+        values_scroll.setWidget(self.values_widget)
+        values_layout.addWidget(values_scroll)
+        
+        layout.addWidget(values_frame)
+        
+        # Add element button
+        add_element_btn = QPushButton("✅ Add Element to Study")
+        add_element_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 12px 24px;
+                font-weight: bold;
+                font-size: 11pt;
+            }
+            QPushButton:hover {
+                background-color: #218838;
+            }
+        """)
+        add_element_btn.clicked.connect(self.add_element)
+        layout.addWidget(add_element_btn)
+        
+        main_layout.addWidget(form_group)
+    
+    def _add_value_inputs(self, count):
+        """Add value input fields"""
+        current = len(self.values_inputs)
+        for i in range(count):
+            row = (current + i) // 5
+            col = (current + i) % 5
+            
+            value_input = ModernLineEdit()
+            value_input.setPlaceholderText(f"V{current + i + 1}")
+            value_input.setMaximumWidth(100)
+            self.values_inputs.append(value_input)
+            self.values_layout.addWidget(value_input, row, col)
+    
+    def _create_elements_area(self, main_layout):
+        """Create scrollable area for element widgets"""
+        group = QGroupBox("📦 Added Elements")
+        group.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        group.setStyleSheet("""
+            QGroupBox {
+                color: #2c3e50;
+                border: 2px solid #28a745;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+                background-color: #f8f9fa;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 10px;
+                background-color: #f8f9fa;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setMinimumHeight(400)
+        scroll.setStyleSheet("""
+            QScrollArea {
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                background-color: white;
+            }
+        """)
+        
+        container = QWidget()
+        self.elements_layout = QVBoxLayout()
+        self.elements_layout.setSpacing(10)
+        self.elements_layout.setAlignment(Qt.AlignTop)
+        container.setLayout(self.elements_layout)
+        
+        # Add placeholder
+        self.elements_placeholder = QLabel("No elements added yet.\nAdd elements using the form on the left.")
+        self.elements_placeholder.setAlignment(Qt.AlignCenter)
+        self.elements_placeholder.setStyleSheet("""
+            QLabel {
+                color: #6c757d;
+                font-size: 10pt;
+                padding: 40px;
+                font-style: italic;
+            }
+        """)
+        self.elements_layout.addWidget(self.elements_placeholder)
+        
+        scroll.setWidget(container)
+        layout.addWidget(scroll)
+        
+        group.setLayout(layout)
+        main_layout.addWidget(group)
+    
+    def _create_extrapolation_config(self, main_layout):
+        """Enhanced extrapolation configuration"""
+        group = QGroupBox("🔬 Extrapolation Settings")
+        group.setFont(QFont("Segoe UI", 12, QFont.Bold))
+        group.setStyleSheet("""
+            QGroupBox {
+                color: #2c3e50;
+                border: 2px solid #ffc107;
+                border-radius: 8px;
+                margin-top: 10px;
+                padding-top: 15px;
+                background-color: #f8f9fa;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 0 10px;
+                background-color: #f8f9fa;
+            }
+        """)
+        
+        layout = QVBoxLayout()
+        
+        # Enable extrapolation
+        self.extrap_checkbox = QCheckBox("Enable Extrapolation for Normality")
+        self.extrap_checkbox.setFont(QFont("Segoe UI", 10))
+        self.extrap_checkbox.toggled.connect(self._toggle_extrapolation_settings)
+        layout.addWidget(self.extrap_checkbox)
+        
+        # Settings frame
+        self.extrap_settings_frame = QFrame()
+        self.extrap_settings_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        self.extrap_settings_frame.setEnabled(False)
+        
+        settings_layout = QGridLayout(self.extrap_settings_frame)
+        
+        # Target values
+        settings_layout.addWidget(QLabel("Target Values:"), 0, 0)
+        self.target_values_spin = QSpinBox()
+        self.target_values_spin.setRange(10, 200)
+        self.target_values_spin.setValue(50)
+        self.target_values_spin.setSuffix(" values")
+        settings_layout.addWidget(self.target_values_spin, 0, 1)
+        
+        # Max attempts
+        settings_layout.addWidget(QLabel("Max Attempts:"), 1, 0)
+        self.max_attempts_spin = QSpinBox()
+        self.max_attempts_spin.setRange(10, 200)
+        self.max_attempts_spin.setValue(100)
+        self.max_attempts_spin.setSuffix(" attempts")
+        settings_layout.addWidget(self.max_attempts_spin, 1, 1)
+        
+        # P-value objective
+        settings_layout.addWidget(QLabel("P-value Target:"), 2, 0)
+        self.p_value_spin = QDoubleSpinBox()
+        self.p_value_spin.setRange(0.01, 0.10)
+        self.p_value_spin.setValue(0.05)
+        self.p_value_spin.setDecimals(3)
+        self.p_value_spin.setSingleStep(0.01)
+        settings_layout.addWidget(self.p_value_spin, 2, 1)
+        
+        layout.addWidget(self.extrap_settings_frame)
+        group.setLayout(layout)
+        main_layout.addWidget(group)
+    
     def _create_action_buttons(self, main_layout):
-        """Create the action buttons section"""
-        # Separator
-        separator = QFrame()
-        separator.setObjectName("separator")
-        main_layout.addWidget(separator)
-
-        # Auto-load section (només si tenim dades de client i projecte)
-        if self.client and self.project_reference:
-            auto_load_group = QGroupBox("Database Auto-Load")
-            auto_load_layout = QVBoxLayout(auto_load_group)
-            
-            # Info label - updated to show batch comes from main window
-            batch_info = " | Batch: From main window" if self.batch_lot else ""
-            info_label = QLabel(f"Client: {self.client} | Project: {self.project_reference}{batch_info}")
-            info_label.setStyleSheet("""
-                QLabel {
-                    color: #2c3e50;
-                    font-weight: 600;
-                    font-size: 11px;
-                    margin-bottom: 8px;
-                }
-            """)
-            auto_load_layout.addWidget(info_label)
-            
-            # Auto-load button
-            auto_load_btn_layout = QHBoxLayout()
-            self.auto_load_btn = ActionButton("🔄 Load Latest Measurements")
-            self.auto_load_btn.clicked.connect(self.manual_load_database_measurements)
-            auto_load_btn_layout.addWidget(self.auto_load_btn)
-            auto_load_btn_layout.addStretch()
-            
-            auto_load_layout.addLayout(auto_load_btn_layout)
-            main_layout.addWidget(auto_load_group)
-
-        # Buttons layout
-        button_layout = QHBoxLayout()
-        button_layout.setSpacing(16)
-
-        # Clear all button
-        clear_button = CompactButton("Clear All")
-        clear_button.clicked.connect(self.clear_all_elements)
-        button_layout.addWidget(clear_button)
-
-        button_layout.addStretch()
-
-        # Run study button
-        self.run_button = ModernButton("Start Capacity Study", primary=True)
-        self.run_button.clicked.connect(self.run_study)
-        self.run_button.setMinimumHeight(52)
-        self.run_button.setFont(QFont("Segoe UI", 11, QFont.Medium))
-        button_layout.addWidget(self.run_button)
-
-        main_layout.addLayout(button_layout)
-
-    def toggle_extrapolation_controls(self, enabled):
-        """Toggle extrapolation controls based on checkbox state"""
-        self.extrap_params_frame.setEnabled(enabled)
-        if not enabled:
-            self.use_real_values.setEnabled(False)
-            self.use_real_values.setChecked(False)
-        else:
-            self.use_real_values.setEnabled(True)
-
-    def toggle_real_values_option(self, enabled):
-        """Toggle between real values and extrapolation"""
-        if enabled:
-            # Disable extrapolation parameters when using real values
-            for i in range(self.extrap_params_frame.layout().count()):
-                widget = self.extrap_params_frame.layout().itemAt(i).widget()
-                if widget and not isinstance(widget, QLabel):
-                    widget.setEnabled(False)
-            
-            self.info_label.setText(
-                "Real measured values will be used when sample size > 10 (no extrapolation performed)."
-            )
-        else:
-            # Enable extrapolation parameters
-            for i in range(self.extrap_params_frame.layout().count()):
-                widget = self.extrap_params_frame.layout().itemAt(i).widget()
-                if widget and not isinstance(widget, QLabel):
-                    widget.setEnabled(True)
-                    
-            self.info_label.setText(
-                "Extrapolation will extend the sample size to achieve the target statistical significance."
-            )
-
+        """Create action buttons"""
+        btn_frame = QFrame()
+        btn_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                padding: 15px;
+            }
+        """)
+        
+        btn_layout = QHBoxLayout(btn_frame)
+        btn_layout.setSpacing(15)
+        
+        clear_btn = QPushButton("🗑️ Clear All")
+        clear_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 10px 20px;
+                font-weight: 500;
+                font-size: 10pt;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
+        clear_btn.clicked.connect(self.clear_all_elements)
+        btn_layout.addWidget(clear_btn)
+        
+        btn_layout.addStretch()
+        
+        run_btn = QPushButton("▶️ Run Study")
+        run_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                padding: 12px 30px;
+                font-weight: bold;
+                font-size: 12pt;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+        """)
+        run_btn.clicked.connect(self.run_study)
+        btn_layout.addWidget(run_btn)
+        
+        main_layout.addWidget(btn_frame)
+    
+    def _toggle_entry_mode(self):
+        """Toggle between manual and database entry modes"""
+        is_manual = self.manual_radio.isChecked()
+        
+        # Toggle visibility of inputs
+        self.element_name_input.setVisible(is_manual)
+        self.element_selector.setVisible(not is_manual)
+        self.db_buttons_frame.setVisible(not is_manual)
+        
+        # Enable/disable database buttons
+        if not is_manual and self.client and self.project_reference:
+            self.load_elements_button.setEnabled(True)
+    
+    def _toggle_extrapolation_settings(self, checked):
+        """Enable/disable extrapolation settings"""
+        self.extrap_settings_frame.setEnabled(checked)
+    
     def add_element(self):
-        # Validació i agregació
-        # Obtenir element seleccionat del selector
-        selected_element = self.element_selector.currentText()
-        if selected_element == "Select an element...":
-            element_id = ""
-        else:
-            # Extreure el nom de l'element (abans del primer ' - ')
-            element_id = selected_element.split(' - ')[0] if ' - ' in selected_element else selected_element.split(' (')[0]
-        
-        element_type = self.class_combo.currentText()
-        cavity = self.cavity_input.currentText()
-        nominal = self.nominal_input.text().strip()
-        tol_minus = self.tol_minus_input.text().strip()
-        tol_plus = self.tol_plus_input.text().strip()
-        values = [inp.text().strip() for inp in self.values_inputs]
-
-        # Validacions bàsiques - Enhanced cavity validation
-        if not element_id:
-            self._show_error("Element ID cannot be empty.")
-            return
-        if not cavity:
-            self._show_error("Cavity is required. This field identifies the specific dimension being analyzed.")
-            return
-        
-        # Check for duplicate element_id + cavity combination
-        for existing_element in self.elements:
-            if (existing_element["element_id"] == element_id and 
-                existing_element["cavity"] == cavity):
-                self._show_error(f"Element '{element_id}' with cavity '{cavity}' already exists. Each element-cavity combination must be unique.")
-                return
-        
+        """Add element to the study"""
         try:
-            nominal_f = float(nominal)
-            tol_minus_f = float(tol_minus)
-            tol_plus_f = float(tol_plus)
-            values_f = [float(v) for v in values if v]
-            if len(values_f) != 10:
-                self._show_error("Please enter a minimum of 10 measured values.")
+            # Get element identifier
+            if self.manual_radio.isChecked():
+                element_id = self.element_name_input.text().strip()
+                if not element_id:
+                    QMessageBox.warning(self, "Missing Data", "Element name is required")
+                    return
+            else:
+                element_id = self.element_selector.currentText()
+                if element_id == "Select an element...":
+                    QMessageBox.warning(self, "Missing Data", "Please select an element")
+                    return
+            
+            # Get other fields
+            cavity = self.cavity_input.text().strip()
+            class_name = self.class_input.text().strip()
+            sigma = self.sigma_combo.currentText()
+            
+            # Validate tolerances
+            try:
+                nominal = float(self.nominal_input.text())
+                tol_minus = float(self.tol_minus_input.text())
+                tol_plus = float(self.tol_plus_input.text())
+            except ValueError:
+                QMessageBox.warning(self, "Invalid Data", "Nominal and tolerances must be numbers")
                 return
-        except ValueError:
-            self._show_error("Please enter valid numeric values.")
+            
+            # Get measured values
+            values = []
+            for inp in self.values_inputs:
+                text = inp.text().strip()
+                if text:
+                    try:
+                        values.append(float(text))
+                    except ValueError:
+                        pass
+            
+            if len(values) < 5:
+                QMessageBox.warning(self, "Insufficient Data", "At least 5 values required")
+                return
+            
+            # Check for duplicate element (same element_id + cavity)
+            for elem in self.elements:
+                if elem['element_id'] == element_id and elem['cavity'] == cavity:
+                    QMessageBox.warning(
+                        self, "Duplicate Element", 
+                        f"Element '{element_id}' with cavity '{cavity}' already exists"
+                    )
+                    return
+            
+            # Create element data
+            element_data = {
+                'element_id': element_id,
+                'cavity': cavity,
+                'class': class_name,
+                'sigma': sigma,
+                'nominal': nominal,
+                'tol_minus': tol_minus,
+                'tol_plus': tol_plus,
+                'values': values
+            }
+            
+            # Remove placeholder if present
+            if self.elements_placeholder.parent():
+                self.elements_placeholder.setParent(None)
+            
+            # Create and add widget
+            widget = ElementMetricsWidget(element_data, self)
+            widget.removeRequested.connect(self._remove_element_widget)
+            widget.metricsChanged.connect(self._on_metrics_changed)
+            
+            self.elements_layout.addWidget(widget)
+            self.element_widgets.append(widget)
+            self.elements.append(element_data)
+            
+            # Clear inputs
+            self._clear_inputs()
+            self._emit_summary_metrics()
+            
+            QMessageBox.information(
+                self, "Success", 
+                f"Element '{element_id}' (Cavity: {cavity}) added successfully!"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error adding element: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to add element: {e}")
+    
+    def _remove_element_widget(self, widget):
+        """Remove an element widget"""
+        if widget in self.element_widgets:
+            self.element_widgets.remove(widget)
+            
+            # Remove from elements list
+            for i, elem in enumerate(self.elements):
+                if (elem['element_id'] == widget.element_data['element_id'] and 
+                    elem['cavity'] == widget.element_data['cavity']):
+                    self.elements.pop(i)
+                    break
+            
+            widget.setParent(None)
+            widget.deleteLater()
+            
+            # Add placeholder if no elements
+            if not self.element_widgets:
+                self.elements_layout.addWidget(self.elements_placeholder)
+            
+            # Update summary
+            self._emit_summary_metrics()
+    
+    def _on_metrics_changed(self, element_id, metrics):
+        """Handle metrics changes"""
+        self._emit_summary_metrics()
+    
+    def _emit_summary_metrics(self):
+        """Calculate and emit summary metrics for all elements"""
+        if not self.element_widgets:
+            self.metrics_updated.emit({})
             return
-
-        # Afegim element a la llista - Updated structure without batch
-        element = {
-            "element_id": element_id,
-            "cavity": cavity,  # Cavity as key identifier
-            "class": element_type,
-            "nominal": nominal_f,
-            "tol_minus": tol_minus_f,
-            "tol_plus": tol_plus_f,
-            "values": values_f,
+        
+        total_elements = len(self.element_widgets)
+        cp_values = []
+        cpk_values = []
+        ppm_values = []
+        sigma_values = []
+        
+        for widget in self.element_widgets:
+            metrics = widget.metrics_inputs
+            cp_values.append(metrics.get('cp', 0))
+            cpk_values.append(metrics.get('cpk', 0))
+            ppm_values.append(metrics.get('ppm_short', 0))
+            sigma_values.append(metrics.get('sigma_short', 0))
+        
+        summary = {
+            'total_elements': total_elements,
+            'avg_cp': sum(cp_values) / total_elements if cp_values else 0,
+            'avg_cpk': sum(cpk_values) / total_elements if cpk_values else 0,
+            'total_ppm': sum(ppm_values),
+            'avg_deviation': sum(sigma_values) / total_elements if sigma_values else 0
         }
-        self.elements.append(element)
-
-        # Actualitzar taula
-        self._update_table()
-
-        # Netejar inputs
-        self._clear_inputs()
-
-    def _update_table(self):
-        """Update the table with all elements - Updated for new column structure"""
-        self.table.setRowCount(len(self.elements))
-
-        for row, element in enumerate(self.elements):
-            self.table.setItem(row, 0, QTableWidgetItem(element["element_id"]))
-            self.table.setItem(row, 1, QTableWidgetItem(element["cavity"]))  # Cavity now in column 1
-            self.table.setItem(row, 2, QTableWidgetItem(element["class"]))
-            self.table.setItem(row, 3, QTableWidgetItem(f"{element['nominal']:.3f}"))
-            self.table.setItem(row, 4, QTableWidgetItem(f"{element['tol_minus']:.3f}"))
-            self.table.setItem(row, 5, QTableWidgetItem(f"{element['tol_plus']:.3f}"))
-            self.table.setItem(
-                row,
-                6,
-                QTableWidgetItem(", ".join(f"{v:.3f}" for v in element["values"])),
-            )
-
-            # Delete button - Enhanced styling
-            btn_delete = QPushButton("✕")
-            btn_delete.setProperty("class", "remove-btn")
-            btn_delete.setToolTip("Remove this element")
-            btn_delete.clicked.connect(lambda _, r=row: self._remove_element(r))
-            self.table.setCellWidget(row, 7, btn_delete)  # Updated column index
-
-    def _remove_element(self, row):
-        """Remove element and update table"""
-        if 0 <= row < len(self.elements):
-            del self.elements[row]
-            self._update_table()
-
+        
+        self.metrics_updated.emit(summary)
+    
     def clear_all_elements(self):
-        """Clear all elements from the table"""
-        if self.elements:
-            reply = self._show_question(
-                "Clear All Elements",
-                "Are you sure you want to remove all elements?",
-                "This action cannot be undone.",
-            )
-            if reply == QMessageBox.Yes:
-                self.elements.clear()
-                self._update_table()
-
+        """Remove all elements"""
+        if not self.element_widgets:
+            return
+            
+        reply = QMessageBox.question(
+            self, 'Clear All',
+            f'Remove all {len(self.element_widgets)} element(s)?',
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            for widget in self.element_widgets[:]:
+                widget.setParent(None)
+                widget.deleteLater()
+            self.element_widgets.clear()
+            self.elements.clear()
+            self.elements_layout.addWidget(self.elements_placeholder)
+            self._emit_summary_metrics()
+    
+    def run_study(self):
+        """Run the capability study"""
+        if not self.elements:
+            QMessageBox.warning(self, "No Data", "Please add at least one element")
+            return
+        
+        # Collect current data from widgets
+        elements_data = []
+        for widget in self.element_widgets:
+            elements_data.append(widget.get_element_data())
+        
+        # Extrapolation configuration
+        extrap_config = {
+            'include_extrapolation': self.extrap_checkbox.isChecked(),
+            'target_values': self.target_values_spin.value() if self.extrap_checkbox.isChecked() else 50,
+            'max_attempts': self.max_attempts_spin.value() if self.extrap_checkbox.isChecked() else 100,
+            'p_value_target': self.p_value_spin.value() if self.extrap_checkbox.isChecked() else 0.05
+        }
+        
+        logger.info(f"Running study with {len(elements_data)} elements")
+        logger.info(f"Extrapolation config: {extrap_config}")
+        
+        self.study_requested.emit(elements_data, extrap_config)
+    
     def _clear_inputs(self):
-        """Clear all input fields"""
-        self.element_selector.setCurrentIndex(0)  # Reset to "Select an element..."
-        # FIX: Don't clear the cavity combo, just reset selection to empty
-        self.cavity_input.setCurrentText("")  # Reset to empty selection instead of clearing all items
+        """Clear input fields"""
+        if self.manual_radio.isChecked():
+            self.element_name_input.clear()
+        else:
+            self.element_selector.setCurrentIndex(0)
+        
+        self.cavity_input.clear()
+        self.class_input.clear()
         self.nominal_input.clear()
         self.tol_minus_input.clear()
         self.tol_plus_input.clear()
+        
         for inp in self.values_inputs:
             inp.clear()
-
-    def _show_error(self, title, message="", details=""):
-        """Show error message with enhanced styling"""
-        if not message:
-            message = title
-            title = "Input Error"
-
-        error_box = QMessageBox(self)
-        error_box.setIcon(QMessageBox.Critical)
-        error_box.setWindowTitle(title)
-        error_box.setText(message)
-        if details:
-            error_box.setInformativeText(details)
-        error_box.setStandardButtons(QMessageBox.Ok)
-        error_box.setStyleSheet(get_message_box_style("error"))
-        error_box.exec_()
-
-    def _show_warning(self, title, message, details=""):
-        """Show warning message with enhanced styling"""
-        warning_box = QMessageBox(self)
-        warning_box.setIcon(QMessageBox.Warning)
-        warning_box.setWindowTitle(title)
-        warning_box.setText(message)
-        if details:
-            warning_box.setInformativeText(details)
-        warning_box.setStandardButtons(QMessageBox.Ok)
-        warning_box.setStyleSheet(get_message_box_style("warning"))
-        warning_box.exec_()
-
-    def _show_question(self, title, message, details=""):
-        """Show question dialog with enhanced styling"""
-        question_box = QMessageBox(self)
-        question_box.setIcon(QMessageBox.Question)
-        question_box.setWindowTitle(title)
-        question_box.setText(message)
-        if details:
-            question_box.setInformativeText(details)
-        question_box.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
-        question_box.setDefaultButton(QMessageBox.No)
-        question_box.setStyleSheet(get_message_box_style("question"))
-        return question_box.exec_()
-
-    def _show_info(self, title, message, details=""):
-        """Show info message with enhanced styling"""
-        info_box = QMessageBox(self)
-        info_box.setIcon(QMessageBox.Information)
-        info_box.setWindowTitle(title)
-        info_box.setText(message)
-        if details:
-            info_box.setInformativeText(details)
-        info_box.setStandardButtons(QMessageBox.Ok)
-        info_box.setStyleSheet(get_message_box_style("info"))
-        info_box.exec_()
-
-    def get_extrapolation_config(self):
-        """Get the extrapolation configuration from GUI"""
-        if not self.enable_extrapolation.isChecked():
-            return {"include_extrapolation": False, "extrapolation_config": None}
-
-        return {
-            "include_extrapolation": True,
-            "extrapolation_config": {
-                "target_size": int(self.target_size_combo.currentText()),
-                "target_p_value": self.target_p_value.value(),
-                "max_attempts": self.max_attempts.value(),
-            },
-        }
-
-    def run_study(self):
-        """Emit signal to request study execution"""
-        if not self.elements:
-            self._show_error("No elements have been added to the study.")
-            return
-
-        # Get extrapolation configuration
-        extrap_config = self.get_extrapolation_config()
-
-        # Emit the signal with the elements list and extrapolation config
-        self.study_requested.emit(self.elements, extrap_config)
-
-    def _on_element_selection_changed(self, selected_text):
-        """Activar/desactivar botó Load Data quan canvia la selecció d'element"""
-        is_valid_selection = bool(selected_text and selected_text != "Select an element...")
-        has_context = bool(self.client and self.project_reference)
-        self.load_data_button.setEnabled(is_valid_selection and has_context)
-        
-        # Update tooltip based on state
-        if not is_valid_selection:
-            self.load_data_button.setToolTip("Select an element first")
-        elif not has_context:
-            self.load_data_button.setToolTip("Client and Project Reference required")
-        else:
-            self.load_data_button.setToolTip(f"Load data for element '{selected_text}'")
-
+    
     def _load_available_elements(self):
-        """Carrega la llista d'elements disponibles per al client/projecte"""
+        """Load available elements from database"""
         if not self.client or not self.project_reference:
-            self._show_warning(
-                "Missing Information", 
-                "Client and Project Reference are required to load available elements."
-            )
-            return
-            
-        logger.info(f"Carregant elements disponibles per Client: {self.client}, Projecte: {self.project_reference}")
-        
-        # Neteja workers anteriors d'elements si existeixen
-        if self.elements_worker:
-            try:
-                self.elements_worker.deleteLater()
-            except RuntimeError:
-                # Worker ja ha estat eliminat
-                pass
-            
-        if self.elements_thread:
-            try:
-                if self.elements_thread.isRunning():
-                    self.elements_thread.quit()
-                    self.elements_thread.wait()
-            except RuntimeError:
-                # Thread ja ha estat eliminat
-                pass
-            
-        # Crear nous workers per elements
-        self.elements_thread = QThread()
-        self.elements_worker = AvailableElementsWorker(self.client, self.project_reference, self.batch_lot)
-        self.elements_worker.moveToThread(self.elements_thread)
-        
-        # Connections
-        self.elements_thread.started.connect(self.elements_worker.search_available_elements)
-        self.elements_worker.finished.connect(self._on_available_elements_loaded)
-        self.elements_worker.error.connect(self._on_database_search_error)
-        self.elements_worker.finished.connect(self.elements_thread.quit)
-        self.elements_worker.finished.connect(self.elements_worker.deleteLater)
-        self.elements_thread.finished.connect(self.elements_thread.deleteLater)
-        
-        # Disable button and start
-        self.load_elements_button.setEnabled(False)
-        self.load_elements_button.setText("Loading...")
-        self.elements_thread.start()
-
-    def _load_element_data(self):
-        """Carrega les dades específiques de l'element seleccionat"""
-        selected_element = self.element_selector.currentText()
-        
-        if not selected_element or selected_element == "Select an element...":
-            self._show_warning("Missing Element", "Please select an element first.")
-            return
-            
-        if not self.client or not self.project_reference:
-            self._show_warning(
-                "Missing Information", 
-                "Client and Project Reference are required to load element data."
-            )
+            QMessageBox.warning(self, "Missing Info", "Client and Project required")
             return
         
-        # Obtenir l'ID complet de l'element del userData
-        element_id = self.element_selector.currentData()
-        if not element_id:
-            self._show_error("Element ID Error", "Could not retrieve element ID. Please reload elements list.")
-            return
-        
-        # Obtenir el nombre de mesures seleccionat
-        num_measurements = int(self.num_measurements_combo.currentText())
-            
-        logger.info(f"Carregant {num_measurements} mesures per Element ID: {element_id}, Client: {self.client}, Projecte: {self.project_reference}")
-        
-        # Neteja workers anteriors de dades si existeixen
-        if self.data_worker:
-            try:
-                self.data_worker.deleteLater()
-            except RuntimeError:
-                # Worker ja ha estat eliminat
-                pass
-            
-        if self.data_thread:
-            try:
-                if self.data_thread.isRunning():
-                    self.data_thread.quit()
-                    self.data_thread.wait()
-            except RuntimeError:
-                # Thread ja ha estat eliminat
-                pass
-            
-        # Crear nous workers per dades
-        self.data_thread = QThread()
-        self.data_worker = ElementDataSearchWorker(self.client, self.project_reference, element_id, self.batch_lot, num_measurements)
-        self.data_worker.moveToThread(self.data_thread)
-        
-        # Connections
-        self.data_thread.started.connect(self.data_worker.search_element_data)
-        self.data_worker.finished.connect(self._on_element_data_loaded)
-        self.data_worker.error.connect(self._on_database_search_error)
-        self.data_worker.finished.connect(self.data_thread.quit)
-        self.data_worker.finished.connect(self.data_worker.deleteLater)
-        self.data_thread.finished.connect(self.data_thread.deleteLater)
-        
-        # Disable button and start
-        self.load_data_button.setEnabled(False)
-        self.load_data_button.setText("Loading...")
-        self.data_thread.start()
-
-    def auto_load_database_measurements(self):
-        """Carrega automàticament les mesures de la base de dades al iniciar"""
-        if not self.client or not self.project_reference:
-            logger.warning("No es pot carregar automàticament: falten dades del client o projecte")
-            return
-            
-        logger.info(f"Auto-carregant mesures per Client: {self.client}, Projecte: {self.project_reference}")
-        self._start_database_search()
-
-    def manual_load_database_measurements(self):
-        """Carrega manualment les mesures quan es prem el botó"""
-        if not self.client or not self.project_reference:
-            self._show_warning(
-                "Missing Information",
-                "Client and Project Reference are required to load measurements from database."
-            )
-            return
-            
-        # Preguntar si vol esborrar els elements existents
-        if self.elements:
-            reply = self._show_question(
-                "Load Database Measurements",
-                "Do you want to replace existing elements with database measurements?",
-                "This will clear all current elements and load the latest measurements from the database."
-            )
-            if reply != QMessageBox.Yes:
-                return
-        
-        self._start_database_search()
-
-    def _start_database_search(self):
-        """Inicia la cerca a la base de dades en background"""
         try:
-            # Desactivar botó durant la cerca
-            if hasattr(self, 'auto_load_btn'):
-                self.auto_load_btn.setText("🔄 Loading...")
-                self.auto_load_btn.setEnabled(False)
-            
-            # Crear worker i thread
-            self.search_thread = QThread()
-            self.search_worker = DatabaseSearchWorker(self.client, self.project_reference, self.batch_lot)
-            self.search_worker.moveToThread(self.search_thread)
-            
-            # Connectar signals
-            self.search_thread.started.connect(self.search_worker.search_measurements)
-            self.search_worker.finished.connect(self._on_database_search_finished)
-            self.search_worker.error.connect(self._on_database_search_error)
-            self.search_worker.finished.connect(self.search_thread.quit)
-            self.search_worker.finished.connect(self.search_worker.deleteLater)
-            self.search_thread.finished.connect(self.search_thread.deleteLater)
-            
-            # Iniciar thread
-            self.search_thread.start()
-            
-        except Exception as e:
-            logger.error(f"Error iniciant cerca a la base de dades: {e}")
-            self._show_error("Database Search Error", f"Could not start database search: {e}")
-            self._reset_load_button()
-
-    def _on_database_search_finished(self, elements):
-        """Gestiona els resultats de la cerca a la base de dades"""
-        try:
-            self._reset_load_button()
-            
-            if not elements:
-                self._show_info(
-                    "Database Search Complete",
-                    "No measurements found in database for this client and project reference.",
-                    "You can add elements manually using the form above."
-                )
-                return
-            
-            # Esborrar elements existents
-            self.elements.clear()
-            
-            # Convertir elements de la base de dades al format del widget
-            for db_element in elements:
-                try:
-                    # Validar que tenim suficients mesures
-                    measurements = db_element.get('measurements', [])
-                    if len(measurements) < 10:
-                        # Completar amb valors nominals si no hi ha suficients mesures
-                        nominal = db_element.get('nominal', 0.0)
-                        measurements.extend([nominal] * (10 - len(measurements)))
-                    
-                    # Prendre només les primeres 10 mesures
-                    measurements = measurements[:10]
-                    
-                    element = {
-                        "element_id": db_element.get('element_id', 'Unknown'),
-                        "cavity": db_element.get('cavity', ''),  # Include cavity from database
-                        "class": "CC",  # Valor per defecte
-                        "nominal": db_element.get('nominal', 0.0),
-                        "tol_minus": db_element.get('tolerance_minus', 0.0),
-                        "tol_plus": db_element.get('tolerance_plus', 0.0),
-                        "values": measurements
-                    }
-                    
-                    self.elements.append(element)
-                    
-                except Exception as e:
-                    logger.warning(f"Error processant element {db_element}: {e}")
-                    continue
-            
-            # Actualitzar taula
-            self._update_table()
-            
-            # Mostrar missatge d'èxit amb més detalls
-            total_measurements = sum(len(elem.get('measurements', [])) for elem in elements)
-            info_text = f"Successfully loaded {len(self.elements)} elements from database.\n\n"
-            info_text += f"Total measurements loaded: {total_measurements}\n"
-            info_text += f"Source: {self.client} - {self.project_reference}\n\n"
-            info_text += "Elements loaded:\n"
-            for elem in self.elements[:5]:  # Mostrar només els primers 5
-                info_text += f"• {elem['element_id']} - Cavity: {elem['cavity']} (Nominal: {elem['nominal']:.3f})\n"
-            if len(self.elements) > 5:
-                info_text += f"• ... and {len(self.elements) - 5} more elements"
-            
-            self._show_info(
-                "Database Load Complete",
-                info_text
+            service = MeasurementHistoryService()
+            elements = service.get_available_elements(
+                self.client, self.project_reference, batch_lot=self.batch_lot
             )
+            service.close()
             
-            logger.info(f"S'han carregat {len(self.elements)} elements des de la base de dades")
-            
-        except Exception as e:
-            logger.error(f"Error processant resultats de la base de dades: {e}")
-            self._show_error("Database Processing Error", f"Error processing database results: {e}")
-
-    def _on_database_search_error(self, error_message):
-        """Gestiona errors de la cerca a la base de dades"""
-        self._reset_load_button()
-        logger.error(f"Error en la cerca a la base de dades: {error_message}")
-        self._show_error(
-            "Database Search Error",
-            "Could not load measurements from database.",
-            f"Error details: {error_message}"
-        )
-
-    def _on_available_elements_loaded(self, elements):
-        """Gestiona els elements disponibles carregats"""
-        try:
-            self._reset_load_elements_button()
-            
-            if not elements:
-                self._show_info(
-                    "No Elements Found",
-                    f"No elements found for {self.client} - {self.project_reference}"
-                )
-                return
-            
-            # Neteja el selector i afegeix els nous elements
             self.element_selector.clear()
             self.element_selector.addItem("Select an element...")
+            for elem in elements:
+                self.element_selector.addItem(elem['element_id'])
             
-            # Afegir elements ordenats
-            for element_data in sorted(elements, key=lambda x: x['element']):
-                # Construir l'ID complet per l'element
-                element_id = f"{element_data['element']}|{element_data['pieza']}|{element_data['datum']}|{element_data['property']}"
-                count = element_data['count']
-                
-                # Mostrar informació més detallada de l'element
-                display_text = f"{element_data['element']} - {element_data['datum']} ({count} measurements)"
-                
-                # Guardar l'ID complet com userData
-                self.element_selector.addItem(display_text, element_id)
+            self.element_selector.setEnabled(True)
+            self.load_data_button.setEnabled(True)
             
-            self._show_info(
-                "Elements Loaded",
-                f"Found {len(elements)} elements for {self.client} - {self.project_reference}"
+            logger.info(f"Loaded {len(elements)} available elements")
+            QMessageBox.information(
+                self, "Success", 
+                f"Loaded {len(elements)} elements from database"
             )
             
-            logger.info(f"Carregats {len(elements)} elements al selector")
-            
         except Exception as e:
-            logger.error(f"Error processant elements disponibles: {e}")
-            self._show_error("Elements Processing Error", f"Error processing available elements: {e}")
-
-    def _on_element_data_loaded(self, measurements):
-        """Gestiona les dades carregades d'un element específic"""
-        try:
-            self._reset_element_load_button()
-            
-            if not measurements:
-                selected_element = self.element_selector.currentText()
-                element_name = selected_element.split(' - ')[0] if ' - ' in selected_element else selected_element.split(' (')[0]
-                self._show_info(
-                    "No Data Found",
-                    f"No measurement data found for element '{element_name}'"
-                )
-                return
-            
-            # Mostrar informació de les dades trobades
-            element_id = measurements[0]['element']
-            datum = measurements[0]['datum']
-            num_requested = int(self.num_measurements_combo.currentText())
-            
-            self._show_info(
-                "Data Loaded",
-                f"Found {len(measurements)} measurements for element '{element_id} - {datum}'\n"
-                f"Latest measurement: {measurements[0]['data_hora']}\n"
-                f"Value: {measurements[0]['valor_mesura']}\n"
-                f"Nominal: {measurements[0]['nominal']}\n"
-                f"Tolerance: -{measurements[0]['tol_neg']} / +{measurements[0]['tol_pos']}\n"
-                f"Requested: {num_requested}, Available: {len(measurements)}"
-            )
-            
-            # Auto-poblar els camps amb les dades de la primera mesura (més recent)
-            latest_measurement = measurements[0]
-            
-            # Setear valors als camps corresponents
-            self.nominal_input.setText(str(latest_measurement['nominal']))
-            self.tol_minus_input.setText(str(latest_measurement['tol_neg']))  # Ja és positiu des del servei
-            self.tol_plus_input.setText(str(latest_measurement['tol_pos']))
-            
-            # Si hi ha camps de cavitat, també els podem omplir
-            if latest_measurement.get('cavitat'):
-                self.cavity_input.setCurrentText(latest_measurement['cavitat'])
-            
-            # Omplir els camps de valors amb les mesures obtingudes
-            measurement_values = [m['valor_mesura'] for m in measurements]
-            
-            # Assegurar-se que tenim els 10 camps per als valors
-            for i in range(10):
-                if i < len(measurement_values):
-                    self.values_inputs[i].setText(str(measurement_values[i]))
-                else:
-                    self.values_inputs[i].setText("")
-            
-            # Si tenim més de 10 mesures, mostrar avís
-            if len(measurement_values) > 10:
-                self._show_info(
-                    "Data Loaded", 
-                    f"Only the first 10 measurements have been loaded into the form.\n"
-                    f"Total measurements available: {len(measurement_values)}"
-                )
-            
-            logger.info(f"Dades carregades per element {element_id}: {len(measurements)} mesures")
-            
-        except Exception as e:
-            logger.error(f"Error processant dades de l'element: {e}")
-            import traceback
-            logger.error(f"Traceback complet: {traceback.format_exc()}")
-            self._show_error("Data Processing Error", f"Error processing element data: {e}")
-
-    def _reset_load_button(self):
-        """Restaura l'estat del botó de càrrega"""
-        if hasattr(self, 'auto_load_btn'):
-            self.auto_load_btn.setText("🔄 Load Latest Measurements")
-            self.auto_load_btn.setEnabled(True)
-
-    def _reset_element_load_button(self):
-        """Restaura l'estat del botó Load Data"""
-        self.load_data_button.setText("🔄 Load Data")
-        selected_element = self.element_selector.currentText()
-        is_valid_selection = bool(selected_element and selected_element != "Select an element...")
-        has_context = bool(self.client and self.project_reference)
-        self.load_data_button.setEnabled(is_valid_selection and has_context)
-
-    def _reset_load_elements_button(self):
-        """Restaura l'estat del botó Load Elements"""
-        self.load_elements_button.setText("📋 Load Elements")
-        has_context = bool(self.client and self.project_reference)
-        self.load_elements_button.setEnabled(has_context)
-
-    def set_client_and_project(self, client, project_reference):
-        """Estableix el client i la referència del projecte"""
-        self.client = client
-        self.project_reference = project_reference
+            logger.error(f"Error loading elements: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load elements: {e}")
+    
+    def _load_element_data(self):
+        """Load data for selected element"""
+        element_id = self.element_selector.currentText()
+        if element_id == "Select an element...":
+            return
         
-        # Si ja està inicialitzat, auto-carregar dades
-        if hasattr(self, 'auto_load_btn'):
-            self.auto_load_database_measurements()
+        try:
+            service = MeasurementHistoryService()
+            measurements = service.get_element_measurement_history(
+                self.client, self.project_reference, element_id, 
+                limit=50, batch_lot=self.batch_lot
+            )
+            service.close()
+            
+            if measurements:
+                # Auto-fill form with loaded data
+                first_measurement = measurements[0]
+                self.cavity_input.setText(str(first_measurement.get('cavity', '')))
+                self.nominal_input.setText(str(first_measurement.get('nominal', '')))
+                self.tol_minus_input.setText(str(first_measurement.get('tol_minus', '')))
+                self.tol_plus_input.setText(str(first_measurement.get('tol_plus', '')))
+                
+                # Fill values - ensure we have enough input fields
+                values = [m.get('value', 0) for m in measurements]
+                if len(values) > len(self.values_inputs):
+                    self._add_value_inputs(len(values) - len(self.values_inputs))
+                
+                for i, value in enumerate(values):
+                    if i < len(self.values_inputs):
+                        self.values_inputs[i].setText(str(value))
+                
+                logger.info(f"Loaded {len(values)} measurements for {element_id}")
+                QMessageBox.information(
+                    self, "Data Loaded", 
+                    f"Loaded {len(values)} measurements for {element_id}"
+                )
+            else:
+                QMessageBox.warning(self, "No Data", f"No measurements found for {element_id}")
+                
+        except Exception as e:
+            logger.error(f"Error loading element data: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to load element data: {e}")
+    
+    def get_study_data(self):
+        """Get all study data for session saving"""
+        return {
+            'elements': self.elements,
+            'extrapolation': {
+                'enabled': self.extrap_checkbox.isChecked(),
+                'target_values': self.target_values_spin.value(),
+                'max_attempts': self.max_attempts_spin.value(),
+                'p_value_target': self.p_value_spin.value()
+            }
+        }
+    
+    def load_study_data(self, data):
+        """Load study data from session"""
+        # Clear existing elements
+        self.clear_all_elements()
+        
+        # Load elements
+        for elem_data in data.get('elements', []):
+            # Remove placeholder if present
+            if self.elements_placeholder.parent():
+                self.elements_placeholder.setParent(None)
+            
+            # Create and add widget
+            widget = ElementMetricsWidget(elem_data, self)
+            widget.removeRequested.connect(self._remove_element_widget)
+            widget.metricsChanged.connect(self._on_metrics_changed)
+            
+            self.elements_layout.addWidget(widget)
+            self.element_widgets.append(widget)
+            self.elements.append(elem_data)
+        
+        # Load extrapolation settings
+        extrap = data.get('extrapolation', {})
+        self.extrap_checkbox.setChecked(extrap.get('enabled', False))
+        self.target_values_spin.setValue(extrap.get('target_values', 50))
+        self.max_attempts_spin.setValue(extrap.get('max_attempts', 100))
+        self.p_value_spin.setValue(extrap.get('p_value_target', 0.05))
+        
+        self._emit_summary_metrics()

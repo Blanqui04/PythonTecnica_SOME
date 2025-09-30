@@ -2,15 +2,11 @@
 """
 Sample Data Manager - Handles sample data loading, validation, and management
 """
-
-import sqlite3
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional, Union  # noqa: F401
 import json
 import os
-
-import psycopg2
 
 from src.models.capability.capability_analyzer import ElementData, ElementType
 from ...exceptions.sample_errors import SampleErrors
@@ -167,8 +163,6 @@ class SampleDataManager:
 
         # Detect element type
         from .capability_analyzer import CapabilityAnalyzer
-        import sqlite3
-        import psycopg2
 
         analyzer = CapabilityAnalyzer()
         element_data.element_type = analyzer.detect_element_type(element_data.name)

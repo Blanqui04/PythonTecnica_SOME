@@ -51,36 +51,18 @@ class CapabilityStudyWorker(QObject):
                 batch_number=self.batch_number,
             )
             
-            # Enhanced result message to include cavity information
-            if isinstance(result, dict):
-                # If result is a dict with detailed information
-                success_msg = "Capability Study completed successfully!\n\n"
-                success_msg += f"Client: {self.client}\n"
-                success_msg += f"Project: {self.ref_project}\n"
-                success_msg += f"Batch: {self.batch_number}\n\n"
-                success_msg += f"Elements processed: {len(self.elements)}\n"
-                
-                # List processed elements with their cavities
-                success_msg += "\nProcessed dimensions:\n"
-                for element in self.elements:
-                    element_id = element.get('element_id', 'Unknown')
-                    cavity = element.get('cavity', 'N/A')
-                    success_msg += f"• {element_id} - Cavity {cavity}\n"
-                
-                if 'charts_generated' in result:
-                    success_msg += f"\nCharts generated: {result['charts_generated']}"
-                if 'statistics' in result:
-                    success_msg += "\nStatistical analysis completed"
-                
-                self.finished.emit(success_msg)
-            else:
-                # If result is a simple string or other format
-                enhanced_result = "Capability Study completed!\n\n"
-                enhanced_result += f"Batch: {self.batch_number}\n"
-                enhanced_result += f"Elements with cavities: {len(self.elements)}\n\n"
-                enhanced_result += str(result)
-                self.finished.emit(enhanced_result)
-                
+            # Use thread-safe chart generation
+            chart_results = self.service.generate_all_charts_threadsafe(show=False, save=True)
+
+            results = {
+                "chart_results": chart_results,
+                "elements_summary": self.service.get_elements_summary(),
+                "study_statistics": self.service.get_study_statistics(),
+                "chart_service": self.service,
+            }
+
+            self.finished.emit(results)
+            
             logger.info("Capability study completed successfully")
             
         except Exception as e:
