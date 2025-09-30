@@ -2,7 +2,7 @@
 
 ## Overview
 
-PythonTecnica_SOME is a modular Python application for processing technical and business data from CSV and Excel files, generating reports, and supporting database integration. It is designed for professional, maintainable, and extensible use in technical and business environments.
+PythonTecnica_SOME is a modular Python application for technical and business data processing, statistical analysis (SPC/capability), and database/reporting workflows. It features a modern PyQt5 GUI, advanced charting, and robust session management.
 
 ---
 
@@ -11,189 +11,189 @@ PythonTecnica_SOME is a modular Python application for processing technical and 
 ```
 PythonTecnica_SOME/
 │
-├── src/                              # Main source code (all modules)
+├── src/
 │   ├── __init__.py
-│   │
 │   ├── data_processing/
 │   │   ├── utils/
-│   │   │   ├── __init__.py
-│   │   │   └── excel_reader.py       # Test success!
-│   │   ├── __init__.py
-│   │   ├── data_processor.py         # Test success!
-│   │   ├── data_transformer.py       # Test success!
-│   │   └── pipeline_manager.py       # Test success!
-│   │
+│   │   ├── data_processor.py
+│   │   ├── data_transformer.py
+│   │   └── pipeline_manager.py
 │   ├── database/
-│   │   ├── database_connection.py    # Test success!
-│   │   └── database_uploader.py      # Test success!
-│   │
+│   │   ├── database_connection.py
+│   │   └── database_uploader.py
 │   ├── exceptions/
-│   │   ├── __init__.py          
-│   │   ├── transformation_errors.py  # Test success!
-│   │   └── sample_errors.py          # Test success!
-│   │
-│   │── gui/
-│   │    ├── __init__.py
-│   │    ├── main_window.py               # Main application window
-│   │    ├── logging_config.py            # Logging configuration for GUI
-│   │    ├── widgets/                     # Custom UI widgets
-│   │    │   ├── __init__.py
-│   │    │   ├── element_input_widget.py        # Test success!
-│   │    │   ├── buttons.py                     # Test success!
-│   │    │   ├── inputs.py                      # Test success!
-│   │    ├── panels/
-│   │    │   ├── __init__.py
-│   │    │   ├── header.py                      # Test success!
-│   │    │   ├── left_panel.py                  # Test success!
-│   │    │   ├── center_panel.py                # Test success!
-│   │    │   ├── right_panel.py                 # Test success!
-│   │    │   └── status_bar.py                  # Test success!
-│   │    ├── workers/                      
-│   │    │   └── capability_study_worker.py     # Test success!
-│   │    ├── window/                      
-│   │    │   ├── __init__.py
-│   │    │   └── spc_chart_window.py            # Test success!
-│   │    └── utils/
-│   │        ├── chart_utils.py             # Chart utilities
-│   │        ├── element_input_styles.py    # Styling utilities
-│   │        └── styles.py                  # Styling utilities
-│   │
+│   │   ├── transformation_errors.py
+│   │   └── sample_errors.py
+│   ├── gui/
+│   │   ├── main_window.py
+│   │   ├── logging_config.py
+│   │   ├── widgets/
+│   │   │   ├── element_input_widget.py
+│   │   │   ├── element_edit_dialog.py
+│   │   │   ├── realtime_calculations_panel.py
+│   │   │   ├── buttons.py
+│   │   │   ├── inputs.py
+│   │   ├── panels/
+│   │   ├── workers/
+│   │   │   └── capability_study_worker.py
+│   │   ├── windows/
+│   │   │   ├── capability_study_window.py
+│   │   │   ├── spc_chart_window.py
+│   │   └── utils/
+│   │       ├── chart_utils.py
+│   │       ├── element_input_styles.py
+│   │       ├── session_manager.py
+│   │       └── styles.py
 │   ├── models/
-│   │   │── plotting/
-│   │   │   │── __init__.py  
-│   │   │   │── logging_config.py               # Test success!
-│   │   │   │── spc_charts_manager.py           # Test success!
-│   │   │   │── base_chart.py                   # Test success!
-│   │   │   │── spc_data_loader.py              # Test success!
-│   │   │   │── capability_chart.py             # Test success!
-│   │   │   │── normality_plot.py               # Test success!
-│   │   │   │── extrapolation_chart.py          # Test success!
-│   │   │   │── i_chart.py                      # Test success!
-│   │   │   └── mr_chart.py                     # Test success!
-│   │   │  
-│   │   ├── capability/               # Statistical capability analysis
-│   │   │   ├── __init__.py
-│   │   │   ├── logging_config.py       
-│   │   │   ├── sample_data_manager.py          # Test success!
-│   │   │   ├── capability_analyzer.py          # Test success!
-│   │   │   ├── capability_study_manager.py     # Test success!
-│   │   │   └── extrapolation_manager.py        # Test success!
-│   │   │ 
-│   │   ├── dimensional/              # Dimensional analysis
-│   │   │   ├── __init__.py
-│   │   │   ├── gdt_interpreter.py              # Developing
-│   │   │   ├── measurement_validator.py        # Developing
-│   │   │   ├── dimensional_result.py           # Developing
-│   │   │   └── dimensional_analyzer.py         # Developing
-│   │   └── __init__.py
-│   │
+│   │   ├── plotting/
+│   │   │   ├── spc_charts_manager.py
+│   │   │   ├── base_chart.py
+│   │   │   ├── spc_data_loader.py
+│   │   │   ├── capability_chart.py
+│   │   │   ├── normality_plot.py
+│   │   │   ├── extrapolation_chart.py
+│   │   │   ├── i_chart.py
+│   │   │   └── mr_chart.py
+│   │   ├── capability/
+│   │   │   ├── capability_analyzer.py
+│   │   │   ├── capability_study_manager.py
+│   │   │   ├── extrapolation_manager.py
+│   │   │   ├── sample_data_manager.py
+│   │   └── dimensional/
+│   │       ├── dimensional_analyzer.py
+│   │       └── gdt_interpreter.py
 │   ├── services/
-│   │    │── __init__.py 
-│   │    │── dimensional_service.py             # Test success! <-
-│   │    │── spc_chart_service.py               # Test success! <-
-│   │    │── capacity_study_service.py          # Test success! <-
-│   │    │── data_export_service.py             # Test success! <-
-│   │    │── pdf_service.py                     # Test success! <-
-│   │    │── data_processing_orchestrator.py    # Test success! <- to clean...
-│   │    └── database_update.py                 # Test success! <- to clean...
-│   │
+│   │   ├── capacity_study_service.py
+│   │   ├── spc_chart_service.py
+│   │   ├── data_export_service.py
+│   │   ├── measurement_history_service.py
+│   │   └── database_update.py
 │   └── utils/
-│       └──  __init__.py
+│       └── __init__.py
 │
 ├── data/
-│   │   │── pending/
-│   │   └── processed/
-│   │ 
+│   ├── sessions/
+│   ├── spc/
+│   ├── reports/
 │   ├── processed/
-│   │   │── datasheets/
-│   │   │── export/
-│   │   └── reports/
-│   │       │── dimensional/
-│   │       └── statistics/
-│   │
 │   └── temp/
-│       │── excel_processing/
-│       └── report_generation/
 │
 ├── config/
 │   ├── database/
-│   │   └── db_config.json            # Database connection configuration
 │   ├── column_mappings/
-│   │   ├── columns_to_drop.json      # Column filtering configuration
-│   │   └── table_mappings.json       # Database table mappings
-│   └── config.ini                    # Main application configuration
+│   └── config.ini
 │
-├── tests/                       # Unit and integration tests
-│   ├── test_orchestrator.py          # Test success!
-│   ├── test_spc_charts.py            # Test success!
-│   ├── test_spc_manager.py           # Test success!
-│   ├── test_data_uploader.py         # Test success!
-│   ├── test_kop_processing.py        # Test success!
-│   ├── test_data_transformer.py      # Test success!
-│   ├── test_data_uploader.py         # Test success!
-│   ├── test_dimensional_analyzer.py  # Test success!
-│   ├── test_dimensional_export.py  # Test success!
-│   └── test_excel_processing.py      # Test success!
-│
-├── docs/                        # Documentation
-│   ├── capability/
-│   │   ├── Estudi de capacitat.docx
-│   │   └── Estudi de capacitat.pdf
-│   ├── ddbb/
-│   │   ├── Construcció_BBDD.docx
-│   │   ├── Construcció_BBDD.pdf
-│   │   ├── DDBB Class diagram.pdf
-│   │   ├── DDBB Class diagram.svg
-│   │   └── Diagrama de classes.drawio
-│   └── dimensional/
-│       ├── Dimensional.docx
-│       └── Dimensional.pdf
-│
-├── assets/                           # Static assets
+├── assets/
 │   ├── images/
-│   │   └── gui/
-│   │       └── logo_some.png         # Application logo
 │   └── templates/
-│       ├── 6555945_003.pdf          # PDF template
-│       └── qa/
-│           └── Example QA - Report ZF.xls    # QA report template
 │
-├── i18n/                             # Internationalization
-│   ├── ca.json                       # Catalan translations
-│   ├── en.json                       # English translations
-│   └── pl.json                       # Polish translations
+├── i18n/
+│   ├── ca.json
+│   ├── en.json
+│   └── pl.json
 │
-├── logs/                             # Application logs
-│   ├── gui.log                       # GUI application logs
-│   └── db_operations.log             # Database operation logs
+├── logs/
+│   ├── gui.log
+│   └── db_operations.log
 │
+├── tests/
+│   ├── test_orchestrator.py
+│   ├── test_spc_charts.py
+│   ├── test_spc_manager.py
+│   ├── test_data_uploader.py
+│   ├── test_kop_processing.py
+│   ├── test_data_transformer.py
+│   ├── test_dimensional_analyzer.py
+│   ├── test_dimensional_export.py
+│   └── test_excel_processing.py
 │
-├── main_app.py                       # Application entry point
-├── Configuració_Set_Up.txt           # Setup configuration notes
-├── requirements.txt                  # Python dependencies
-├── README.md                         # Project documentation
-└── .gitignore                        # Git ignore configuration
+├── docs/
+│   ├── capability/
+│   ├── ddbb/
+│   └── dimensional/
+│
+├── main_app.py
+├── requirements.txt
+├── README.md
+└── .gitignore
 ```
 
 ---
 
-## How It Works
+## Key Scripts & Entry Points
 
-- **src/** contains all logic, processing, and UI code. Each module is responsible for a specific part of the workflow:
-  - **data_processing/**: Excel file processing, data transformation, and pipeline management
-  - **database/**: PostgreSQL connection and data upload with PDF handling capabilities
-  - **gui/**: Complete PyQt5 GUI application with PDF viewer, data export, and interactive panels
-  - **models/**: Statistical analysis including capability studies, dimensional analysis, and SPC plotting
-  - **services/**: Application orchestration, database updates, and data export to Downloads folder
-- **config/** contains all configuration files for database connections, column mappings, and application settings
-- **assets/** contains static files including the application logo, PDF templates, and QA report examples
-- **i18n/** provides internationalization support for Catalan, English, and Polish languages
-- **logs/** stores application logs for debugging and monitoring
-- **tests/** contains comprehensive test suites for all major components
-- **docs/** contains project documentation including capability studies, database design, and dimensional analysis guides
+- **main_app.py**: Launches the main PyQt5 GUI application.
+- **src/gui/main_window.py**: Main application window and navigation.
+- **src/gui/windows/capability_study_window.py**: Capability study workflow (input, run, results, export).
+- **src/gui/windows/spc_chart_window.py**: Interactive SPC chart viewer and exporter.
+- **src/services/capacity_study_service.py**: Orchestrates capability study calculations and chart generation.
+- **src/services/spc_chart_service.py**: Handles SPC chart creation and management.
+- **src/models/capability/capability_study_manager.py**: Core capability study logic and result management.
+- **src/models/plotting/spc_charts_manager.py**: Loads and manages SPC chart data and files.
+- **src/gui/utils/session_manager.py**: Session save/load for study configurations and results.
 
-## Key Features
+---
 
+## New & Enhanced Features
+
+- **Session Management**: Save/load full study sessions, including all elements, settings, and results.
+- **Modern GUI**: Responsive, scalable PyQt5 interface with scrollable and resizable panels.
+- **Manual & Database Entry**: Add elements manually or load from database, with class and sigma selection.
+- **Editable Metrics**: Edit measured values and statistical metrics (average, deviations) per element.
+- **Advanced Extrapolation**: Configure p-value, attempts, and target sample size for extrapolation.
+- **Real-Time Indicators**: Live summary and per-element metrics, color-coded and editable.
+- **SPC Charting**: Generate and view all SPC/capability charts in-app, with export options.
+- **Results Tab**: Charts and metrics are shown directly in the Results tab (no popups).
+- **Export**: Export study results and charts from the Results tab.
+- **Scalable Layouts**: All panels and chart displays are scrollable and adapt to large datasets.
+
+---
+
+## Usage
+
+### Running the Application
+
+```sh
+python main_app.py
+```
+
+### Main Workflows
+
+- **Add Elements**: Use the configuration tab to add elements (manual or database), set class and sigma, and input values.
+- **Edit Metrics**: Click "Edit" on any element to modify values or metrics.
+- **Configure Extrapolation**: Set p-value, attempts, and target sample size as needed.
+- **Run Study**: Click "Run Study" to calculate all metrics and generate charts.
+- **View Results**: Switch to the Results tab to see all charts and export options.
+- **Save/Load Session**: Use the session controls to save or restore your work at any time.
+
+---
+
+## Requirements
+
+- Python 3.8+
+- See `requirements.txt` for all dependencies.
+
+---
+
+## Contributing
+
+- Follow the modular structure.
+- Write tests for new features.
+- Update documentation as needed.
+
+---
+
+## License
+
+[Specify your license here]
+
+---
+
+## Contact
+
+[Add contact or maintainer info here]
+
+---
 - **🔄 Data Processing Pipeline**: Automated Excel processing with KOP client support
 - **📊 Statistical Analysis**: Capability studies, SPC charts, and normality analysis
 - **🖥️ Modern GUI**: PyQt5 interface with PDF viewer toggle functionality

@@ -28,8 +28,8 @@ def start_project_backup_scheduler():
         next_backup = scheduler.get_next_backup_time()
         if next_backup:
             print(f"✅ Backup Scanner Projectes configurat")
-            print(f"   🕐 Propera execució: {next_backup}")
-            print(f"   🔄 Freqüència: Cada 24 hores")
+            print(f"🕐 Propera execució: {next_backup}")
+            print(f"🔄 Freqüència: Cada 24 hores")
         
         return scheduler
         

@@ -1147,6 +1147,21 @@ class ModernSPCChartWindow(QDialog):
         )
         dialog.exec_()
 
+    # Add methods to expose raw/extrapolated data and allow recalculation
+    def set_raw_data(self, raw_data):
+        """Set raw data for charts (for session restore/edit)"""
+        self.raw_data = raw_data
+
+    def set_extrapolated_data(self, extrapolated_data):
+        """Set extrapolated data for charts (for session restore/edit)"""
+        self.extrapolated_data = extrapolated_data
+
+    def recalculate_charts(self, new_values=None, new_deviation=None):
+        """Recalculate charts/statistics with edited values/deviation"""
+        # Use new_values or new_deviation to update stats and regenerate charts
+        # Call SPCChartService or underlying manager to update
+        pass
+
     def closeEvent(self, event):
         if hasattr(self, "chart_worker") and self.chart_worker.isRunning():
             self.chart_worker.quit()

@@ -1,20 +1,21 @@
 # src/gui/widgets/inputs.py
 from PyQt5.QtWidgets import QLineEdit, QTextEdit, QComboBox
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QTextOption
+
 
 class ModernLineEdit(QLineEdit):
     """Custom modern line edit with professional styling"""
     def __init__(self, placeholder="", parent=None):
         super().__init__(parent)
         self.setPlaceholderText(placeholder)
-        self.setMinimumHeight(44)
+        self.setMinimumHeight(32)
         self.setFont(QFont("Segoe UI", 10))
         self.setStyleSheet("""
             QLineEdit {
                 background-color: #ffffff;
                 border: 2px solid #ecf0f1;
                 border-radius: 6px;
-                padding: 10px 14px;
+                padding: 8px 12px;
                 color: #2c3e50;
                 font-weight: 400;
             }
@@ -30,6 +31,7 @@ class ModernLineEdit(QLineEdit):
                 font-style: italic;
             }
         """)
+
 
 class ModernTextEdit(QTextEdit):
     """Custom modern text edit for larger text input"""
@@ -55,19 +57,42 @@ class ModernTextEdit(QTextEdit):
                 border-color: #bdc3c7;
             }
         """)
+    
+    def setWordWrapMode(self, mode):
+        if isinstance(mode, bool):
+            # Convert bool to QTextOption.WrapMode
+            mode = QTextOption.WrapAtWordBoundaryOrAnywhere if mode else QTextOption.NoWrap
+        # Call parent class method with proper mode
+        super().setWordWrapMode(mode)
+    
+    def setReadOnly(self, read_only):
+        """Override to maintain styling when read-only"""
+        super().setReadOnly(read_only)
+        if read_only:
+            self.setStyleSheet("""
+                QTextEdit {
+                    background-color: #f8f9fa;
+                    border: 2px solid #ecf0f1;
+                    border-radius: 6px;
+                    padding: 12px;
+                    color: #495057;
+                    font-weight: 400;
+                }
+            """)
+
 
 class ModernComboBox(QComboBox):
     """Custom modern combo box with professional styling"""
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setMinimumHeight(44)
+        self.setMinimumHeight(32)
         self.setFont(QFont("Segoe UI", 10))
         self.setStyleSheet("""
             QComboBox {
                 background-color: #ffffff;
                 border: 2px solid #ecf0f1;
                 border-radius: 6px;
-                padding: 10px 14px;
+                padding: 6px 12px;
                 color: #2c3e50;
                 font-weight: 400;
                 min-width: 150px;
@@ -117,6 +142,7 @@ class ModernComboBox(QComboBox):
                 color: #ffffff;
             }
         """)
+
 
 class SearchEdit(ModernLineEdit):
     """Specialized search input with enhanced styling"""

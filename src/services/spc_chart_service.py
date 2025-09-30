@@ -2,13 +2,17 @@
 import os
 import logging
 from typing import Dict, List, Optional, Tuple, Any
+from PyQt5.QtCore import QObject, pyqtSignal
 
 from src.models.plotting.spc_charts_manager import SPCChartManager
 
-class SPCChartService:
+class SPCChartService(QObject):
+    chart_data_ready = pyqtSignal(dict)  # New signal for thread-safe chart creation
+    
     """Service layer for managing SPC chart operations"""
 
     def __init__(self, client: str, ref_project: str, batch_number: str):
+        super().__init__()
         self.client = client
         self.ref_project = ref_project
         self.batch_number = batch_number
@@ -172,6 +176,37 @@ class SPCChartService:
                 f"Error generating charts for element {element_key}: {e}", exc_info=True
             )
             return {}
+
+    def prepare_chart_data(self, element_key: str, chart_type: str) -> dict:
+        """Prepare chart data in worker thread without creating figures"""
+        try:
+            element_data = self.elements_data.get(element_key, {})
+            chart_data = {
+                'element_key': element_key,
+                'chart_type': chart_type,
+                'data': element_data,
+                'config': self.chart_manager.get_chart_config(element_key, chart_type)
+            }
+            return chart_data
+        except Exception as e:
+            self.logger.error(f"Error preparing chart data: {e}")
+            return None
+
+    def generate_all_charts_threadsafe(self, show: bool = False, save: bool = True) -> dict:
+        """Thread-safe version of chart generation"""
+        results = {}
+        
+        for element_key in self.elements_data:
+            results[element_key] = {}
+            for chart_type in self.chart_manager.CHART_TYPES:
+                chart_data = self.prepare_chart_data(element_key, chart_type)
+                if chart_data:
+                    self.chart_data_ready.emit(chart_data)
+                    results[element_key][chart_type] = True
+                else:
+                    results[element_key][chart_type] = False
+                    
+        return results
 
     def get_elements_summary(self) -> Dict[str, Any]:
         """Get summary of all elements including cavity information"""
