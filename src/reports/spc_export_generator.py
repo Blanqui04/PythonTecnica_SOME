@@ -372,17 +372,9 @@ class ExcelSPCReportGenerator:
         # Apply professional page formatting
         self.setup_professional_page_formatting(ws)
 
-    def create_professional_header(self, 
-                                ws: Worksheet, 
-                                start_row: int, 
-                                element_key: str,
-                                part_description: str,
-                                drawing_number: str,
-                                methodology: str,
-                                facility: str,
-                                dimension_class: str,
-                                element_data: Dict[str, Any]) -> int:
-        """Create professional automotive industry header with improved borders"""
+    def create_professional_header(self, ws, start_row, element_key, part_description,
+                                drawing_number, methodology, facility, dimension_class, element_data):
+        """Create professional header WITH all metadata"""
         
         current_row = start_row
         
@@ -430,27 +422,28 @@ class ExcelSPCReportGenerator:
         # Information grid with proper dimension class display
         clean_element_name = self.extract_element_name(element_key)
         cavity_info = element_data.get('cavity', 'N/A')
+        instrument = element_data.get('instrument', 'CMM')  # NEW
+        sigma_level = element_data.get('sigma', '6σ')
         
-        # Use full dimension class description
-        dimension_display = {
-            'cc': 'CC (Critical Characteristic)',
-            'sc': 'SC (Significant Characteristic)', 
-            'ic': 'IC (Important Characteristic)',
-            'standard': 'Standard Dimension'
-        }.get(dimension_class.lower(), dimension_class)
+        # Determine PP requirement based on sigma
+        sigma_numeric = 6 if '6' in sigma_level else 5
+        required_pp = 2.0 if sigma_numeric == 6 else 1.67
+        pp = element_data.get('pp', 0)
+        meets_requirement = "YES ✓" if pp >= required_pp else "NO ✗"
         
         info_data = [
             ["Client:", self.client, "Part Description:", part_description],
             ["Project Reference:", self.ref_project, "Drawing Number:", drawing_number],
             ["Batch Number:", self.batch_number, "Methodology:", methodology],
-            ["Quality Facility:", facility, "Dimension Class:", dimension_display],
-            ["Element Name:", clean_element_name, "Cavity:", cavity_info]
+            ["Quality Facility:", facility, "Dimension Class:", dimension_class],
+            ["Element Name:", clean_element_name, "Cavity:", cavity_info],
+            ["Measuring Instrument:", instrument, "Sigma Level:", sigma_level],
+            ["PP Requirement:", f"≥{required_pp:.2f}", "Meets Req.:", meets_requirement],
         ]
         
         for row_data in info_data:
-            ws.row_dimensions[current_row].height = 25  # Slightly reduced
+            ws.row_dimensions[current_row].height = 25
 
-            # Labels and values
             ws[f'A{current_row}'].value = row_data[0]
             ws[f'A{current_row}'].style = 'param_label'
             ws[f'E{current_row}'].value = row_data[2]
@@ -464,10 +457,21 @@ class ExcelSPCReportGenerator:
             ws[f'F{current_row}'].value = row_data[3]
             ws[f'F{current_row}'].style = 'data_cell'
             
+            # Color code the meets requirement cell
+            if "Meets Req." in row_data[2]:
+                cell = ws[f'F{current_row}']
+                if "YES" in row_data[3]:
+                    cell.fill = PatternFill(start_color=self.COLORS['success_green'], 
+                                        end_color=self.COLORS['success_green'], fill_type='solid')
+                    cell.font = Font(name='Arial', size=10, bold=True, color='FFFFFF')
+                else:
+                    cell.fill = PatternFill(start_color=self.COLORS['danger_red'], 
+                                        end_color=self.COLORS['danger_red'], fill_type='solid')
+                    cell.font = Font(name='Arial', size=10, bold=True, color='FFFFFF')
+            
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
         
-        # Small empty row
         ws.row_dimensions[current_row].height = 15
         current_row += 1
         return current_row
@@ -637,73 +641,84 @@ class ExcelSPCReportGenerator:
         
         return current_row
 
-    def create_second_page_optimized(self, ws: Worksheet, start_row: int, element_key: str, element_data: str) -> int:
-        """Create second page with I&MR charts, distribution, notes, and signature - all optimized"""
-        
-        # Start of page 2 - Individual and MR charts side by side
+
+    def create_second_page_optimized(self, ws, start_row, element_key, element_data):
+        """Create second page with ALL control charts"""
         current_row = start_row + 1
         
+        # CRITICAL: Check which control chart files actually exist
+        xbar_path = self.get_chart_path(element_key, 'xbar')
+        r_path = self.get_chart_path(element_key, 'r_chart')
+        s_path = self.get_chart_path(element_key, 's_chart')
         individuals_path = self.get_chart_path(element_key, 'individuals')
         mr_path = self.get_chart_path(element_key, 'moving_range')
         
-        if individuals_path or mr_path:
-            # Chart titles
+        # Determine which control charts to use
+        if xbar_path and r_path:
+            left_chart = xbar_path
+            right_chart = r_path
+            left_title = "X̄-CHART (AVERAGE)"
+            right_title = "R-CHART (RANGE)"
+            self.logger.info("Using X̄-R charts")
+        elif xbar_path and s_path:
+            left_chart = xbar_path
+            right_chart = s_path
+            left_title = "X̄-CHART (AVERAGE)"
+            right_title = "S-CHART (STD DEV)"
+            self.logger.info("Using X̄-S charts")
+        elif individuals_path and mr_path:
+            left_chart = individuals_path
+            right_chart = mr_path
+            left_title = "I-CHART (INDIVIDUALS)"
+            right_title = "MR-CHART (MOVING RANGE)"
+            self.logger.info("Using I-MR charts")
+        else:
+            left_chart = right_chart = None
+            self.logger.warning("No control charts found")
+        
+        if left_chart and right_chart:
+            # Titles
             ws.row_dimensions[current_row].height = 25
+            ws.merge_cells(f'A{current_row}:D{current_row}')
+            ws[f'A{current_row}'].value = left_title
+            ws[f'A{current_row}'].style = 'chart_title'
             
-            if individuals_path:
-                ws.merge_cells(f'A{current_row}:D{current_row}')
-                ws[f'A{current_row}'].value = self.CHART_TYPES['individuals']
-                ws[f'A{current_row}'].style = 'chart_title'
-                self.apply_complete_borders_to_range(ws, f'A{current_row}', f'D{current_row}')
-            
-            if mr_path:
-                ws.merge_cells(f'E{current_row}:H{current_row}')
-                ws[f'E{current_row}'].value = self.CHART_TYPES['moving_range']
-                ws[f'E{current_row}'].style = 'chart_title'
-                self.apply_complete_borders_to_range(ws, f'E{current_row}', f'H{current_row}')
-            
+            ws.merge_cells(f'E{current_row}:H{current_row}')
+            ws[f'E{current_row}'].value = right_title
+            ws[f'E{current_row}'].style = 'chart_title'
             current_row += 1
-
-            # Small spacer row (5-6 points)
+            
             ws.row_dimensions[current_row].height = 8
             current_row += 1
-
-            # Charts
+            
+            # Charts side by side
             chart_row = current_row
-            if individuals_path:
-                self.add_side_by_side_chart_optimized(ws, individuals_path, chart_row, 'left')
-
-            if mr_path:
-                self.add_side_by_side_chart_optimized(ws, mr_path, chart_row, 'right')
-
-            current_row = chart_row + 13  # Charts use 13 rows
+            self.add_side_by_side_chart_optimized(ws, left_chart, chart_row, 'left')
+            self.add_side_by_side_chart_optimized(ws, right_chart, chart_row, 'right')
+            
+            current_row = chart_row + 13
             current_row += 1
 
-        # Distribution Analysis
-        extrapolation_path = self.get_chart_path(element_key, 'extrapolation')
-        if extrapolation_path:
-            # Chart title
+        # Distribution chart
+        distribution_path = self.get_chart_path(element_key, 'distribution')
+        if distribution_path:
             ws.merge_cells(f'A{current_row}:H{current_row}')
-            ws[f'A{current_row}'].value = self.CHART_TYPES['extrapolation']
+            ws[f'A{current_row}'].value = "DISTRIBUTION ANALYSIS"
             ws[f'A{current_row}'].style = 'chart_title'
             ws.row_dimensions[current_row].height = 25
-            self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
-
-            # Small spacer row (5-6 points)
+            
             ws.row_dimensions[current_row].height = 8
             current_row += 1
-
-            # Chart
-            current_row = self.add_centered_chart_optimized(ws, extrapolation_path, current_row)
-
-            # Normal row after chart
+            
+            current_row = self.add_centered_chart_optimized(ws, distribution_path, current_row)
             ws.row_dimensions[current_row].height = 15
             current_row += 1
-
-        # Statistical summary table
+        
+        # Statistical summary
         current_row = self.create_statistical_summary_table(ws, current_row, element_data)
-        # Notes and signature section
+        
+        # Notes and signature
         current_row = self.create_notes_and_signature_section_optimized(ws, current_row)
         
         return current_row

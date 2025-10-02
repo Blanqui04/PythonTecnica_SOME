@@ -76,43 +76,58 @@ class SPCChartService(QObject):
             self.logger.error(f"Error initializing chart manager: {e}", exc_info=True)
             return False
 
-    def generate_all_charts(
-        self, show: bool = False, save: bool = True
-    ) -> Dict[str, Dict[str, bool]]:
-        """Generate all charts for all elements"""
-        if not self.chart_manager:
-            self.logger.error(
-                "Chart manager not initialized. Call initialize_chart_manager() first."
-            )
+
+    def generate_all_charts(self, show: bool = False, save: bool = True, chart_config: Dict = None):
+        """Generate all charts"""
+        if not self.chart_manager.elements_data:
             return {}
+        
+        if chart_config is None:
+            chart_config = {'type': 'i_mr', 'group_size': None}
+        
+        results = {}
+        
+        for element_key, element_data in self.chart_manager.elements_data.items():
+            element_results = {}
+            
+            # Base charts - RENAMED
+            base_charts = ['capability', 'normality', 'distribution']  # CHANGED
+            
+            # Control charts
+            chart_type = chart_config.get('type', 'i_mr')
+            group_size = chart_config.get('group_size', 5)
+            
+            if chart_type == 'i_mr':
+                control_charts = ['individuals', 'moving_range']
+            elif chart_type == 'xr':
+                control_charts = ['xbar', 'r_chart']
+            elif chart_type == 'xs':
+                control_charts = ['xbar', 's_chart']
+            else:
+                control_charts = ['individuals', 'moving_range']
+            
+            all_charts = base_charts + control_charts
+            
+            for chart_name in all_charts:
+                try:
+                    if chart_name in ['xbar', 'r_chart', 's_chart']:
+                        success = self.chart_manager.create_chart(
+                            element_key, chart_name, show=show, save=save, subgroup_size=group_size
+                        )
+                    else:
+                        success = self.chart_manager.create_chart(
+                            element_key, chart_name, show=show, save=save
+                        )
+                    element_results[chart_name] = success
+                    self.logger.info(f"  {'✓' if success else '✗'} {chart_name}")
+                except Exception as e:
+                    self.logger.error(f"  ✗ {chart_name}: {e}")
+                    element_results[chart_name] = False
+            
+            results[element_key] = element_results
+        
+        return results
 
-        try:
-            self.logger.info("Starting chart generation for all elements")
-
-            # Generate charts using the manager
-            results = self.chart_manager.create_all_charts(show=show, save=save)
-
-            # Log results with detailed extrapolation info
-            total_charts = sum(len(elem_results) for elem_results in results.values())
-            successful_charts = sum(
-                sum(elem_results.values()) for elem_results in results.values()
-            )
-
-            # Log extrapolation chart results specifically
-            for element_key, element_results in results.items():
-                if 'extrapolation' in element_results:
-                    extrap_success = element_results['extrapolation']
-                    self.logger.info(f"Extrapolation chart for '{element_key}': {'SUCCESS' if extrap_success else 'FAILED'}")
-
-            self.logger.info(
-                f"Chart generation completed: {successful_charts}/{total_charts} charts created"
-            )
-
-            return results
-
-        except Exception as e:
-            self.logger.error(f"Error generating charts: {e}", exc_info=True)
-            return {}
 
     def generate_charts_for_element(
         self,

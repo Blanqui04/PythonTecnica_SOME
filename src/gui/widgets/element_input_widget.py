@@ -1,9 +1,9 @@
-# src/gui/widgets/element_input_widget.py
+# src/gui/widgets/element_input_widget.py - FIXED VERSION
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
     QGroupBox, QFrame, QGridLayout, QScrollArea, QPushButton, 
     QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup,
-    QSplitter, QTabWidget
+    QSplitter, QTabWidget, QTableWidgetItem
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QThread, QObject, pyqtSlot
 from PyQt5.QtGui import QFont, QPalette, QColor
@@ -16,261 +16,6 @@ import math
 from scipy import stats
 
 logger = logging.getLogger(__name__)
-
-
-class ElementMetricsWidget(QFrame):
-    """Compact widget to display metrics for a single element"""
-    metricsChanged = pyqtSignal(str, dict)
-    removeRequested = pyqtSignal(object)
-    editRequested = pyqtSignal(object)
-    
-    def __init__(self, element_data, parent=None):
-        super().__init__(parent)
-        self.element_data = element_data
-        self.element_id = element_data['element_id']
-        self.metrics_inputs = {}
-        self.setup_ui()
-    
-    def setup_ui(self):
-        self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        self.setStyleSheet("""
-            QFrame {
-                background-color: #ffffff;
-                border: 2px solid #dee2e6;
-                border-radius: 6px;
-                padding: 10px;
-                margin: 3px;
-            }
-            QFrame:hover {
-                border-color: #3498db;
-            }
-        """)
-        
-        layout = QVBoxLayout()
-        layout.setSpacing(8)
-        
-        # Compact header
-        header_layout = QHBoxLayout()
-        header = QLabel(f"{self.element_id}")
-        header.setFont(QFont("Segoe UI", 10, QFont.Bold))
-        header.setStyleSheet("color: #2c3e50; background: transparent; border: none;")
-        header_layout.addWidget(header)
-        
-        # Cavity and class info inline
-        info = QLabel(f"Cav: {self.element_data.get('cavity', 'N/A')} | {self.element_data.get('class', 'N/A')}")
-        info.setFont(QFont("Segoe UI", 8))
-        info.setStyleSheet("color: #6c757d; background: transparent; border: none;")
-        header_layout.addWidget(info)
-        header_layout.addStretch()
-        layout.addLayout(header_layout)
-        
-        # Compact metrics in 2 columns
-        metrics = self._calculate_metrics()
-        
-        metrics_layout = QGridLayout()
-        metrics_layout.setSpacing(5)
-        metrics_layout.setVerticalSpacing(3)
-        
-        metric_items = [
-            ('Cp', metrics['cp']),
-            ('Cpk', metrics['cpk']),
-            ('σ', metrics['sigma_short']),
-            ('PPM', f"{int(metrics['ppm_short']):,}")
-        ]
-        
-        for i, (label, value) in enumerate(metric_items):
-            row = i // 2
-            col = (i % 2) * 2
-            
-            lbl = QLabel(f"{label}:")
-            lbl.setStyleSheet("color: #495057; font-size: 8pt; background: transparent; border: none;")
-            metrics_layout.addWidget(lbl, row, col)
-            
-            if isinstance(value, str):
-                value_text = value
-                color = "#495057"
-            else:
-                value_text = f"{value:.3f}"
-                color = self._get_metric_color(label, value)
-            
-            value_lbl = QLabel(value_text)
-            value_lbl.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 8pt; background: transparent; border: none;")
-            metrics_layout.addWidget(value_lbl, row, col + 1)
-            
-            self.metrics_inputs[label.lower().replace('σ', 'sigma')] = value if not isinstance(value, str) else 0
-        
-        layout.addLayout(metrics_layout)
-        
-        # Compact action buttons
-        btn_layout = QHBoxLayout()
-        btn_layout.setSpacing(5)
-        
-        edit_btn = QPushButton("✏️")
-        edit_btn.setToolTip("Edit Values")
-        edit_btn.setFixedSize(28, 28)
-        edit_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #007bff;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 12pt;
-            }
-            QPushButton:hover {
-                background-color: #0056b3;
-            }
-        """)
-        edit_btn.clicked.connect(self._edit_values)
-        
-        remove_btn = QPushButton("🗑️")
-        remove_btn.setToolTip("Remove")
-        remove_btn.setFixedSize(28, 28)
-        remove_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #dc3545;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                font-size: 12pt;
-            }
-            QPushButton:hover {
-                background-color: #c82333;
-            }
-        """)
-        remove_btn.clicked.connect(self._request_remove)
-        
-        btn_layout.addWidget(edit_btn)
-        btn_layout.addWidget(remove_btn)
-        btn_layout.addStretch()
-        layout.addLayout(btn_layout)
-        
-        self.setLayout(layout)
-        self.setFixedHeight(110)  # Compact height
-    
-    def _calculate_metrics(self):
-        """Calculate all statistical metrics"""
-        values = self.element_data['values']
-        n = len(values)
-        
-        if n == 0:
-            return self._get_empty_metrics()
-        
-        # Basic statistics
-        average = sum(values) / n
-        variance = sum((x - average) ** 2 for x in values) / (n - 1) if n > 1 else 0
-        sigma_long = math.sqrt(variance)
-        
-        # Sigma short (moving range method)
-        if n > 1:
-            moving_ranges = [abs(values[i] - values[i-1]) for i in range(1, n)]
-            avg_mr = sum(moving_ranges) / len(moving_ranges) if moving_ranges else 0
-            sigma_short = avg_mr / 1.128
-        else:
-            sigma_short = 0
-        
-        # Tolerances
-        nominal = self.element_data['nominal']
-        tol_minus = abs(self.element_data['tol_minus'])
-        tol_plus = abs(self.element_data['tol_plus'])
-        USL = nominal + tol_plus
-        LSL = nominal - tol_minus
-        tolerance = USL - LSL
-        
-        # Capability indices
-        if sigma_short > 0:
-            cp = tolerance / (6 * sigma_short)
-            cpu = (USL - average) / (3 * sigma_short)
-            cpl = (average - LSL) / (3 * sigma_short)
-            cpk = min(cpu, cpl)
-        else:
-            cp = cpk = 0
-        
-        if sigma_long > 0:
-            pp = tolerance / (6 * sigma_long)
-            ppu = (USL - average) / (3 * sigma_long)
-            ppl = (average - LSL) / (3 * sigma_long)
-            ppk = min(ppu, ppl)
-        else:
-            pp = ppk = 0
-        
-        # PPM calculations
-        if sigma_short > 0:
-            z_usl_short = (USL - average) / sigma_short
-            z_lsl_short = (average - LSL) / sigma_short
-            ppm_short = (stats.norm.cdf(-z_lsl_short) + (1 - stats.norm.cdf(z_usl_short))) * 1e6
-        else:
-            ppm_short = 0
-        
-        return {
-            'average': average,
-            'sigma_long': sigma_long,
-            'sigma_short': sigma_short,
-            'cp': cp,
-            'cpk': cpk,
-            'pp': pp,
-            'ppk': ppk,
-            'ppm_short': ppm_short
-        }
-    
-    def _get_empty_metrics(self):
-        """Return zero metrics"""
-        return {
-            'average': 0, 'sigma_long': 0, 'sigma_short': 0,
-            'cp': 0, 'cpk': 0, 'pp': 0, 'ppk': 0,
-            'ppm_short': 0
-        }
-    
-    def _get_metric_color(self, metric_type, value):
-        """Get color coding for metrics"""
-        if any(x in metric_type.lower() for x in ['cp', 'pp']):
-            if value >= 1.67:
-                return "#28a745"
-            elif value >= 1.33:
-                return "#17a2b8"
-            elif value >= 1.0:
-                return "#ffc107"
-            else:
-                return "#dc3545"
-        return "#495057"
-    
-    def _edit_values(self):
-        """Open dialog to edit element values"""
-        from .element_edit_dialog import ElementEditDialog
-        dialog = ElementEditDialog(
-            self.element_id,
-            self.element_data['values'],
-            {
-                'nominal': self.element_data['nominal'],
-                'tol_minus': self.element_data['tol_minus'],
-                'tol_plus': self.element_data['tol_plus']
-            },
-            self
-        )
-        if dialog.exec_():
-            new_values = dialog.get_values()
-            self.element_data['values'] = new_values
-            # Refresh display
-            parent = self.parent()
-            self.setParent(None)
-            self.__init__(self.element_data, parent)
-            self.metricsChanged.emit(self.element_id, self._calculate_metrics())
-    
-    def _request_remove(self):
-        """Request removal of this element"""
-        reply = QMessageBox.question(
-            self, 'Remove Element',
-            f'Remove element {self.element_id}?',
-            QMessageBox.Yes | QMessageBox.No
-        )
-        if reply == QMessageBox.Yes:
-            self.removeRequested.emit(self)
-    
-    def get_element_data(self):
-        """Return current element data with metrics"""
-        return {
-            **self.element_data,
-            'metrics': self.metrics_inputs
-        }
 
 
 class ElementInputWidget(QWidget):
@@ -311,7 +56,7 @@ class ElementInputWidget(QWidget):
         right_layout = QVBoxLayout(right_panel)
         right_layout.setSpacing(15)
         self._create_elements_area(right_layout)
-        self._create_extrapolation_config(right_layout)
+        self._create_chart_type_selection(right_layout)
         self._create_action_buttons(right_layout)
         splitter.addWidget(right_panel)
         
@@ -341,7 +86,7 @@ class ElementInputWidget(QWidget):
         """)
         
         layout = QVBoxLayout(form_group)
-        layout.setSpacing(15)
+        layout.setSpacing(10)
         
         # Mode selection
         mode_frame = QFrame()
@@ -412,20 +157,37 @@ class ElementInputWidget(QWidget):
         self.sigma_combo.addItems(["5σ", "6σ"])
         self.sigma_combo.setCurrentIndex(1)  # Default to 6σ
         info_layout.addWidget(self.sigma_combo, 2, 2)
+
+        # Row 4: NEW - Measuring Instrument
+        info_layout.addWidget(QLabel("Instrument:"), 3, 0)
+        self.instrument_combo = ModernComboBox()
+        self.instrument_combo.addItems([
+            "3D Scanner",  # Default
+            "CMM (Coordinate Measuring Machine)",
+            "Optical CMM",
+            "Laser Scanner",
+            "Caliper",
+            "Micrometer",
+            "Height Gauge",
+            "Manual Measurement",
+            "Other"
+        ])
+        self.instrument_combo.setCurrentIndex(0)  # Default to 3D Scanner
+        info_layout.addWidget(self.instrument_combo, 3, 1, 1, 2)
         
         # Row 4: Nominal and tolerances
-        info_layout.addWidget(QLabel("Nominal:"), 3, 0)
+        info_layout.addWidget(QLabel("Nominal:"), 4, 0)
         self.nominal_input = ModernLineEdit("0.0000")
-        info_layout.addWidget(self.nominal_input, 3, 1, 1, 2)
-        
-        info_layout.addWidget(QLabel("Tolerance -:"), 4, 0)
+        info_layout.addWidget(self.nominal_input, 4, 1, 1, 2)
+
+        info_layout.addWidget(QLabel("Tolerance -:"), 5, 0)
         self.tol_minus_input = ModernLineEdit("-0.0000")
-        info_layout.addWidget(self.tol_minus_input, 4, 1, 1, 2)
-        
-        info_layout.addWidget(QLabel("Tolerance +:"), 5, 0)
+        info_layout.addWidget(self.tol_minus_input, 5, 1, 1, 2)
+
+        info_layout.addWidget(QLabel("Tolerance +:"), 6, 0)
         self.tol_plus_input = ModernLineEdit("+0.0000")
-        info_layout.addWidget(self.tol_plus_input, 5, 1, 1, 2)
-        
+        info_layout.addWidget(self.tol_plus_input, 6, 1, 1, 2)
+
         layout.addWidget(info_frame)
         
         # Database buttons
@@ -485,65 +247,71 @@ class ElementInputWidget(QWidget):
         self.db_buttons_frame.hide()
         layout.addWidget(self.db_buttons_frame)
         
-        # Values section
+        # VALUES SECTION - OPTIMIZED
         values_frame = QFrame()
         values_frame.setStyleSheet("""
             QFrame {
                 background-color: white;
                 border: 1px solid #dee2e6;
                 border-radius: 4px;
-                padding: 15px;
+                padding: 10px;
             }
         """)
         values_layout = QVBoxLayout(values_frame)
+        values_layout.setSpacing(5)
         
         values_header = QHBoxLayout()
-        values_label = QLabel("📊 Measured Values (min. 5)")
+        values_label = QLabel("📊 Measured Values")
         values_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
         values_header.addWidget(values_label)
         
-        add_values_btn = QPushButton("➕ Add More")
-        add_values_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #6c757d;
-                color: white;
-                border: none;
-                border-radius: 4px;
-                padding: 6px 12px;
-                font-size: 9pt;
-            }
-            QPushButton:hover {
-                background-color: #545b62;
-            }
-        """)
-        add_values_btn.clicked.connect(lambda: self._add_value_inputs(5))
-        values_header.addWidget(add_values_btn)
+        add_rows_btn = QPushButton("➕ Add 10")
+        add_rows_btn.setMaximumWidth(80)
+        add_rows_btn.clicked.connect(lambda: self._add_value_rows(10))
+        values_header.addWidget(add_rows_btn)
+        
+        clear_values_btn = QPushButton("🗑️")
+        clear_values_btn.setMaximumWidth(40)
+        clear_values_btn.clicked.connect(self._clear_value_table)
+        values_header.addWidget(clear_values_btn)
         values_header.addStretch()
         
         values_layout.addLayout(values_header)
         
-        # Scrollable values area
-        values_scroll = QScrollArea()
-        values_scroll.setWidgetResizable(True)
-        values_scroll.setMaximumHeight(200)
-        values_scroll.setStyleSheet("""
-            QScrollArea {
+        # TABLE FOR VALUES - MAXIMIZED HEIGHT
+        from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+        
+        self.values_table = QTableWidget()
+        self.values_table.setColumnCount(1)
+        self.values_table.setHorizontalHeaderLabels(["Value"])
+        self.values_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.values_table.setRowCount(20)  # Start with 20 rows
+        self.values_table.setMinimumHeight(400)  # Use available space
+        self.values_table.setStyleSheet("""
+            QTableWidget {
                 border: 1px solid #e9ecef;
                 border-radius: 4px;
                 background-color: #f8f9fa;
+                gridline-color: #dee2e6;
+            }
+            QTableWidget::item {
+                padding: 4px;
+            }
+            QHeaderView::section {
+                background-color: #e9ecef;
+                padding: 6px;
+                border: 1px solid #dee2e6;
+                font-weight: bold;
             }
         """)
         
-        self.values_widget = QWidget()
-        self.values_layout = QGridLayout()
-        self.values_layout.setSpacing(8)
-        self.values_inputs = []
-        self._add_value_inputs(10)  # Start with 10 inputs
+        # Initialize empty cells
+        for row in range(20):
+            item = QTableWidgetItem("")
+            item.setTextAlignment(Qt.AlignCenter)
+            self.values_table.setItem(row, 0, item)
         
-        self.values_widget.setLayout(self.values_layout)
-        values_scroll.setWidget(self.values_widget)
-        values_layout.addWidget(values_scroll)
-        
+        values_layout.addWidget(self.values_table)
         layout.addWidget(values_frame)
         
         # Add element button
@@ -566,6 +334,19 @@ class ElementInputWidget(QWidget):
         layout.addWidget(add_element_btn)
         
         main_layout.addWidget(form_group)
+
+    def _add_value_rows(self, count):
+        """Add more rows to value table"""
+        current_rows = self.values_table.rowCount()
+        self.values_table.setRowCount(current_rows + count)
+        for row in range(current_rows, current_rows + count):
+            item = QTableWidgetItem("")
+            self.values_table.setItem(row, 0, item)
+
+    def _clear_value_table(self):
+        """Clear all values in table"""
+        for row in range(self.values_table.rowCount()):
+            self.values_table.setItem(row, 0, QTableWidgetItem(""))
     
     def _add_value_inputs(self, count):
         """Add value input fields"""
@@ -581,7 +362,7 @@ class ElementInputWidget(QWidget):
             self.values_layout.addWidget(value_input, row, col)
     
     def _create_elements_area(self, main_layout):
-        """Create scrollable area for element widgets"""
+        """Create scrollable area for element widgets - FIXED"""
         group = QGroupBox("📦 Added Elements")
         group.setFont(QFont("Segoe UI", 12, QFont.Bold))
         group.setStyleSheet("""
@@ -605,7 +386,8 @@ class ElementInputWidget(QWidget):
         
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
-        scroll.setMinimumHeight(400)
+        scroll.setMinimumHeight(250)  # Reduced from 400
+        scroll.setMaximumHeight(350)  # Added maximum height
         scroll.setStyleSheet("""
             QScrollArea {
                 border: 1px solid #dee2e6;
@@ -616,8 +398,9 @@ class ElementInputWidget(QWidget):
         
         container = QWidget()
         self.elements_layout = QVBoxLayout()
-        self.elements_layout.setSpacing(10)
+        self.elements_layout.setSpacing(5)  # Reduced spacing
         self.elements_layout.setAlignment(Qt.AlignTop)
+        self.elements_layout.setContentsMargins(5, 5, 5, 5)
         container.setLayout(self.elements_layout)
         
         # Add placeholder
@@ -639,14 +422,14 @@ class ElementInputWidget(QWidget):
         group.setLayout(layout)
         main_layout.addWidget(group)
     
-    def _create_extrapolation_config(self, main_layout):
-        """Enhanced extrapolation configuration"""
-        group = QGroupBox("🔬 Extrapolation Settings")
+    def _create_chart_type_selection(self, main_layout):
+        """Create chart type selection - REPLACES extrapolation config"""
+        group = QGroupBox("📊 Charts to Generate")
         group.setFont(QFont("Segoe UI", 12, QFont.Bold))
         group.setStyleSheet("""
             QGroupBox {
                 color: #2c3e50;
-                border: 2px solid #ffc107;
+                border: 2px solid #17a2b8;
                 border-radius: 8px;
                 margin-top: 10px;
                 padding-top: 15px;
@@ -661,55 +444,70 @@ class ElementInputWidget(QWidget):
         """)
         
         layout = QVBoxLayout()
+        layout.setSpacing(10)
         
-        # Enable extrapolation
-        self.extrap_checkbox = QCheckBox("Enable Extrapolation for Normality")
-        self.extrap_checkbox.setFont(QFont("Segoe UI", 10))
-        self.extrap_checkbox.toggled.connect(self._toggle_extrapolation_settings)
-        layout.addWidget(self.extrap_checkbox)
+        # Chart type selection with radio buttons
+        self.chart_type_group = QButtonGroup()
         
-        # Settings frame
-        self.extrap_settings_frame = QFrame()
-        self.extrap_settings_frame.setStyleSheet("""
-            QFrame {
-                background-color: white;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 10px;
-            }
-        """)
-        self.extrap_settings_frame.setEnabled(False)
+        # I-MR Charts (default - for individual measurements)
+        self.i_mr_radio = QRadioButton("I + MR Charts (Individual + Moving Range)")
+        self.i_mr_radio.setChecked(True)
+        self.i_mr_radio.setToolTip("For individual measurements - most common")
+        self.chart_type_group.addButton(self.i_mr_radio)
+        layout.addWidget(self.i_mr_radio)
         
-        settings_layout = QGridLayout(self.extrap_settings_frame)
+        # X-R Charts (for subgroups)
+        xr_container = QWidget()
+        xr_layout = QHBoxLayout(xr_container)
+        xr_layout.setContentsMargins(0, 0, 0, 0)
         
-        # Target values
-        settings_layout.addWidget(QLabel("Target Values:"), 0, 0)
-        self.target_values_spin = QSpinBox()
-        self.target_values_spin.setRange(10, 200)
-        self.target_values_spin.setValue(50)
-        self.target_values_spin.setSuffix(" values")
-        settings_layout.addWidget(self.target_values_spin, 0, 1)
+        self.xr_radio = QRadioButton("X̄-R Charts (Average + Range)")
+        self.xr_radio.setToolTip("For subgroup data - requires group size")
+        self.chart_type_group.addButton(self.xr_radio)
+        xr_layout.addWidget(self.xr_radio)
         
-        # Max attempts
-        settings_layout.addWidget(QLabel("Max Attempts:"), 1, 0)
-        self.max_attempts_spin = QSpinBox()
-        self.max_attempts_spin.setRange(10, 200)
-        self.max_attempts_spin.setValue(100)
-        self.max_attempts_spin.setSuffix(" attempts")
-        settings_layout.addWidget(self.max_attempts_spin, 1, 1)
+        xr_layout.addWidget(QLabel("Group size:"))
+        self.xr_group_size_spin = QSpinBox()
+        self.xr_group_size_spin.setRange(2, 10)
+        self.xr_group_size_spin.setValue(5)
+        self.xr_group_size_spin.setEnabled(False)
+        xr_layout.addWidget(self.xr_group_size_spin)
+        xr_layout.addStretch()
         
-        # P-value objective
-        settings_layout.addWidget(QLabel("P-value Target:"), 2, 0)
-        self.p_value_spin = QDoubleSpinBox()
-        self.p_value_spin.setRange(0.01, 0.10)
-        self.p_value_spin.setValue(0.05)
-        self.p_value_spin.setDecimals(3)
-        self.p_value_spin.setSingleStep(0.01)
-        settings_layout.addWidget(self.p_value_spin, 2, 1)
+        layout.addWidget(xr_container)
         
-        layout.addWidget(self.extrap_settings_frame)
+        # X-S Charts (for subgroups with std dev)
+        xs_container = QWidget()
+        xs_layout = QHBoxLayout(xs_container)
+        xs_layout.setContentsMargins(0, 0, 0, 0)
+        
+        self.xs_radio = QRadioButton("X̄-S Charts (Average + Std Dev)")
+        self.xs_radio.setToolTip("For subgroup data - requires group size")
+        self.chart_type_group.addButton(self.xs_radio)
+        xs_layout.addWidget(self.xs_radio)
+        
+        xs_layout.addWidget(QLabel("Group size:"))
+        self.xs_group_size_spin = QSpinBox()
+        self.xs_group_size_spin.setRange(2, 10)
+        self.xs_group_size_spin.setValue(5)
+        self.xs_group_size_spin.setEnabled(False)
+        xs_layout.addWidget(self.xs_group_size_spin)
+        xs_layout.addStretch()
+        
+        layout.addWidget(xs_container)
+        
+        # Connect signals to enable/disable group size inputs
+        self.i_mr_radio.toggled.connect(lambda checked: self._on_chart_type_changed())
+        self.xr_radio.toggled.connect(lambda checked: self._on_chart_type_changed())
+        self.xs_radio.toggled.connect(lambda checked: self._on_chart_type_changed())
+        
         group.setLayout(layout)
         main_layout.addWidget(group)
+
+    def _on_chart_type_changed(self):
+        """Enable/disable group size inputs based on chart type"""
+        self.xr_group_size_spin.setEnabled(self.xr_radio.isChecked())
+        self.xs_group_size_spin.setEnabled(self.xs_radio.isChecked())
     
     def _create_action_buttons(self, main_layout):
         """Create action buttons"""
@@ -802,7 +600,8 @@ class ElementInputWidget(QWidget):
             cavity = self.cavity_input.text().strip()
             class_name = self.class_input.text().strip()
             sigma = self.sigma_combo.currentText()
-            
+            instrument = self.instrument_combo.currentText()
+
             # Validate tolerances
             try:
                 nominal = float(self.nominal_input.text())
@@ -814,11 +613,11 @@ class ElementInputWidget(QWidget):
             
             # Get measured values
             values = []
-            for inp in self.values_inputs:
-                text = inp.text().strip()
-                if text:
+            for row in range(self.values_table.rowCount()):
+                item = self.values_table.item(row, 0)
+                if item and item.text().strip():
                     try:
-                        values.append(float(text))
+                        values.append(float(item.text().strip()))
                     except ValueError:
                         pass
             
@@ -835,26 +634,34 @@ class ElementInputWidget(QWidget):
                     )
                     return
             
-            # Create element data
+            # Create element data with proper structure
             element_data = {
                 'element_id': element_id,
                 'cavity': cavity,
                 'class': class_name,
                 'sigma': sigma,
+                'instrument': instrument,  # NEW
                 'nominal': nominal,
                 'tol_minus': tol_minus,
                 'tol_plus': tol_plus,
-                'values': values
+                'values': values.copy(),
+                'original_values': values.copy(),
+                'has_extrapolation': False,
+                'extrapolated_values': []
             }
             
             # Remove placeholder if present
             if self.elements_placeholder.parent():
                 self.elements_placeholder.setParent(None)
             
+            # Import the enhanced widget
+            from .element_metrics_widget import ElementMetricsWidget
+            
             # Create and add widget
             widget = ElementMetricsWidget(element_data, self)
             widget.removeRequested.connect(self._remove_element_widget)
             widget.metricsChanged.connect(self._on_metrics_changed)
+            widget.valuesChanged.connect(self._on_values_changed)
             
             self.elements_layout.addWidget(widget)
             self.element_widgets.append(widget)
@@ -870,7 +677,7 @@ class ElementInputWidget(QWidget):
             )
             
         except Exception as e:
-            logger.error(f"Error adding element: {e}")
+            logger.error(f"Error adding element: {e}", exc_info=True)
             QMessageBox.critical(self, "Error", f"Failed to add element: {e}")
     
     def _remove_element_widget(self, widget):
@@ -881,7 +688,7 @@ class ElementInputWidget(QWidget):
             # Remove from elements list
             for i, elem in enumerate(self.elements):
                 if (elem['element_id'] == widget.element_data['element_id'] and 
-                    elem['cavity'] == widget.element_data['cavity']):
+                    elem['cavity'] == widget.element_data.get('cavity', '')):
                     self.elements.pop(i)
                     break
             
@@ -896,8 +703,25 @@ class ElementInputWidget(QWidget):
             self._emit_summary_metrics()
     
     def _on_metrics_changed(self, element_id, metrics):
-        """Handle metrics changes"""
+        """Handle metrics changes from widget"""
+        # Update the element data in the list
+        for elem in self.elements:
+            if elem['element_id'] == element_id:
+                if 'metrics' not in elem:
+                    elem['metrics'] = {}
+                elem['metrics'].update(metrics)
+                break
+        
         self._emit_summary_metrics()
+
+    def _on_values_changed(self, element_id, values):
+        """Handle value changes from widget"""
+        # Update the element values in the list
+        for elem in self.elements:
+            if elem['element_id'] == element_id:
+                elem['values'] = values.copy()
+                logger.info(f"Updated values for {element_id}: {len(values)} values")
+                break
     
     def _emit_summary_metrics(self):
         """Calculate and emit summary metrics for all elements"""
@@ -912,7 +736,7 @@ class ElementInputWidget(QWidget):
         sigma_values = []
         
         for widget in self.element_widgets:
-            metrics = widget.metrics_inputs
+            metrics = widget.metrics
             cp_values.append(metrics.get('cp', 0))
             cpk_values.append(metrics.get('cpk', 0))
             ppm_values.append(metrics.get('ppm_short', 0))
@@ -948,31 +772,74 @@ class ElementInputWidget(QWidget):
             self._emit_summary_metrics()
     
     def run_study(self):
-        """Run the capability study"""
+        """Run the capability study - ABSOLUTELY FINAL FIX"""
         if not self.elements:
             QMessageBox.warning(self, "No Data", "Please add at least one element")
             return
         
-        # Collect current data from widgets
         elements_data = []
         for widget in self.element_widgets:
-            elements_data.append(widget.get_element_data())
+            widget_data = widget.get_element_data()
+            
+            # Get all value arrays
+            original_values = list(widget_data.get('original_values', []))
+            extrapolated_values = list(widget_data.get('extrapolated_values', []))
+            has_extrapolation = widget_data.get('has_extrapolation', False)
+            
+            # CRITICAL: Combine for study
+            if has_extrapolation and len(extrapolated_values) > 0:
+                all_values_for_study = original_values + extrapolated_values
+            else:
+                all_values_for_study = original_values
+            
+            logger.info(f"═══ STUDY PREP: {widget_data['element_id']} ═══")
+            logger.info(f"  Original: {len(original_values)}")
+            logger.info(f"  Extrapolated: {len(extrapolated_values)}")
+            logger.info(f"  Total for study: {len(all_values_for_study)}")
+            logger.info(f"  Has extrap flag: {has_extrapolation}")
+            
+            # Build complete element data
+            element_study_data = {
+                'element_id': widget_data['element_id'],
+                'cavity': widget_data.get('cavity', ''),
+                'class': widget_data.get('class', ''),
+                'sigma': widget_data.get('sigma', '6σ'),
+                'instrument': widget_data.get('instrument', '3D Scanner'),
+                'nominal': widget_data['nominal'],
+                'tol_minus': widget_data['tol_minus'],
+                'tol_plus': widget_data['tol_plus'],
+                'values': all_values_for_study,  # Combined values
+                'has_extrapolation': has_extrapolation,
+                'extrapolated_values': extrapolated_values,  # Separate for tracking
+                'original_values': original_values,  # Separate for reference
+                'metrics': widget_data.get('metrics')  # Custom metrics if edited
+            }
+            
+            elements_data.append(element_study_data)
         
-        # Extrapolation configuration
-        extrap_config = {
-            'include_extrapolation': self.extrap_checkbox.isChecked(),
-            'target_values': self.target_values_spin.value() if self.extrap_checkbox.isChecked() else 50,
-            'max_attempts': self.max_attempts_spin.value() if self.extrap_checkbox.isChecked() else 100,
-            'p_value_target': self.p_value_spin.value() if self.extrap_checkbox.isChecked() else 0.05
-        }
+        # Get chart configuration
+        chart_config = self.get_study_data()['chart_config']
         
-        logger.info(f"Running study with {len(elements_data)} elements")
-        logger.info(f"Extrapolation config: {extrap_config}")
+        logger.info(f"═══ RUNNING STUDY ═══")
+        logger.info(f"  Elements: {len(elements_data)}")
+        logger.info(f"  Chart config: {chart_config}")
         
-        self.study_requested.emit(elements_data, extrap_config)
+        self.study_requested.emit(elements_data, chart_config)
+
+    def _on_element_data_changed(self, element_id, element_data):
+        """Handle element data changes from child widgets"""
+        # Find and update the element in our list
+        for i, elem in enumerate(self.elements):
+            if elem.get('element_id') == element_id:
+                # Update with new data
+                self.elements[i] = element_data
+                logger.info(f"Parent updated element {element_id} data")
+                logger.info(f"  has_extrapolation: {element_data.get('has_extrapolation')}")
+                logger.info(f"  extrapolated_values: {len(element_data.get('extrapolated_values', []))}")
+                break
     
     def _clear_inputs(self):
-        """Clear input fields"""
+        """Clear input fields - FIXED for table"""
         if self.manual_radio.isChecked():
             self.element_name_input.clear()
         else:
@@ -980,12 +847,15 @@ class ElementInputWidget(QWidget):
         
         self.cavity_input.clear()
         self.class_input.clear()
+        self.instrument_combo.setCurrentIndex(0)  # Reset to 3D Scanner
         self.nominal_input.clear()
         self.tol_minus_input.clear()
         self.tol_plus_input.clear()
         
-        for inp in self.values_inputs:
-            inp.clear()
+        # Clear values table instead of values_inputs
+        if hasattr(self, 'values_table'):
+            for row in range(self.values_table.rowCount()):
+                self.values_table.setItem(row, 0, QTableWidgetItem(""))
     
     def _load_available_elements(self):
         """Load available elements from database"""
@@ -1040,7 +910,7 @@ class ElementInputWidget(QWidget):
                 self.tol_minus_input.setText(str(first_measurement.get('tol_minus', '')))
                 self.tol_plus_input.setText(str(first_measurement.get('tol_plus', '')))
                 
-                # Fill values - ensure we have enough input fields
+                # Fill values
                 values = [m.get('value', 0) for m in measurements]
                 if len(values) > len(self.values_inputs):
                     self._add_value_inputs(len(values) - len(self.values_inputs))
@@ -1062,21 +932,57 @@ class ElementInputWidget(QWidget):
             QMessageBox.critical(self, "Error", f"Failed to load element data: {e}")
     
     def get_study_data(self):
-        """Get all study data for session saving"""
-        return {
-            'elements': self.elements,
-            'extrapolation': {
-                'enabled': self.extrap_checkbox.isChecked(),
-                'target_values': self.target_values_spin.value(),
-                'max_attempts': self.max_attempts_spin.value(),
-                'p_value_target': self.p_value_spin.value()
+        """Get all study data for session saving - FIXED"""
+        elements_data = []
+        for widget in self.element_widgets:
+            widget_data = widget.get_element_data()
+            
+            # CRITICAL: Include all extrapolation data
+            element_save_data = {
+                'element_id': widget_data['element_id'],
+                'cavity': widget_data.get('cavity', ''),
+                'class': widget_data.get('class', ''),
+                'sigma': widget_data.get('sigma', '6σ'),
+                'nominal': widget_data['nominal'],
+                'tol_minus': widget_data['tol_minus'],
+                'tol_plus': widget_data['tol_plus'],
+                'values': widget_data.get('values', []),
+                'original_values': widget_data.get('original_values', []),  # CRITICAL
+                'has_extrapolation': widget_data.get('has_extrapolation', False),  # CRITICAL
+                'extrapolated_values': widget_data.get('extrapolated_values', []),  # CRITICAL
+                'metrics': widget_data.get('metrics')  # CRITICAL
             }
+            elements_data.append(element_save_data)
+        
+        # Get chart type configuration
+        chart_config = {
+            'type': 'i_mr',  # default
+            'group_size': None
+        }
+        
+        if hasattr(self, 'xr_radio') and self.xr_radio.isChecked():
+            chart_config['type'] = 'xr'
+            chart_config['group_size'] = self.xr_group_size_spin.value()
+        elif hasattr(self, 'xs_radio') and self.xs_radio.isChecked():
+            chart_config['type'] = 'xs'
+            chart_config['group_size'] = self.xs_group_size_spin.value()
+        
+        return {
+            'elements': elements_data,
+            'chart_config': chart_config
         }
     
+    def set_study_data(self, elements, extrapolation):
+        """Load study data"""
+        self.load_study_data({'elements': elements, 'extrapolation': extrapolation})
+    
     def load_study_data(self, data):
-        """Load study data from session"""
+        """Load study data from session - FIXED with instrument"""
         # Clear existing elements
         self.clear_all_elements()
+        
+        # Import the enhanced widget
+        from .element_metrics_widget import ElementMetricsWidget
         
         # Load elements
         for elem_data in data.get('elements', []):
@@ -1084,20 +990,34 @@ class ElementInputWidget(QWidget):
             if self.elements_placeholder.parent():
                 self.elements_placeholder.setParent(None)
             
+            # Ensure instrument field exists (for backward compatibility)
+            if 'instrument' not in elem_data:
+                elem_data['instrument'] = '3D Scanner'
+            
             # Create and add widget
             widget = ElementMetricsWidget(elem_data, self)
             widget.removeRequested.connect(self._remove_element_widget)
             widget.metricsChanged.connect(self._on_metrics_changed)
+            widget.valuesChanged.connect(self._on_values_changed)
             
             self.elements_layout.addWidget(widget)
             self.element_widgets.append(widget)
             self.elements.append(elem_data)
         
-        # Load extrapolation settings
-        extrap = data.get('extrapolation', {})
-        self.extrap_checkbox.setChecked(extrap.get('enabled', False))
-        self.target_values_spin.setValue(extrap.get('target_values', 50))
-        self.max_attempts_spin.setValue(extrap.get('max_attempts', 100))
-        self.p_value_spin.setValue(extrap.get('p_value_target', 0.05))
+        # Load chart configuration
+        chart_config = data.get('chart_config', {})
+        if hasattr(self, 'i_mr_radio'):
+            chart_type = chart_config.get('type', 'i_mr')
+            
+            if chart_type == 'i_mr':
+                self.i_mr_radio.setChecked(True)
+            elif chart_type == 'xr':
+                self.xr_radio.setChecked(True)
+                if 'group_size' in chart_config:
+                    self.xr_group_size_spin.setValue(chart_config['group_size'])
+            elif chart_type == 'xs':
+                self.xs_radio.setChecked(True)
+                if 'group_size' in chart_config:
+                    self.xs_group_size_spin.setValue(chart_config['group_size'])
         
         self._emit_summary_metrics()

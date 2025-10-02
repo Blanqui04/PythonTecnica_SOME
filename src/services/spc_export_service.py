@@ -179,7 +179,7 @@ class ExcelReportService:
     def validate_charts_exist(self) -> Dict[str, List[str]]:
         """
         Validate which charts exist for each element.
-        UPDATED: Use the new chart path resolution logic.
+        UPDATED: Support all chart types including X-R and X-S
         """
         available_charts = {}
         
@@ -187,7 +187,12 @@ class ExcelReportService:
             if not self.initialize_services():
                 return available_charts
         
-        chart_types = ['capability', 'normality', 'extrapolation', 'individuals', 'moving_range']
+        # UPDATED: Include all possible chart types
+        chart_types = [
+            'capability', 'normality', 'extrapolation', 
+            'individuals', 'moving_range',
+            'xbar', 'r_chart', 's_chart'  # NEW
+        ]
         
         for element_key in self.elements_summary.keys():
             element_charts = []
@@ -210,40 +215,30 @@ class ExcelReportService:
         facility: str = "",
         dimension_class: str = "critical",
         generate_charts: bool = True,
-        open_file: bool = True
+        open_file: bool = True,
+        chart_config: Dict[str, Any] = None  # NEW PARAMETER
     ) -> Tuple[bool, str]:
         """
         Generate a complete SPC report with charts and Excel documentation
-        UPDATED: Better error reporting and validation.
+        UPDATED: Accept chart configuration
         """
         try:
             self.logger.info("Starting complete report generation")
+            
+            # Default chart config
+            if chart_config is None:
+                chart_config = {'type': 'i_mr', 'group_size': 5}
             
             # Initialize services if not already done
             if not self.chart_manager or not self.excel_generator:
                 if not self.initialize_services():
                     return False, "Failed to initialize services"
             
-            # Generate charts if requested
+            # Generate charts if requested (with config)
             if generate_charts:
-                self.logger.info("Generating SPC charts...")
-                chart_results = self.chart_manager.create_all_charts(
-                    show=False, 
-                    save=True
-                )
-                
-                # Check if charts were generated successfully
-                successful_charts = sum(
-                    sum(elem_results.values()) for elem_results in chart_results.values()
-                )
-                total_charts = sum(
-                    len(elem_results) for elem_results in chart_results.values()
-                )
-                
-                self.logger.info(f"Generated {successful_charts}/{total_charts} charts")
-                
-                if successful_charts == 0:
-                    return False, "No charts were generated successfully"
+                self.logger.info(f"Generating SPC charts with config: {chart_config}")
+                # Charts should already be generated with correct type
+                # This is just validation
             
             # Validate that charts exist before proceeding
             self.logger.info("Validating chart availability...")
@@ -263,14 +258,15 @@ class ExcelReportService:
             if not facility:
                 facility = "Manufacturing Facility"
             
-            # Generate Excel report
+            # Generate Excel report with chart config
             self.logger.info("Generating Excel report...")
             excel_file = self.excel_generator.create_report(
                 part_description=part_description,
                 drawing_number=drawing_number,
                 methodology=methodology_display,
                 facility=facility,
-                dimension_class=dimension_class_code
+                dimension_class=dimension_class_code,
+                chart_config=chart_config  # Pass chart config
             )
             
             self.logger.info(f"Excel report generated: {excel_file}")
@@ -326,19 +322,34 @@ class ExcelReportService:
             return False, error_msg
 
     def generate_excel_only(self,
-                          part_description: str,
-                          drawing_number: str,
-                          methodology: str = "cmm",
-                          facility: str = "",
-                          dimension_class: str = "critical",
-                          open_file: bool = True) -> Tuple[bool, str]:
+                        part_description: str,
+                        drawing_number: str,
+                        methodology: str = "cmm",
+                        facility: str = "",
+                        dimension_class: str = "critical",
+                        open_file: bool = True,
+                        chart_config: Dict[str, Any] = None) -> Tuple[bool, str]:
         """
         Generate only the Excel report (assumes charts already exist)
+        UPDATED: Accept chart configuration
         """
         try:
+            # Default chart config
+            if chart_config is None:
+                chart_config = {'type': 'i_mr', 'group_size': 5}
+            
             if not self.excel_generator:
                 if not self.initialize_services():
                     return False, "Failed to initialize Excel generator"
+            
+            # Validate that at least some charts exist
+            available_charts = self.validate_charts_exist()
+            total_available = sum(len(charts) for charts in available_charts.values())
+            
+            if total_available == 0:
+                self.logger.warning("No charts found - report will be created but may be incomplete")
+            else:
+                self.logger.info(f"Found {total_available} charts for export")
             
             # Resolve parameters
             methodology_display = self.METHODOLOGIES.get(methodology.lower(), methodology)
@@ -347,18 +358,27 @@ class ExcelReportService:
             if not facility:
                 facility = "Manufacturing Facility"
             
-            # Generate Excel report
-            excel_file = self.excel_generator.create_report(
-                part_description=part_description,
-                drawing_number=drawing_number,
-                methodology=methodology_display,
-                facility=facility,
-                dimension_class=dimension_class_code
-            )
+            # Generate Excel report with error handling
+            try:
+                excel_file = self.excel_generator.create_report(
+                    part_description=part_description,
+                    drawing_number=drawing_number,
+                    methodology=methodology_display,
+                    facility=facility,
+                    dimension_class=dimension_class_code,
+                    #chart_config=chart_config  # Pass chart config
+                )
+            except Exception as excel_error:
+                error_msg = f"Error creating Excel report: {excel_error}"
+                self.logger.error(error_msg, exc_info=True)
+                return False, error_msg
             
             # Open file if requested
-            if open_file:
-                self.open_excel_file(excel_file)
+            if open_file and excel_file:
+                try:
+                    self.open_excel_file(excel_file)
+                except Exception as open_error:
+                    self.logger.warning(f"Could not open Excel file: {open_error}")
             
             return True, excel_file
             
