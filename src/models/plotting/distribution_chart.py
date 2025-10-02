@@ -11,7 +11,7 @@ from typing import Dict, Any
 from .base_chart import SPCChartBase
 
 
-class ExtrapolatedSPCChart(SPCChartBase):
+class DistributionSPCChart(SPCChartBase):
     """
     Extrapolated SPC Chart implementation based on SPCChartBase.
 
@@ -64,121 +64,65 @@ class ExtrapolatedSPCChart(SPCChartBase):
         )
 
     def _validate_data(self) -> None:
-        """Validate that the element data contains required fields for extrapolated chart."""
-        self.logger.debug("Validating element data for extrapolated chart")
+        """Validate data - chart works with ANY sufficient data"""
+        self.logger.debug("Validating element data for distribution chart")
 
-        required_fields = [
-            "nominal",
-            "tolerance", 
-            "mean",
-            "std_long",
-        ]
+        required_fields = ["nominal", "tolerance", "mean", "std_long"]
         
-        # Check for either extrapolated_values OR original_values (for real data > 10)
-        has_extrapolated = "extrapolated_values" in self.element_data and \
-                        isinstance(self.element_data["extrapolated_values"], list) and \
-                        len(self.element_data["extrapolated_values"]) > 0
+        # CRITICAL FIX: Check for ANY usable data source
+        has_extrapolated = ("extrapolated_values" in self.element_data and 
+                        len(self.element_data.get("extrapolated_values", [])) > 0)
                         
-        has_real_values = "original_values" in self.element_data and \
-                        isinstance(self.element_data["original_values"], list) and \
-                        len(self.element_data["original_values"]) > 10
+        has_original = ("original_values" in self.element_data and 
+                    len(self.element_data.get("original_values", [])) >= 5)
         
-        if not (has_extrapolated or has_real_values):
-            error_msg = (
-                "Element must have either 'extrapolated_values' or 'original_values' with > 10 samples "
-                "for extrapolation chart"
-            )
+        if not (has_extrapolated or has_original):
+            error_msg = "Need either extrapolated values OR ≥5 original values"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
 
-        missing_fields = [
-            field for field in required_fields if field not in self.element_data
-        ]
-
+        missing_fields = [field for field in required_fields if field not in self.element_data]
         if missing_fields:
-            error_msg = f"Missing required fields in element data: {missing_fields}"
+            error_msg = f"Missing required fields: {missing_fields}"
             self.logger.error(error_msg)
             raise ValueError(error_msg)
 
-        # Validate data types and values
-        if (
-            not isinstance(self.element_data["tolerance"], list)
-            or len(self.element_data["tolerance"]) != 2
-        ):
-            error_msg = "Field 'tolerance' must be a list with exactly 2 tolerance values [lower, upper]"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
+        self.logger.info("✓ Element data validation passed")
 
-        for field in ["nominal", "mean", "std_long"]:
-            if not isinstance(self.element_data[field], (int, float)):
-                error_msg = f"Field '{field}' must be a numeric value"
-                self.logger.error(error_msg)
-                raise ValueError(error_msg)
-
-        if self.element_data["std_long"] <= 0:
-            error_msg = "Standard deviation must be positive"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        self.logger.info("Element data validation passed")
 
     def _extract_data(self) -> Dict[str, Any]:
-        """Extract and prepare data for plotting."""
-        self.logger.debug("Extracting data for extrapolated chart")
+        """Extract data - prefer extrapolated, fallback to original"""
+        self.logger.debug("Extracting data for distribution chart")
 
-        # Determine which values to use - extrapolated or real values > 10
-        values_to_use = []
-        data_type = "unknown"
-        
-        if "extrapolated_values" in self.element_data and \
-        isinstance(self.element_data["extrapolated_values"], list) and \
-        len(self.element_data["extrapolated_values"]) > 0:
+        # CRITICAL: Determine which values to use
+        if ("extrapolated_values" in self.element_data and 
+            len(self.element_data.get("extrapolated_values", [])) > 0):
             values_to_use = self.element_data["extrapolated_values"]
             data_type = "extrapolated"
-            self.logger.info(f"Using extrapolated values: {len(values_to_use)} samples")
-        elif "original_values" in self.element_data and \
-            isinstance(self.element_data["original_values"], list) and \
-            len(self.element_data["original_values"]) > 10:
-            values_to_use = self.element_data["original_values"]
-            data_type = "real"
-            self.logger.info(f"Using real values: {len(values_to_use)} samples")
+            self.logger.info(f"Using {len(values_to_use)} extrapolated values")
         else:
-            raise ValueError("No suitable data found for extrapolation chart")
+            values_to_use = self.element_data.get("original_values", [])
+            data_type = "original"
+            self.logger.info(f"Using {len(values_to_use)} original values")
 
         data = {
             "extrapolated_values": np.array(values_to_use),
             "nominal": float(self.element_data["nominal"]),
-            "tolerance": self.element_data["tolerance"], 
+            "tolerance": self.element_data["tolerance"],
             "mean": float(self.element_data["mean"]),
             "std_long": float(self.element_data["std_long"]),
-            "data_type": data_type,  # Track what type of data we're using
+            "data_type": data_type,
         }
 
-        # Calculate control limits
-        data["lsl"] = (
-            data["nominal"] + data["tolerance"][0]
-        )  # Lower Specification Limit
-        data["usl"] = (
-            data["nominal"] + data["tolerance"][1]
-        )  # Upper Specification Limit
+        # Calculate limits
+        data["lsl"] = data["nominal"] + data["tolerance"][0]
+        data["usl"] = data["nominal"] + data["tolerance"][1]
 
-        # Optional statistical indicators - handle both extrapolated and real data
-        if data_type == "extrapolated":
-            data["pp"] = self.element_data.get("extrapolated_pp") or self.element_data.get("pp")
-            data["ppk"] = self.element_data.get("extrapolated_ppk") or self.element_data.get("ppk") 
-            data["pval"] = self.element_data.get("extrapolated_p_value") or self.element_data.get("pval")
-            data["is_normal"] = (data["pval"] > 0.05) if data["pval"] is not None else None
-        else:  # real data
-            data["pp"] = self.element_data.get("pp")
-            data["ppk"] = self.element_data.get("ppk")
-            data["pval"] = self.element_data.get("p_value") or self.element_data.get("pval")
-            data["is_normal"] = (data["pval"] > 0.05) if data["pval"] is not None else None
-
-        self.logger.info(
-            f"Data extracted ({data_type}): {len(data['extrapolated_values'])} measurements, "
-            f"nominal={data['nominal']:.4f}, mean={data['mean']:.4f}, "
-            f"std={data['std_long']:.4f}, LSL={data['lsl']:.4f}, USL={data['usl']:.4f}"
-        )
+        # Get capability indices
+        data["pp"] = self.element_data.get("pp")
+        data["ppk"] = self.element_data.get("ppk")
+        data["pval"] = self.element_data.get("p_value")
+        data["is_normal"] = (data["pval"] > 0.05) if data["pval"] is not None else None
 
         return data
 

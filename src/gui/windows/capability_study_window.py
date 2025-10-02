@@ -1,4 +1,4 @@
-# src/gui/windows/capability_study_window.py - FIXED VERSION
+# src/gui/windows/capability_study_window.py - COMPLETE FIX
 import os
 import json
 import math
@@ -12,13 +12,16 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QIcon, QPixmap
 
+import matplotlib
+matplotlib.use('Agg')  # Non-GUI backend for thread safety
+
+from typing import Dict
+
 from src.gui.widgets.element_input_widget import ElementInputWidget
 from .spc_chart_window import ChartDisplayWidget
 from ..logging_config import logger
 from ..utils.session_manager import CapabilitySessionManager
 from src.services.capacity_study_service import perform_capability_study
-from src.services.data_export_service import DataExportService
-from src.services.capability_calculator_service import CapabilityCalculatorService
 from src.services.capability_session_service import CapabilitySessionService
 from ..widgets.buttons import ModernButton, ActionButton, CompactButton
 from ..widgets.inputs import ModernComboBox, ModernTextEdit
@@ -41,10 +44,23 @@ class StudyWorker(QThread):
     def run(self):
         try:
             logger.info(f"Starting capability study for {len(self.elements)} elements")
+            logger.info("=" * 80)
+            logger.info("ELEMENT DATA BEING SENT TO STUDY:")
+            
+            for i, elem in enumerate(self.elements):
+                logger.info(f"  Element {i+1}: {elem['element_id']}")
+                logger.info(f"    Cavity: {elem.get('cavity', 'N/A')}")
+                logger.info(f"    Values count: {len(elem.get('values', []))}")
+                logger.info(f"    Has extrapolation: {elem.get('has_extrapolation', False)}")
+                logger.info(f"    Original values count: {len(elem.get('original_values', []))}")
+                if elem.get('has_extrapolation'):
+                    logger.info(f"    Extrapolated values count: {len(elem.get('extrapolated_values', []))}")
+                logger.info(f"    Has custom metrics: {elem.get('metrics') is not None}")
+            
+            logger.info("=" * 80)
             
             self.progress.emit(10, "Initializing study...")
             
-            # Perform the complete capability study including chart generation
             result = perform_capability_study(
                 self.client,
                 self.ref_project,
@@ -65,7 +81,6 @@ class StudyWorker(QThread):
             logger.error(f"Study worker error: {e}", exc_info=True)
             self.error.emit(str(e))
 
-
 class CapabilityStudyWindow(QDialog):
     def __init__(self, client, ref_project, batch_number, parent=None):
         super().__init__(parent)
@@ -85,7 +100,6 @@ class CapabilityStudyWindow(QDialog):
         self.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
         
         self.session_manager = CapabilitySessionManager()
-        self.calculator_service = CapabilityCalculatorService()
         self.session_service = CapabilitySessionService()
         
         self._init_ui()
@@ -343,13 +357,14 @@ class CapabilityStudyWindow(QDialog):
         self.elements_summary = results.get("elements_summary", {})
         chart_results = results.get("chart_results", {})
         
-        # Store session data
+        # Store session data - FIXED
+        study_data = self.element_input_widget.get_study_data()
         self.session_data = {
             "client": self.client,
             "ref_project": self.ref_project,
             "batch_number": self.batch_number,
-            "elements": self.element_input_widget.get_study_data()['elements'],
-            "extrapolation": self.element_input_widget.get_study_data()['extrapolation'],
+            "elements": study_data['elements'],
+            "chart_config": study_data['chart_config'],
             "results": self.study_results,
             "timestamp": datetime.now().isoformat()
         }
@@ -370,6 +385,8 @@ class CapabilityStudyWindow(QDialog):
         
         # Build and show results tab
         self._build_results_tab()
+        # UPDATE: Configure control charts display based on chart config
+        self._update_control_charts_display(study_data['chart_config'])
         
         # Switch to results tab
         self.tabs.setCurrentWidget(self.results_tab)
@@ -587,17 +604,17 @@ class CapabilityStudyWindow(QDialog):
         
         layout.addLayout(button_layout)
         
-        # Chart type checkboxes
+        # DYNAMIC chart type checkboxes based on study configuration
         self.chart_type_checkboxes = {}
-        chart_types = [
+        
+        # Base charts (always available)
+        base_charts = [
             ("capability", "Capability"),
             ("normality", "Normality"),
-            ("extrapolation", "Extrapolation"),
-            ("individuals", "Individuals"),
-            ("moving_range", "Moving Range"),
+            ("distribution", "Distribution"),
         ]
         
-        for chart_type, display_name in chart_types:
+        for chart_type, display_name in base_charts:
             checkbox = QCheckBox(display_name)
             checkbox.setFont(QFont("Segoe UI", 10))
             checkbox.setMinimumHeight(22)
@@ -606,8 +623,65 @@ class CapabilityStudyWindow(QDialog):
             layout.addWidget(checkbox)
             self.chart_type_checkboxes[chart_type] = checkbox
         
+        # Control charts - will be populated after study based on configuration
+        self.control_chart_group = QWidget()
+        self.control_chart_layout = QVBoxLayout(self.control_chart_group)
+        self.control_chart_layout.setContentsMargins(0, 0, 0, 0)
+        self.control_chart_layout.setSpacing(8)
+        layout.addWidget(self.control_chart_group)
+        
         group.setLayout(layout)
         return group
+
+    def _update_control_charts_display(self, chart_config: Dict):
+        """Update control charts based on study configuration"""
+        # Clear existing control chart checkboxes
+        while self.control_chart_layout.count():
+            item = self.control_chart_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Add appropriate control charts based on configuration
+        chart_type = chart_config.get('type', 'i_mr')
+        group_size = chart_config.get('group_size', 5)
+        
+        if chart_type == 'i_mr':
+            control_charts = [
+                ("individuals", "I Chart (Individuals)"),
+                ("moving_range", "MR Chart (Moving Range)"),
+            ]
+            info_text = "Using Individual and Moving Range charts"
+        elif chart_type == 'xr':
+            control_charts = [
+                ("xbar", f"X̄ Chart (Average, n={group_size})"),
+                ("r_chart", f"R Chart (Range, n={group_size})"),
+            ]
+            info_text = f"Using X̄-R charts with subgroup size {group_size}"
+        elif chart_type == 'xs':
+            control_charts = [
+                ("xbar", f"X̄ Chart (Average, n={group_size})"),
+                ("s_chart", f"S Chart (Std Dev, n={group_size})"),
+            ]
+            info_text = f"Using X̄-S charts with subgroup size {group_size}"
+        else:
+            control_charts = []
+            info_text = "No control charts configured"
+        
+        # Add info label
+        info_label = QLabel(info_text)
+        info_label.setStyleSheet("color: #6c757d; font-size: 9pt; font-style: italic; padding: 5px;")
+        info_label.setWordWrap(True)
+        self.control_chart_layout.addWidget(info_label)
+        
+        # Add checkboxes for control charts
+        for chart_type_name, display_name in control_charts:
+            checkbox = QCheckBox(display_name)
+            checkbox.setFont(QFont("Segoe UI", 10))
+            checkbox.setMinimumHeight(22)
+            checkbox.setChecked(True)
+            checkbox.stateChanged.connect(self._on_chart_selection_changed)
+            self.control_chart_layout.addWidget(checkbox)
+            self.chart_type_checkboxes[chart_type_name] = checkbox
     
     def _create_statistics_display_group(self):
         """Create statistics display group"""
@@ -729,15 +803,32 @@ class CapabilityStudyWindow(QDialog):
                     logger.warning(f"Chart not found: {chart_path}")
     
     def save_session(self):
-        """Save current session data to file"""
+        """Save current session - FIXED overwrite handling"""
         try:
-            options = QFileDialog.Options()
+            session_data = {
+                "client": self.client,
+                "ref_project": self.ref_project,
+                "batch_number": self.batch_number,
+                "timestamp": datetime.now().isoformat(),
+                "version": "2.0"
+            }
+            
+            study_data = self.element_input_widget.get_study_data()
+            session_data["elements"] = study_data['elements']
+            session_data["chart_config"] = study_data['chart_config']  # Changed from 'extrapolation'
+            
+            if self.study_results:
+                session_data["results"] = {
+                    "elements_count": len(self.elements_summary) if self.elements_summary else 0,
+                    "has_charts": bool(self.chart_service),
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            default_name = f"{self.client}_{self.ref_project}_{self.batch_number}_session.json"
+            
             file_name, _ = QFileDialog.getSaveFileName(
-                self, 
-                "Save Session",
-                "",
-                "Session Files (*.json);;All Files (*)",
-                options=options
+                self, "Save Session", default_name,
+                "Session Files (*.json);;All Files (*)"
             )
             
             if not file_name:
@@ -746,18 +837,45 @@ class CapabilityStudyWindow(QDialog):
             if not file_name.endswith(".json"):
                 file_name += ".json"
             
-            with open(file_name, "w") as f:
-                json.dump(self.session_data, f, indent=4)
-            
-            QMessageBox.information(self, "Session Saved", f"Session saved successfully:\n{file_name}")
-            logger.info(f"Session saved: {file_name}")
+            # CRITICAL FIX: Handle existing file properly
+            try:
+                # Always try to write - QFileDialog already asked about overwrite
+                os.makedirs(os.path.dirname(file_name) or '.', exist_ok=True)
+                
+                # Write to temp file first, then rename (atomic operation)
+                temp_file = file_name + ".tmp"
+                with open(temp_file, "w", encoding='utf-8') as f:
+                    json.dump(session_data, f, indent=4, ensure_ascii=False)
+                
+                # Remove old file if exists, then rename temp
+                if os.path.exists(file_name):
+                    os.remove(file_name)
+                os.rename(temp_file, file_name)
+                
+                logger.info(f"Session saved: {file_name}")
+                
+                QMessageBox.information(
+                    self, "Session Saved", 
+                    f"Session saved successfully:\n{file_name}\n\nElements: {len(session_data['elements'])}"
+                )
+                
+            except PermissionError:
+                QMessageBox.critical(
+                    self, "Save Error", 
+                    f"Permission denied:\n{file_name}\n\nFile may be open in another program."
+                )
+            except Exception as write_error:
+                QMessageBox.critical(
+                    self, "Save Error", 
+                    f"Failed to save:\n{write_error}"
+                )
         
         except Exception as e:
-            QMessageBox.critical(self, "Save Error", f"Failed to save session:\n{e}")
-            logger.error(f"Error saving session: {e}")
-    
+            QMessageBox.critical(self, "Save Error", f"Error: {e}")
+            logger.error(f"Save session error: {e}", exc_info=True)
+
     def load_session(self):
-        """Load session data from file"""
+        """Load session data from file - COMPLETELY FIXED"""
         try:
             options = QFileDialog.Options()
             file_name, _ = QFileDialog.getOpenFileName(
@@ -771,41 +889,90 @@ class CapabilityStudyWindow(QDialog):
             if not file_name:
                 return
             
-            with open(file_name, "r") as f:
-                self.session_data = json.load(f)
+            with open(file_name, "r", encoding='utf-8') as f:
+                loaded_data = json.load(f)
             
-            # Restore window state
-            self.client = self.session_data["client"]
-            self.ref_project = self.session_data["ref_project"]
-            self.batch_number = self.session_data["batch_number"]
+            # Validate session data structure
+            required_fields = ["client", "ref_project", "elements"]
+            missing_fields = [f for f in required_fields if f not in loaded_data]
             
-            self.setWindowTitle(f"Capability Study - {self.client} - {self.ref_project} - Batch: {self.batch_number}")
+            if missing_fields:
+                QMessageBox.warning(
+                    self, "Invalid Session", 
+                    f"Session file is missing required fields: {', '.join(missing_fields)}"
+                )
+                return
             
-            # Restore elements and extrapolation data
-            elements = self.session_data["elements"]
-            extrapolation = self.session_data["extrapolation"]
+            # Update window state
+            self.client = loaded_data["client"]
+            self.ref_project = loaded_data["ref_project"]
+            self.batch_number = loaded_data.get("batch_number", "")
             
-            self.element_input_widget.set_study_data(elements, extrapolation)
+            self.setWindowTitle(
+                f"Capability Study - {self.client} - {self.ref_project} - Batch: {self.batch_number}"
+            )
             
-            QMessageBox.information(self, "Session Loaded", "Session loaded successfully")
+            # Restore elements and chart configuration data
+            elements = loaded_data.get("elements", [])
+            chart_config = loaded_data.get("chart_config", {})  # Changed from 'extrapolation'
+            
+            # Load into widget
+            self.element_input_widget.load_study_data({
+                'elements': elements,
+                'chart_config': chart_config
+            })
+            
+            # Update status
+            self.status_label.setText("Session loaded - Run study to generate charts")
+            
+            QMessageBox.information(
+                self, "Session Loaded", 
+                f"Session loaded successfully:\n\n"
+                f"Client: {self.client}\n"
+                f"Project: {self.ref_project}\n"
+                f"Batch: {self.batch_number}\n"
+                f"Elements: {len(elements)}"
+            )
             logger.info(f"Session loaded: {file_name}")
         
+        except json.JSONDecodeError as e:
+            QMessageBox.critical(
+                self, "Load Error", 
+                f"Failed to parse session file:\n{e}\n\nThe file may be corrupted."
+            )
+            logger.error(f"JSON decode error loading session: {e}", exc_info=True)
         except Exception as e:
             QMessageBox.critical(self, "Load Error", f"Failed to load session:\n{e}")
-            logger.error(f"Error loading session: {e}")
-    
+            logger.error(f"Error loading session: {e}", exc_info=True)
+
     def export_to_excel(self):
-        """Export study results to Excel file"""
+        """Export study results to Excel file - FIXED TO USE SPC EXPORT SERVICE"""
         if not self.study_results:
             QMessageBox.warning(self, "No Results", "No study results to export")
             return
         
         try:
+            from src.services.spc_export_service import ExcelReportService
+            
+            # Create export service
+            export_service = ExcelReportService(
+                client=self.client,
+                ref_project=self.ref_project,
+                batch_number=self.batch_number
+            )
+            
+            # Initialize service
+            if not export_service.initialize_services():
+                QMessageBox.critical(self, "Export Error", "Failed to initialize export service")
+                return
+            
+            # Get file name from user
             options = QFileDialog.Options()
+            default_name = f"{self.client}_{self.ref_project}_{self.batch_number}_report.xlsx"
             file_name, _ = QFileDialog.getSaveFileName(
                 self, 
                 "Export to Excel",
-                "",
+                default_name,
                 "Excel Files (*.xlsx);;All Files (*)",
                 options=options
             )
@@ -816,36 +983,29 @@ class CapabilityStudyWindow(QDialog):
             if not file_name.endswith(".xlsx"):
                 file_name += ".xlsx"
             
-            # Prepare data for export
-            export_data = {
-                "client": self.client,
-                "ref_project": self.ref_project,
-                "batch_number": self.batch_number,
-                "results": self.study_results
-            }
+            # Generate report
+            success, result = export_service.generate_excel_only(
+                part_description=f"{self.ref_project} - Batch {self.batch_number}",
+                drawing_number=self.ref_project,
+                methodology="cmm",
+                facility="Manufacturing Facility",
+                dimension_class="critical",
+                open_file=True
+            )
             
-            # Use service to perform export
-            export_service = DataExportService()
-            export_service.export_capability_study_results(export_data, file_name)
-            
-            QMessageBox.information(self, "Export Successful", f"Results exported to Excel:\n{file_name}")
-            logger.info(f"Results exported to Excel: {file_name}")
+            if success:
+                QMessageBox.information(
+                    self, "Export Successful", 
+                    f"Results exported to Excel:\n{result}"
+                )
+                logger.info(f"Results exported to Excel: {result}")
+            else:
+                QMessageBox.critical(
+                    self, "Export Error", 
+                    f"Failed to export results:\n{result}"
+                )
+                logger.error(f"Export error: {result}")
         
         except Exception as e:
             QMessageBox.critical(self, "Export Error", f"Failed to export results:\n{e}")
-            logger.error(f"Error exporting results: {e}")
-    
-    def closeEvent(self, event):
-        """Handle window close event"""
-        reply = QMessageBox.question(
-            self,
-            "Confirm Exit",
-            "Are you sure you want to exit? Unsaved data may be lost.",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No
-        )
-        
-        if reply == QMessageBox.Yes:
-            event.accept()
-        else:
-            event.ignore()
+            logger.error(f"Error exporting results: {e}", exc_info=True)

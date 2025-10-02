@@ -11,8 +11,11 @@ from .logging_config import logger as base_logger
 from .spc_data_loader import SPCDataLoader
 from .i_chart import IChart
 from .mr_chart import MRChart
+from .x_chart import XBarChart
+from .r_chart import RChart
+from .s_chart import SChart
 from .capability_chart import CapabilityChart
-from .extrapolation_chart import ExtrapolatedSPCChart
+from .distribution_chart import DistributionSPCChart
 from .normality_plot import NormalityAnalysisChart
 
 
@@ -27,7 +30,10 @@ class SPCChartManager:
         "individuals": IChart,
         "moving_range": MRChart,
         "capability": CapabilityChart,
-        "extrapolation": ExtrapolatedSPCChart,
+        "distribution": DistributionSPCChart,
+        "xbar": XBarChart,  # NEW
+        "r_chart": RChart,  # NEW
+        "s_chart": SChart,  # NEW
     }
 
     def __init__(
@@ -158,9 +164,10 @@ class SPCChartManager:
             self.logger.warning(f"⚠ No extrapolation data found for element '{element_key}'")
 
         return chart_data
-
+# spc_charts_manager.py
     def create_chart(
-        self, element_key: str, chart_type: str, show: bool = False, save: bool = True
+        self, element_key: str, chart_type: str, show: bool = False, save: bool = True,
+        subgroup_size: int = 5  # NEW parameter
     ) -> bool:
         """Create a single chart for a specific element and chart type."""
         self.logger.info(f"Creating {chart_type} chart for element key '{element_key}'")
@@ -247,15 +254,27 @@ class SPCChartManager:
                     self.logger.info(f"  Full path: {save_path}")
 
                 # Create and run chart with enhanced error handling
+                # Create chart with subgroup_size if applicable
                 try:
-                    chart = chart_class(
-                        input_json_path=temp_file_path,
-                        lang=self.lang,
-                        show=show,
-                        save_path=save_path,
-                        element_name=element_key,  # Pass the composite key for data lookup
-                        logger=self.logger,
-                    )
+                    if chart_type in ['xbar', 'r_chart', 's_chart']:
+                        chart = chart_class(
+                            input_json_path=temp_file_path,
+                            lang=self.lang,
+                            show=show,
+                            save_path=save_path,
+                            element_name=element_key,
+                            logger=self.logger,
+                            subgroup_size=subgroup_size  # Pass subgroup size
+                        )
+                    else:
+                        chart = chart_class(
+                            input_json_path=temp_file_path,
+                            lang=self.lang,
+                            show=show,
+                            save_path=save_path,
+                            element_name=element_key,
+                            logger=self.logger,
+                        )
                     
                     self.logger.info(f"✓ Chart instance created for {chart_type}")
                 except Exception as chart_init_error:
