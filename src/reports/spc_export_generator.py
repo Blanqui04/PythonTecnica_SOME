@@ -573,20 +573,23 @@ class ExcelSPCReportGenerator:
             ws.row_dimensions[current_row].height = 25
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
-            
-            ws.row_dimensions[current_row].height = 8
-            current_row += 1
+
+            ws.row_dimensions[current_row].height = 7  # CHANGED from default to 7.5
+            #current_row += 1
             
             current_row = self.add_centered_chart_optimized(ws, capability_path, current_row)
-            
-            ws.row_dimensions[current_row].height = 15
             current_row += 1
         
         return current_row
 
     def create_second_page_with_values(self, ws, start_row, element_key, element_data):
         """Create second page with control charts, distribution, AND ALL MEASURED VALUES"""
-        current_row = start_row + 1
+        
+        # ADJUSTED: Changed from "start_row + 1" to just "start_row"
+        # And set the first spacing row to 13 pixels (9.75 points)
+        current_row = start_row
+
+        ws.row_dimensions[current_row].height = 10  # 10 pixels - the adjusted spacing row
         
         # Control charts
         xbar_path = self.get_chart_path(element_key, 'xbar')
