@@ -1,4 +1,4 @@
-# src/models/plotting/s_chart.py
+# src/models/plotting/s_chart.py - FIXED PROFESSIONAL PPAP AESTHETIC
 import numpy as np
 import matplotlib.pyplot as plt
 from .base_chart import SPCChartBase
@@ -7,7 +7,7 @@ from .logging_config import logger as base_logger
 
 class SChart(SPCChartBase):
     """
-    S Chart (Standard Deviation Chart) for Statistical Process Control.
+    Professional S Chart (Standard Deviation Chart) with PPAP-compliant styling.
     Used for monitoring process variability with subgrouped data.
     """
 
@@ -23,7 +23,7 @@ class SChart(SPCChartBase):
         element_name=None,
         subgroup_size=5,
     ):
-        """Initialize S Chart"""
+        """Initialize S Chart with professional styling"""
         self.subgroup_size = subgroup_size
         super().__init__(
             input_json_path=input_json_path,
@@ -100,44 +100,69 @@ class SChart(SPCChartBase):
         colors = []
         for value in self.std_devs:
             if self.lcl <= value <= self.ucl:
-                colors.append(self.COLOR_BLAU)
+                colors.append(self.COLOR_ACCENT_BLUE)
             else:
-                colors.append(self.COLOR_VERMELL)
+                colors.append(self.COLOR_DANGER_RED)
         return colors
 
+    # s_chart.py - Updated plot method
     def plot(self):
-        """Create S chart"""
+        """Create professional S chart"""
         try:
             self.logger.info(f"Creating S Chart for element: {self.element}")
 
+            # Create figure with professional styling
             fig, ax = self._create_figure()
 
             indices = np.arange(1, len(self.std_devs) + 1)
             point_colors = self._get_point_colors()
 
-            # Plot data
-            ax.plot(indices, self.std_devs, color=self.COLOR_BLAU, linewidth=1, zorder=3, alpha=0.7)
-            ax.scatter(indices, self.std_devs, c=point_colors, edgecolor=self.COLOR_NEGRE, s=60, zorder=4)
+            # Plot data line with professional styling
+            ax.plot(indices, self.std_devs, color=self.COLOR_ACCENT_BLUE,
+                linewidth=self.LINEWIDTH_DATA, zorder=3, alpha=0.8,
+                label=f'Subgroup Std Dev (n={self.subgroup_size})')
 
-            # Plot control limits
-            ax.axhline(self.ucl, color=self.COLOR_VERMELL, linestyle="-", linewidth=1.5, zorder=2,
-                      label=f"UCL = {self.ucl:.3f}")
-            ax.axhline(self.avg_std, color=self.COLOR_NEGRE, linestyle="-", linewidth=1.5, zorder=2,
-                      label=f"S̄ = {self.avg_std:.3f}")
-            ax.axhline(self.lcl, color=self.COLOR_VERMELL, linestyle="-", linewidth=1.5, zorder=2,
-                      label=f"LCL = {self.lcl:.3f}")
+            # Plot data points with color coding
+            ax.scatter(indices, self.std_devs, c=point_colors,
+                    edgecolor=self.COLOR_DARK_GRAY, s=self.MARKERSIZE**2,
+                    linewidth=self.MARKER_EDGEWIDTH, zorder=4)
 
-            chart_title = f"S Chart for {self.element}\n(Subgroup size: {self.subgroup_size})"
-            self._set_titles_and_labels(ax, title=chart_title,
-                                       xlabel="Subgroup Number",
-                                       ylabel="Standard Deviation")
+            # Plot control limits with professional styling
+            ax.axhline(self.ucl, color=self.COLOR_DANGER_RED, linestyle='-',
+                    linewidth=self.LINEWIDTH_CONTROL, zorder=2,
+                    label=f'UCL = {self.ucl:.4f}')
+            ax.axhline(self.avg_std, color=self.COLOR_PRIMARY_BLUE, linestyle='-',
+                    linewidth=self.LINEWIDTH_CONTROL, zorder=2,
+                    label=f'S̄ = {self.avg_std:.4f}')
+            ax.axhline(self.lcl, color=self.COLOR_DANGER_RED, linestyle='-',
+                    linewidth=self.LINEWIDTH_CONTROL, zorder=2,
+                    label=f'LCL = {self.lcl:.4f}')
 
-            ax.set_xticks(indices)
-            ax.set_xticklabels(indices)
+            # Title without subtitle
+            title = f"S-Chart: {self.element}"
+            self._set_titles_and_labels(
+                ax, 
+                title=title,
+                xlabel="Subgroup Number",
+                ylabel="Standard Deviation"
+            )
+
+            # Configure x-axis ticks (limit to ~20 ticks for readability)
+            ax.set_xticks(indices[::max(1, len(indices)//20)])
+            
+            # Y-axis starts at zero (std dev cannot be negative)
             ax.set_ylim(bottom=0)
-            self._set_legend(ax)
+            
+            # Professional grid
+            ax.grid(True, alpha=0.3, linestyle='--', linewidth=self.LINEWIDTH_GRID)
+            
+            # Professional legend
+            self._set_legend(ax, loc='upper right')
+            
+            # Apply tight layout
             plt.tight_layout()
 
+            # Finalize (save/show/close)
             self._finalize()
             self.logger.info("S Chart created successfully")
 
