@@ -1,25 +1,77 @@
-# src/services/capacity_study_service.py - USES CARD DATA
+# src/services/capacity_study_service.py - CALCULATES AD & P-VALUE
 import os
 import json
 from pathlib import Path
 from datetime import datetime
 import logging
 from typing import Dict, List, Any, Optional
+import numpy as np
+from scipy import stats
 
 from .spc_chart_service import SPCChartService
 
 logger = logging.getLogger(__name__)
 
 
+def calculate_anderson_darling(sample: List[float]) -> tuple:
+    """
+    Calculate Anderson-Darling statistic and approximate p-value for original sample
+    
+    Returns:
+        tuple: (ad_statistic, p_value)
+    """
+    try:
+        sample_array = np.array(sample)
+        n = len(sample_array)
+        
+        if n < 5:
+            return 0.0, 0.0
+        
+        mean = np.mean(sample_array)
+        std = np.std(sample_array, ddof=1)
+        
+        if std == 0:
+            return 0.0, 0.0
+        
+        # Calculate Anderson-Darling statistic manually
+        sorted_sample = np.sort(sample_array)
+        cdf_vals = stats.norm.cdf(sorted_sample, loc=mean, scale=std)
+        cdf_vals = np.clip(cdf_vals, 1e-10, 1 - 1e-10)
+        
+        i = np.arange(1, n + 1)
+        one_minus_cdf_reverse = 1 - cdf_vals[::-1]
+        
+        s = (2 * i - 1) * (np.log(cdf_vals) + np.log(one_minus_cdf_reverse))
+        A_2 = -n - np.sum(s) / n
+        A2_corrected = A_2 * (1 + 0.75 / n + 2.25 / (n**2))
+        
+        # Calculate approximate p-value
+        ad_stat = A2_corrected
+        if ad_stat >= 0.6:
+            p_value = np.exp(1.2937 - 5.709 * ad_stat + 0.0186 * ad_stat**2)
+        elif 0.34 < ad_stat < 0.6:
+            p_value = np.exp(0.9177 - 4.279 * ad_stat - 1.38 * ad_stat**2)
+        elif 0.2 < ad_stat <= 0.34:
+            p_value = 1 - np.exp(-8.318 + 42.796 * ad_stat - 59.938 * ad_stat**2)
+        else:
+            p_value = 1 - np.exp(-13.436 + 101.14 * ad_stat - 223.73 * ad_stat**2)
+        
+        return A2_corrected, p_value
+        
+    except Exception as e:
+        logger.error(f"Error calculating Anderson-Darling: {e}")
+        return 0.0, 0.0
+
+
 def perform_capability_study(
     client: str,
     ref_project: str,
     elements: List[Dict[str, Any]],
-    chart_config: Dict[str, Any] = None,  # CHANGED from extrap_config
+    chart_config: Dict[str, Any] = None,
     batch_number: str = None
 ) -> Dict[str, Any]:
     """
-    Perform capability study with chart configuration
+    Perform capability study with Anderson-Darling calculation
     """
     try:
         logger.info("=" * 80)
@@ -50,11 +102,12 @@ def perform_capability_study(
             try:
                 element_id = element['element_id']
                 cavity = element.get('cavity', '')
-                instrument = element.get('instrument', '3D Scanner')  # NEW
-                sigma = element.get('sigma', '6σ')  # NEW
+                instrument = element.get('instrument', '3D Scanner')
+                sigma = element.get('sigma', '6σ')
+                element_class = element.get('class', 'CC')
                 
-                # CRITICAL: Get values
-                all_values = element['values']  # These should already include extrapolated
+                # Get values
+                all_values = element['values']
                 original_values = element.get('original_values', all_values)
                 has_extrapolation = element.get('has_extrapolation', False)
                 extrapolated_values = element.get('extrapolated_values', [])
@@ -65,6 +118,11 @@ def perform_capability_study(
                 logger.info(f"  Original values: {len(original_values)}")
                 logger.info(f"  Has extrapolation: {has_extrapolation}")
                 logger.info(f"  Extrapolated count: {len(extrapolated_values)}")
+                logger.info(f"  Class: {element_class}, Instrument: {instrument}, Sigma: {sigma}")
+                
+                # CRITICAL: Calculate Anderson-Darling for ORIGINAL sample
+                ad_statistic, p_value = calculate_anderson_darling(original_values)
+                logger.info(f"  Anderson-Darling: A²={ad_statistic:.4f}, p={p_value:.4f}")
                 
                 # Get metrics (custom or calculate from ALL values)
                 custom_metrics = element.get('metrics')
@@ -101,7 +159,6 @@ def perform_capability_study(
                     cpl = (mean - LSL) / (3 * sigma_short)
                     cpk = min(cpu, cpl)
                     
-                    # CRITICAL: Calculate PPM short
                     from scipy import stats as scipy_stats
                     z_usl = (USL - mean) / sigma_short
                     z_lsl = (mean - LSL) / sigma_short
@@ -115,43 +172,44 @@ def perform_capability_study(
                     ppl = (mean - LSL) / (3 * sigma_long)
                     ppk = min(ppu, ppl)
                     
-                    # CRITICAL: Calculate PPM long
                     z_usl_long = (USL - mean) / sigma_long
                     z_lsl_long = (mean - LSL) / sigma_long
                     ppm_long = (scipy_stats.norm.cdf(-z_lsl_long) + (1 - scipy_stats.norm.cdf(z_usl_long))) * 1e6
                 else:
                     pp = ppk = ppm_long = 0
 
-                logger.info(f"  📊 Capability: Cp={cp:.3f}, Cpk={cpk:.3f}, Pp={pp:.3f}, Ppk={ppk:.3f}")
-                logger.info(f"  📊 PPM: Short={ppm_short:.0f}, Long={ppm_long:.0f}")
+                logger.info(f"  Capability: Cp={cp:.3f}, Cpk={cpk:.3f}, Pp={pp:.3f}, Ppk={ppk:.3f}")
+                logger.info(f"  PPM: Short={ppm_short:.0f}, Long={ppm_long:.0f}")
                 
-                # CRITICAL: Build result with ALL values for charts
+                # Build result with ALL data including AD and p-value
                 element_result = {
                     "element_name": element_id,
                     "cavity": cavity,
-                    "instrument": instrument,  # NEW
+                    "instrument": instrument,
+                    "class": element_class,
+                    "sigma": sigma,
                     "nominal": nominal,
                     "tolerance": [element['tol_minus'], element['tol_plus']],
-                    "original_values": all_values,
-                    "class": element.get('class', ''),
-                    "sigma": sigma,
+                    "original_values": all_values,  # ALL values for charts
                     "statistics": {
                         "mean": mean,
                         "std_short": sigma_short,
                         "std_long": sigma_long,
-                        "sample_size": len(all_values)
+                        "sample_size": len(all_values),
+                        "ad_value": ad_statistic,  # ADDED
+                        "p_value": p_value          # ADDED
                     },
                     "capability": {
                         "cp": cp,
                         "cpk": cpk,
                         "pp": pp,
                         "ppk": ppk,
-                        "ppm_short": ppm_short,  # CRITICAL
-                        "ppm_long": ppm_long     # CRITICAL
+                        "ppm_short": ppm_short,
+                        "ppm_long": ppm_long
                     }
                 }
                 
-                # Store extrapolation info if exists
+                # Store extrapolation info
                 if has_extrapolation and len(extrapolated_values) > 0:
                     extrap_result = {
                         "element_name": element_id,
@@ -207,8 +265,6 @@ def perform_capability_study(
         if not chart_service.initialize_chart_manager():
             error_msg = "Failed to initialize chart manager"
             logger.error(f"❌ {error_msg}")
-            logger.error(f"   Expected file: {results_file}")
-            logger.error(f"   File exists: {results_file.exists()}")
             return {"success": False, "error": error_msg}
         
         logger.info("✅ Chart manager initialized")

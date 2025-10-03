@@ -1,4 +1,4 @@
-# src/reports/excel_spc_export_generator.py - PROFESSIONAL AUTOMOTIVE FORMAT
+# src/reports/excel_spc_export_generator.py - COMPLETE WITH ALL IMPROVEMENTS
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, Optional, Any
@@ -15,56 +15,33 @@ from src.gui.logging_config import logger as base_logger
 
 
 class ExcelSPCReportGenerator:
-    """
-    Professional Excel report generator for Statistical Process Control analysis.
-    Creates comprehensive reports suitable for automotive industry PPAP documentation
-    and major OEM requirements (VW, Mercedes, BMW, Tesla, etc.).
-    """
+    """Professional Excel report generator with complete data"""
     
-    # Professional automotive industry color palette
     COLORS = {
-        'primary_blue': '1B365D',       # Deep corporate blue (headers)
-        'secondary_blue': '2E5266',     # Medium blue (section headers)
-        'accent_blue': '4A90A4',        # Light blue (highlights)
+        'primary_blue': '1B365D',
+        'secondary_blue': '2E5266',
+        'accent_blue': '4A90A4',
         'white': 'FFFFFF',
-        'light_gray': 'F7F8F9',        # Background sections
-        'medium_gray': 'E1E5E9',       # Table borders
-        'dark_gray': '2C3E50',         # Professional text
-        'success_green': '27AE60',     # Capability indicators
-        'warning_orange': 'F39C12',    # Warning values
-        'danger_red': 'E74C3C',        # Critical values
-        'table_header': 'ECF0F1',      # Table headers
-        'table_alt': 'F8F9FA',          # Alternating rows
-        'excellent_teal': '1ABC9C'  # For CC elements with Cpk ≥ 2.00
+        'light_gray': 'F7F8F9',
+        'medium_gray': 'E1E5E9',
+        'dark_gray': '2C3E50',
+        'success_green': '27AE60',
+        'warning_orange': 'F39C12',
+        'danger_red': 'E74C3C',
+        'table_header': 'ECF0F1',
+        'table_alt': 'F8F9FA',
+        'excellent_teal': '1ABC9C'
     }
     
-    # Chart types and their professional display names
     CHART_TYPES = {
         'normality': 'NORMALITY ANALYSIS',
         'capability': 'PROCESS CAPABILITY',
         'individuals': 'I-CHART (INDIVIDUALS)',
         'moving_range': 'MR-CHART (MOVING RANGE)',
-        'extrapolation': 'DISTRIBUTION ANALYSIS'
-    }
-    
-    # Statistical parameters with professional descriptions (IMPROVED)
-    STATISTICAL_PARAMETERS = {
-        'sample_size': 'Sample Size (n)',
-        'mean': 'Mean (X̄)',
-        'nominal': 'Nominal Target',
-        'std_short': 'Short-term Std Dev (s)',
-        'std_long': 'Long-term Std Dev (σ)', 
-        'cp': 'CP',
-        'cpk': 'CPK',
-        'pp': 'PP',
-        'ppk': 'PPK',
-        'ppm_short': 'PPM Defective (Short-term)',
-        'ppm_long': 'PPM Defective (Long-term)',
-        'p_value': 'Normality p-value',
-        'ad_value': 'Anderson-Darling Statistic',  # ADD THIS
-        'tolerance': 'Tolerance Range',            # ADD THIS
-        'lsl': 'Lower Specification Limit',
-        'usl': 'Upper Specification Limit'
+        'xbar': 'X̄-CHART (AVERAGE)',
+        'r_chart': 'R-CHART (RANGE)',
+        's_chart': 'S-CHART (STD DEV)',
+        'distribution': 'DISTRIBUTION ANALYSIS'
     }
 
     def __init__(
@@ -85,32 +62,27 @@ class ExcelSPCReportGenerator:
         self.output_path = Path(output_path)
         self.logger = logger or base_logger.getChild(self.__class__.__name__)
         
-        # Ensure output directory exists
         self.output_path.mkdir(parents=True, exist_ok=True)
         
-        # Initialize data
         self.elements_data = {}
         self.workbook = None
         self.styles_created = False
         
-        self.logger.info(f"Initialized Professional Excel SPC Report Generator for {client}_{ref_project}_{batch_number}")
+        self.logger.info(f"Initialized Excel SPC Report Generator for {client}_{ref_project}_{batch_number}")
 
     def create_professional_styles(self):
-        """Create professional automotive industry styles with improved borders"""
+        """Create professional styles"""
         if self.styles_created:
             return
             
-        # Document title style
         doc_title = NamedStyle(name="doc_title")
         doc_title.font = Font(name='Arial', size=20, bold=True, color=self.COLORS['primary_blue'])
         doc_title.alignment = Alignment(horizontal='center', vertical='center')
         
-        # Document subtitle style
         doc_subtitle = NamedStyle(name="doc_subtitle")
         doc_subtitle.font = Font(name='Arial', size=12, color=self.COLORS['dark_gray'])
         doc_subtitle.alignment = Alignment(horizontal='center', vertical='center')
         
-        # Main header style (company info) with complete borders
         main_header = NamedStyle(name="main_header")
         main_header.font = Font(name='Arial', size=11, bold=True, color='FFFFFF')
         main_header.fill = PatternFill(start_color=self.COLORS['primary_blue'], 
@@ -119,7 +91,6 @@ class ExcelSPCReportGenerator:
         main_header.alignment = Alignment(horizontal='center', vertical='center')
         main_header.border = self.create_full_border('medium', self.COLORS['primary_blue'])
         
-        # Section header style with complete borders
         section_header = NamedStyle(name="section_header")
         section_header.font = Font(name='Arial', size=10, bold=True, color='FFFFFF')
         section_header.fill = PatternFill(start_color=self.COLORS['secondary_blue'], 
@@ -128,7 +99,6 @@ class ExcelSPCReportGenerator:
         section_header.alignment = Alignment(horizontal='center', vertical='center')
         section_header.border = self.create_full_border('thin', self.COLORS['medium_gray'])
         
-        # Table header style with complete borders
         table_header = NamedStyle(name="table_header")
         table_header.font = Font(name='Arial', size=9, bold=True, color=self.COLORS['dark_gray'])
         table_header.fill = PatternFill(start_color=self.COLORS['table_header'], 
@@ -137,7 +107,6 @@ class ExcelSPCReportGenerator:
         table_header.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
         table_header.border = self.create_full_border('thin', self.COLORS['medium_gray'])
         
-        # Parameter label style with complete borders
         param_label = NamedStyle(name="param_label")
         param_label.font = Font(name='Arial', size=9, bold=True, color=self.COLORS['dark_gray'])
         param_label.fill = PatternFill(start_color=self.COLORS['light_gray'], 
@@ -146,13 +115,11 @@ class ExcelSPCReportGenerator:
         param_label.alignment = Alignment(horizontal='left', vertical='center', indent=1)
         param_label.border = self.create_full_border('thin', self.COLORS['medium_gray'])
         
-        # Data cell style with complete borders
         data_cell = NamedStyle(name="data_cell")
         data_cell.font = Font(name='Arial', size=9, color=self.COLORS['dark_gray'])
         data_cell.alignment = Alignment(horizontal='center', vertical='center')
         data_cell.border = self.create_full_border('thin', self.COLORS['medium_gray'])
         
-        # Chart title style
         chart_title = NamedStyle(name="chart_title")
         chart_title.font = Font(name='Arial', size=11, bold=True, color=self.COLORS['secondary_blue'])
         chart_title.alignment = Alignment(horizontal='center', vertical='center')
@@ -161,13 +128,11 @@ class ExcelSPCReportGenerator:
                                      fill_type='solid')
         chart_title.border = self.create_full_border('thin', self.COLORS['medium_gray'])
         
-        # Notes style with complete borders
         notes_style = NamedStyle(name="notes_style")
         notes_style.font = Font(name='Arial', size=9, color=self.COLORS['dark_gray'])
         notes_style.alignment = Alignment(horizontal='left', vertical='top', wrap_text=True)
         notes_style.border = self.create_full_border('thin', self.COLORS['medium_gray'])
         
-        # Add all styles to workbook
         try:
             styles_to_add = [
                 doc_title, doc_subtitle, main_header, section_header,
@@ -178,7 +143,7 @@ class ExcelSPCReportGenerator:
                 self.workbook.add_named_style(style)
             
             self.styles_created = True
-            self.logger.debug("Created all professional Excel styles with complete borders")
+            self.logger.debug("Created all professional Excel styles")
             
         except Exception as e:
             self.logger.error(f"Error creating styles: {e}")
@@ -203,7 +168,6 @@ class ExcelSPCReportGenerator:
 
     def extract_element_name(self, element_key: str) -> str:
         """Extract clean element name without cavity information"""
-        # Remove cavity information from element name
         if " Cavity " in element_key:
             return element_key.split(" Cavity ")[0]
         elif "_cavity_" in element_key:
@@ -226,7 +190,7 @@ class ExcelSPCReportGenerator:
                 if alt_report_path.exists():
                     report_path = alt_report_path
                 else:
-                    self.logger.error("SPC report not found at either path")
+                    self.logger.error("SPC report not found")
                     return False
             
             data_loader = SPCDataLoader(self.ref_project, self.base_path)
@@ -244,7 +208,7 @@ class ExcelSPCReportGenerator:
             return False
 
     def get_chart_path(self, element_key: str, chart_type: str) -> Optional[Path]:
-        """Get the path to a specific chart file with improved error handling"""
+        """Get the path to a specific chart file"""
         try:
             element_data = self.elements_data.get(element_key, {})
             original_element_name = element_data.get("element_name")
@@ -253,7 +217,6 @@ class ExcelSPCReportGenerator:
             if not original_element_name:
                 original_element_name = self.extract_element_name(element_key)
             
-            # Match exact filename format from SPCChartManager
             if cavity and str(cavity).strip():
                 filename = f"{chart_type}_{self.batch_number}_{original_element_name}_{cavity}.png"
             else:
@@ -268,7 +231,7 @@ class ExcelSPCReportGenerator:
                 return None
                 
         except Exception as e:
-            self.logger.error(f"Error getting chart path for {element_key}/{chart_type}: {e}")
+            self.logger.error(f"Error getting chart path: {e}")
             return None
 
     def create_report(self, 
@@ -277,66 +240,57 @@ class ExcelSPCReportGenerator:
                     methodology: str = "CMM",
                     facility: str = "",
                     dimension_class: str = "CC") -> str:
-        """
-        Create the complete professional Excel SPC report
-        """
+        """Create the complete professional Excel SPC report"""
         try:
             if not self.load_data():
                 raise ValueError("Failed to load SPC data")
             
             self.workbook = Workbook()
             
-            # Remove default sheet
             if 'Sheet' in self.workbook.sheetnames:
                 self.workbook.remove(self.workbook['Sheet'])
             
             self.create_professional_styles()
             
-            # Create executive summary sheet first
             self.create_executive_summary_sheet()
             
-            # Create detailed sheets for each element
             sheets_created = 0
             for element_key, element_data in self.elements_data.items():
                 try:
-                    # Create clean sheet name (Excel limitation: 31 characters max)
                     sheet_name = element_key[:31] if len(element_key) > 31 else element_key
-                    # Remove invalid characters
                     invalid_chars = ['/', '\\', '[', ']', '*', '?', ':']
                     for char in invalid_chars:
                         sheet_name = sheet_name.replace(char, '_')
                     
                     ws = self.workbook.create_sheet(title=sheet_name)
                     
-                    # CHANGE: Ensure dimension_class is properly passed
                     self.create_professional_element_report(
                         ws, element_key, element_data,
                         part_description, drawing_number, 
-                        methodology, facility, dimension_class  # Make sure this is passed correctly
+                        methodology, facility, dimension_class
                     )
                     
                     sheets_created += 1
-                    self.logger.info(f"✓ Created professional sheet for element: {element_key}")
+                    self.logger.info(f"✓ Created sheet for: {element_key}")
                     
                 except Exception as e:
-                    self.logger.error(f"✗ Failed to create sheet for element {element_key}: {e}")
+                    self.logger.error(f"✗ Failed sheet for {element_key}: {e}")
                     continue
             
             if sheets_created == 0:
                 raise ValueError("No sheets were created successfully")
             
-            # Save the workbook with professional naming
             filename = f"{self.client}_{self.ref_project}_{self.batch_number}_SPC_Analysis_Report.xlsx"
             output_file = self.output_path / filename
             
             self.workbook.save(output_file)
-            self.logger.info(f"✅ Professional automotive SPC report created: {output_file}")
-            self.logger.info(f"📊 Report contains: 1 executive summary + {sheets_created} detailed element sheets")
+            self.logger.info(f"✅ Report created: {output_file}")
+            self.logger.info(f"📊 Contains: 1 summary + {sheets_created} element sheets")
             
             return str(output_file)
             
         except Exception as e:
-            self.logger.error(f"❌ Error creating professional Excel report: {e}")
+            self.logger.error(f"❌ Error creating Excel report: {e}")
             raise
 
     def create_professional_element_report(self, 
@@ -348,37 +302,35 @@ class ExcelSPCReportGenerator:
                                          methodology: str,
                                          facility: str,
                                          dimension_class: str):
-        """Create a professional automotive industry report for one element"""
+        """Create professional report for one element with ALL VALUES"""
         
         current_row = 1
         
-        # Page 1: Header, Statistical Table, and First Two Charts (until before I&MR)
+        # Header with metadata
         current_row = self.create_professional_header(
             ws, current_row, element_key, part_description,
             drawing_number, methodology, facility, dimension_class, element_data
         )       
         
-        # First page charts: Normality and Capability (optimized for page break)
+        # First page charts
         current_row = self.create_first_page_charts_optimized(ws, current_row, element_key)
         
-        # Page break preparation
         ws.page_setup.fitToPage = True
         ws.page_setup.fitToHeight = False
         ws.page_setup.fitToWidth = 1
         
-        # Page 2: Individual and MR charts, Distribution, Notes, and Signature
-        current_row = self.create_second_page_optimized(ws, current_row, element_key, element_data)
+        # Second page with control charts and values
+        current_row = self.create_second_page_with_values(ws, current_row, element_key, element_data)
         
-        # Apply professional page formatting
         self.setup_professional_page_formatting(ws)
 
     def create_professional_header(self, ws, start_row, element_key, part_description,
                                 drawing_number, methodology, facility, dimension_class, element_data):
-        """Create professional header WITH all metadata"""
+        """Create header WITH all metadata properly transmitted"""
         
         current_row = start_row
         
-        # Add company logo (existing code stays same)
+        # Logo
         logo_path = Path("./assets/images/gui/logo_some.png")
         if logo_path.exists():
             try:
@@ -388,9 +340,8 @@ class ExcelSPCReportGenerator:
                 ws.add_image(img, f'A{current_row}')
             except Exception as e:
                 self.logger.warning(f"Could not add logo: {e}")
-                current_row += 1
         
-        # Document title and subtitle (heights remain 35 and 25)
+        # Title
         ws.merge_cells(f'C{current_row}:H{current_row}')
         title_cell = ws[f'C{current_row}']
         title_cell.value = "STATISTICAL PROCESS CONTROL"
@@ -405,7 +356,6 @@ class ExcelSPCReportGenerator:
         ws.row_dimensions[current_row].height = 25
         
         current_row += 1
-        # Small empty row
         ws.row_dimensions[current_row].height = 15
         current_row += 1
         
@@ -419,14 +369,17 @@ class ExcelSPCReportGenerator:
         
         current_row += 1
         
-        # Information grid with proper dimension class display
+        # Get element data - PROPERLY EXTRACT CLASS, INSTRUMENT, SIGMA
         clean_element_name = self.extract_element_name(element_key)
         cavity_info = element_data.get('cavity', 'N/A')
-        instrument = element_data.get('instrument', 'CMM')  # NEW
+        
+        # CRITICAL: Extract from element_data (these come from the study)
+        element_class = element_data.get('class', dimension_class)
+        instrument = element_data.get('instrument', 'CMM')
         sigma_level = element_data.get('sigma', '6σ')
         
-        # Determine PP requirement based on sigma
-        sigma_numeric = 6 if '6' in sigma_level else 5
+        # Determine PP/CP requirement based on ACTUAL sigma
+        sigma_numeric = 6 if '6' in str(sigma_level) else 5
         required_pp = 2.0 if sigma_numeric == 6 else 1.67
         pp = element_data.get('pp', 0)
         meets_requirement = "YES ✓" if pp >= required_pp else "NO ✗"
@@ -435,7 +388,7 @@ class ExcelSPCReportGenerator:
             ["Client:", self.client, "Part Description:", part_description],
             ["Project Reference:", self.ref_project, "Drawing Number:", drawing_number],
             ["Batch Number:", self.batch_number, "Methodology:", methodology],
-            ["Quality Facility:", facility, "Dimension Class:", dimension_class],
+            ["Quality Facility:", facility, "Dimension Class:", element_class],
             ["Element Name:", clean_element_name, "Cavity:", cavity_info],
             ["Measuring Instrument:", instrument, "Sigma Level:", sigma_level],
             ["PP Requirement:", f"≥{required_pp:.2f}", "Meets Req.:", meets_requirement],
@@ -457,7 +410,7 @@ class ExcelSPCReportGenerator:
             ws[f'F{current_row}'].value = row_data[3]
             ws[f'F{current_row}'].style = 'data_cell'
             
-            # Color code the meets requirement cell
+            # Color code meets requirement
             if "Meets Req." in row_data[2]:
                 cell = ws[f'F{current_row}']
                 if "YES" in row_data[3]:
@@ -480,7 +433,7 @@ class ExcelSPCReportGenerator:
                                         ws: Worksheet, 
                                         start_row: int, 
                                         element_data: Dict[str, Any]) -> int:
-        """Create reorganized statistical summary table with higher rows"""
+        """Create statistical summary WITH AD statistic and p-value for ORIGINAL sample"""
         
         current_row = start_row
         
@@ -494,7 +447,7 @@ class ExcelSPCReportGenerator:
         
         current_row += 1
         
-        # Table headers - keep at 25px
+        # Table headers
         ws.row_dimensions[current_row].height = 24
         
         ws[f'A{current_row}'].value = "Parameter"
@@ -513,15 +466,15 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # REORGANIZED Parameters - Column 1: Basic stats, Column 2: Capability indices
+        # Parameters - INCLUDING AD and p-value
         left_params = [
             ('sample_size', 'Sample Size (n)', ''),
             ('nominal', 'Nominal Target', '.3f'),
             ('tolerance', 'Tolerance Range', '.3f'),
-            ('mean', 'Mean (X̄)', '.2f'),
-            ('std_long', 'Long-term Std Dev (σ)', '.2f'),
-            ('std_short', 'Short-term Std Dev (s)', '.2f'),
-            ('ad_value', 'Anderson-Darling Statistic', '.2f')
+            ('mean', 'Mean (X̄)', '.4f'),
+            ('std_long', 'Long-term Std Dev (σ)', '.4f'),
+            ('std_short', 'Short-term Std Dev (s)', '.4f'),
+            ('ad_value', 'Anderson-Darling (A²)', '.3f'),  # ADDED
         ]
         
         right_params = [
@@ -531,18 +484,18 @@ class ExcelSPCReportGenerator:
             ('ppk', 'PPK', '.3f'),
             ('ppm_short', 'PPM Defective (Short-term)', '.0f'),
             ('ppm_long', 'PPM Defective (Long-term)', '.0f'),
-            ('p_value', 'Normality p-value', '.2f')
+            ('p_value', 'Normality p-value', '.4f'),  # ADDED
         ]
         
         max_rows = max(len(left_params), len(right_params))
         
         for i in range(max_rows):
-            ws.row_dimensions[current_row].height = 20  # Keep 20px
+            ws.row_dimensions[current_row].height = 20
 
             # Left side
             if i < len(left_params):
                 key, label, fmt = left_params[i]
-                if key:  # Only if not empty
+                if key:
                     ws[f'A{current_row}'].value = label
                     ws[f'A{current_row}'].style = 'param_label'
                     
@@ -559,7 +512,7 @@ class ExcelSPCReportGenerator:
             # Right side  
             if i < len(right_params):
                 key, label, fmt = right_params[i]
-                if key:  # Only if not empty
+                if key:
                     ws[f'E{current_row}'].value = label
                     ws[f'E{current_row}'].style = 'param_label'
                     
@@ -576,17 +529,15 @@ class ExcelSPCReportGenerator:
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
         
-        # Small empty row
         ws.row_dimensions[current_row].height = 10
         current_row += 1
         return current_row
 
     def create_first_page_charts_optimized(self, ws: Worksheet, start_row: int, element_key: str) -> int:
-        """Create first page charts optimized to end just before I&MR section for proper page break"""
+        """Create first page charts"""
         
         current_row = start_row
         
-        # Charts section header
         ws.merge_cells(f'A{current_row}:H{current_row}')
         charts_header = ws[f'A{current_row}']
         charts_header.value = "STATISTICAL CONTROL CHARTS"
@@ -595,10 +546,9 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # Normality Analysis
+        # Normality
         normality_path = self.get_chart_path(element_key, 'normality')
         if normality_path:
-            # Chart title
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['normality']
             ws[f'A{current_row}'].style = 'chart_title'
@@ -606,21 +556,17 @@ class ExcelSPCReportGenerator:
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
-            # Small spacer row (5-6 points)
             ws.row_dimensions[current_row].height = 8
             current_row += 1
             
-            # Chart
             current_row = self.add_centered_chart_optimized(ws, normality_path, current_row)
             
-            # Normal row after chart
             ws.row_dimensions[current_row].height = 15
             current_row += 1
         
-        # Capability Analysis
+        # Capability
         capability_path = self.get_chart_path(element_key, 'capability')
         if capability_path:
-            # Chart title
             ws.merge_cells(f'A{current_row}:H{current_row}')
             ws[f'A{current_row}'].value = self.CHART_TYPES['capability']
             ws[f'A{current_row}'].style = 'chart_title'
@@ -628,56 +574,46 @@ class ExcelSPCReportGenerator:
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
             current_row += 1
             
-            # Small spacer row (5-6 points)
             ws.row_dimensions[current_row].height = 8
             current_row += 1
             
-            # Chart
             current_row = self.add_centered_chart_optimized(ws, capability_path, current_row)
             
-            # Normal row after chart - this should be the last row on page 1
             ws.row_dimensions[current_row].height = 15
             current_row += 1
         
         return current_row
 
-
-    def create_second_page_optimized(self, ws, start_row, element_key, element_data):
-        """Create second page with ALL control charts"""
+    def create_second_page_with_values(self, ws, start_row, element_key, element_data):
+        """Create second page with control charts, distribution, AND ALL MEASURED VALUES"""
         current_row = start_row + 1
         
-        # CRITICAL: Check which control chart files actually exist
+        # Control charts
         xbar_path = self.get_chart_path(element_key, 'xbar')
         r_path = self.get_chart_path(element_key, 'r_chart')
         s_path = self.get_chart_path(element_key, 's_chart')
         individuals_path = self.get_chart_path(element_key, 'individuals')
         mr_path = self.get_chart_path(element_key, 'moving_range')
         
-        # Determine which control charts to use
         if xbar_path and r_path:
             left_chart = xbar_path
             right_chart = r_path
             left_title = "X̄-CHART (AVERAGE)"
             right_title = "R-CHART (RANGE)"
-            self.logger.info("Using X̄-R charts")
         elif xbar_path and s_path:
             left_chart = xbar_path
             right_chart = s_path
             left_title = "X̄-CHART (AVERAGE)"
             right_title = "S-CHART (STD DEV)"
-            self.logger.info("Using X̄-S charts")
         elif individuals_path and mr_path:
             left_chart = individuals_path
             right_chart = mr_path
             left_title = "I-CHART (INDIVIDUALS)"
             right_title = "MR-CHART (MOVING RANGE)"
-            self.logger.info("Using I-MR charts")
         else:
             left_chart = right_chart = None
-            self.logger.warning("No control charts found")
         
         if left_chart and right_chart:
-            # Titles
             ws.row_dimensions[current_row].height = 25
             ws.merge_cells(f'A{current_row}:D{current_row}')
             ws[f'A{current_row}'].value = left_title
@@ -691,7 +627,6 @@ class ExcelSPCReportGenerator:
             ws.row_dimensions[current_row].height = 8
             current_row += 1
             
-            # Charts side by side
             chart_row = current_row
             self.add_side_by_side_chart_optimized(ws, left_chart, chart_row, 'left')
             self.add_side_by_side_chart_optimized(ws, right_chart, chart_row, 'right')
@@ -715,6 +650,9 @@ class ExcelSPCReportGenerator:
             ws.row_dimensions[current_row].height = 15
             current_row += 1
         
+        # CRITICAL: Add ALL MEASURED VALUES section
+        current_row = self.create_measured_values_section(ws, current_row, element_data)
+        
         # Statistical summary
         current_row = self.create_statistical_summary_table(ws, current_row, element_data)
         
@@ -723,60 +661,107 @@ class ExcelSPCReportGenerator:
         
         return current_row
 
+    def create_measured_values_section(self, ws: Worksheet, start_row: int, element_data: Dict[str, Any]) -> int:
+        """Create section with ALL measured values used in charts"""
+        
+        current_row = start_row
+        
+        # Get values
+        original_values = element_data.get('original_values', [])
+        
+        if not original_values:
+            return current_row
+        
+        # Section header
+        ws.merge_cells(f'A{current_row}:H{current_row}')
+        values_header = ws[f'A{current_row}']
+        values_header.value = f"MEASURED VALUES (n={len(original_values)})"
+        values_header.style = 'section_header'
+        ws.row_dimensions[current_row].height = 28
+        self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
+        
+        current_row += 1
+        
+        # Info text
+        ws.merge_cells(f'A{current_row}:H{current_row}')
+        info_cell = ws[f'A{current_row}']
+        info_cell.value = "All measured values used for chart generation and statistical analysis:"
+        info_cell.style = 'param_label'
+        ws.row_dimensions[current_row].height = 20
+        self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
+        
+        current_row += 1
+        
+        # Values in grid format (8 columns)
+        values_per_row = 8
+        num_rows = (len(original_values) + values_per_row - 1) // values_per_row
+        
+        for row_idx in range(num_rows):
+            ws.row_dimensions[current_row].height = 22
+            
+            for col_idx in range(values_per_row):
+                value_idx = row_idx * values_per_row + col_idx
+                
+                if value_idx < len(original_values):
+                    col_letter = chr(65 + col_idx)  # A, B, C, ...
+                    cell = ws[f'{col_letter}{current_row}']
+                    cell.value = f"{original_values[value_idx]:.4f}"
+                    cell.style = 'data_cell'
+                    cell.font = Font(name='Arial', size=8)
+                else:
+                    # Empty cell
+                    col_letter = chr(65 + col_idx)
+                    cell = ws[f'{col_letter}{current_row}']
+                    cell.value = ""
+                    cell.style = 'data_cell'
+            
+            self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
+            current_row += 1
+        
+        # Small spacing
+        ws.row_dimensions[current_row].height = 10
+        current_row += 1
+        
+        return current_row
+
     def add_centered_chart_optimized(self, ws: Worksheet, chart_path: Path, start_row: int) -> int:
-        """Add a chart centered in column B with optimized dimensions and no extra spacer"""
+        """Add a chart centered in column B"""
         try:
             img = Image(str(chart_path))
-
-            # Set fixed dimensions in cm (convert to pixels: 1 cm ≈ 37.8 px)
-            img.width = int(14 * 37.8)   # ≈ 529 px
-            img.height = int(9 * 37.8)   # ≈ 340 px
-
-            # Anchor the image to column B and the spacer row
+            img.width = int(14 * 37.8)
+            img.height = int(9 * 37.8)
             ws.add_image(img, f'B{start_row+1}')
-
-            # Estimate rows used: height / 20 px per row
             rows_used = (img.height // 18)
             return start_row + rows_used
-
         except Exception as e:
             self.logger.error(f"Error adding centered chart: {e}")
-            return start_row + 14  # Fallback row increment
+            return start_row + 14
 
     def add_side_by_side_chart_optimized(self, ws: Worksheet, chart_path: Path, row: int, position: str) -> int:
-        """Add a compact side-by-side chart with optimized dimensions"""
+        """Add a compact side-by-side chart"""
         try:
             img = Image(str(chart_path))
-
-            # Set fixed dimensions in cm (convert to pixels: 1 cm ≈ 37.8 px)
-            img.width = int(10 * 37.8)   # ≈ 378 px
-            img.height = int(6.5 * 37.8) # ≈ 246 px
-
-            # Determine anchor column based on position
+            img.width = int(10 * 37.8)
+            img.height = int(6.5 * 37.8)
+            
             if position == 'left':
-                # Center within columns A-D
                 left_space = max(0, (4 * 64 - img.width) // 2)
                 column_offset = left_space // 64
-                anchor_col = chr(65 + min(column_offset, 3))  # A-D
-            else:  # 'right'
-                # Center within columns E-H
+                anchor_col = chr(65 + min(column_offset, 3))
+            else:
                 left_space = max(0, (4 * 64 - img.width) // 2)
                 column_offset = 4 + (left_space // 64)
-                anchor_col = chr(65 + min(column_offset, 7))  # E-H
-
-            # Add image to worksheet
+                anchor_col = chr(65 + min(column_offset, 7))
+            
             ws.add_image(img, f'{anchor_col}{row+1}')
-
-            # Return the number of rows used
             rows_used = (img.height // 20)
             return row + rows_used
-
         except Exception as e:
             self.logger.error(f"Error adding side-by-side chart: {e}")
-            return row + 12  # Fallback row increment
+            return row + 12
 
     def create_notes_and_signature_section_optimized(self, ws: Worksheet, start_row: int) -> int:
-        """Create optimized notes and signature section that fits on the page"""
+        """Create notes and signature section"""
         
         current_row = start_row
         
@@ -785,13 +770,12 @@ class ExcelSPCReportGenerator:
         notes_header = ws[f'A{current_row}']
         notes_header.value = "TECHNICAL NOTES & OBSERVATIONS"
         notes_header.style = 'section_header'
-        ws.row_dimensions[current_row].height = 26  # Reduced from 30
+        ws.row_dimensions[current_row].height = 26
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # Notes area (3 rows instead of 4)
         for i in range(3):
-            ws.row_dimensions[current_row + i].height = 22  # Reduced from 25
+            ws.row_dimensions[current_row + i].height = 22
         
         ws.merge_cells(f'A{current_row}:H{current_row + 2}')
         notes_cell = ws[f'A{current_row}']
@@ -800,21 +784,19 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row + 2}')
         current_row += 3
         
-        # Small separation
         ws.row_dimensions[current_row].height = 8
         current_row += 1
         
-        # Signature section - CHANGE: height to 30px
+        # Signature section
         ws.merge_cells(f'A{current_row}:H{current_row}')
         signature_header = ws[f'A{current_row}']
         signature_header.value = "QUALITY APPROVAL"
         signature_header.style = 'section_header'
-        ws.row_dimensions[current_row].height = 26  # Reduced from 30
+        ws.row_dimensions[current_row].height = 26
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # Position and Date section
-        ws.row_dimensions[current_row].height = 22  # Reduced from 25
+        ws.row_dimensions[current_row].height = 22
         ws[f'A{current_row}'].value = "Position:"
         ws[f'A{current_row}'].style = 'param_label'
         ws.merge_cells(f'B{current_row}:D{current_row}')
@@ -830,8 +812,7 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'H{current_row}')
         current_row += 1
         
-        # Name and Signature section
-        ws.row_dimensions[current_row].height = 22  # Reduced from 25
+        ws.row_dimensions[current_row].height = 22
         ws[f'A{current_row}'].value = "Name:"
         ws[f'A{current_row}'].style = 'param_label'
         ws.merge_cells(f'B{current_row}:D{current_row}')
@@ -848,9 +829,8 @@ class ExcelSPCReportGenerator:
         return current_row
 
     def setup_professional_page_formatting(self, ws: Worksheet):
-        """Setup professional page formatting for automotive industry standards"""
+        """Setup professional page formatting"""
         
-        # Set column widths for optimal layout
         column_widths = {
             'A': 18,  'B': 12,  'C': 12,  'D': 12,
             'E': 18,  'F': 12,  'G': 12,  'H': 12
@@ -859,90 +839,54 @@ class ExcelSPCReportGenerator:
         for col, width in column_widths.items():
             ws.column_dimensions[col].width = width
         
-        # Page setup for A4 portrait
         ws.page_setup.orientation = ws.ORIENTATION_PORTRAIT
         ws.page_setup.paperSize = ws.PAPERSIZE_A4
         
-        # Professional margins
         ws.page_margins = PageMargins(
             left=0.7, right=0.7, top=0.8, bottom=0.8,
             header=0.3, footer=0.3
         )
         
-        # Center horizontally
         ws.page_setup.horizontalCentered = True
-        
-        # Fit to page settings
         ws.page_setup.fitToPage = True
         ws.page_setup.fitToWidth = 1
         ws.page_setup.fitToHeight = False
         
-        # Print settings
         ws.print_options.horizontalCentered = True
         ws.print_options.gridLines = False
         ws.print_options.headings = False
         
-        # Header and footer for professional appearance
         ws.oddFooter.right.text = "&9Page &P of &N"
         ws.evenFooter.right.text = "&9Page &P of &N"
 
-    def get_capability_status_color(self, cpk_value: float, capability_class: str) -> str:
-        """Return color code based on Cpk value and capability class (CC or SC)"""
-        try:
-            if capability_class == 'CC':
-                if cpk_value >= 2.00:
-                    return self.COLORS['excellent_teal']
-                elif cpk_value >= 1.67:
-                    return self.COLORS['success_green']
-                elif cpk_value >= 1.33:
-                    return self.COLORS['warning_orange']
-                else:
-                    return self.COLORS['danger_red']
-            elif capability_class == 'SC':
-                if cpk_value >= 1.67:
-                    return self.COLORS['success_green']
-                elif cpk_value >= 1.33:
-                    return self.COLORS['warning_orange']
-                else:
-                    return self.COLORS['danger_red']
-            else:
-                self.logger.warning(f"Unknown capability class: {capability_class}")
-                return self.COLORS['medium_gray']
-        except Exception as e:
-            self.logger.error(f"Error determining capability status color: {e}")
-            return self.COLORS['medium_gray']
-
     def create_executive_summary_sheet(self) -> None:
-        """Create an improved executive summary cover sheet centered horizontally and vertically"""
+        """Create executive summary cover sheet"""
         
         try:
-            # Create summary sheet as first sheet
             summary_ws = self.workbook.create_sheet(title="Executive Summary", index=0)
             
-            current_row = 5  # Start lower for vertical centering
+            current_row = 5
             
-            # Add company logo centered
+            # Logo
             logo_path = Path("./assets/images/gui/logo_some.png")
             if logo_path.exists():
                 try:
                     img = Image(str(logo_path))
-                    img.width = 350  # Larger for cover page
-                    img.height = 82   # Maintain aspect ratio
-                    
-                    # Center the logo
-                    summary_ws.add_image(img, 'D1')  # Center position
-                    current_row += 8  # More space after logo
+                    img.width = 350
+                    img.height = 82
+                    summary_ws.add_image(img, 'D1')
+                    current_row += 8
                 except Exception as e:
                     self.logger.warning(f"Could not add logo: {e}")
                     current_row += 1
             
-            # Enhanced title section
+            # Title
             summary_ws.merge_cells(f'A{current_row}:J{current_row}')
             title_cell = summary_ws[f'A{current_row}']
             title_cell.value = "STATISTICAL PROCESS CONTROL"
             title_cell.font = Font(name='Arial', size=28, bold=True, color=self.COLORS['primary_blue'])
             title_cell.alignment = Alignment(horizontal='center', vertical='center')
-            summary_ws.row_dimensions[current_row].height = 47  # Keep 47
+            summary_ws.row_dimensions[current_row].height = 47
             
             current_row += 1
             
@@ -951,32 +895,27 @@ class ExcelSPCReportGenerator:
             subtitle_cell.value = "COMPREHENSIVE ANALYSIS REPORT"
             subtitle_cell.font = Font(name='Arial', size=16, bold=True, color=self.COLORS['secondary_blue'])
             subtitle_cell.alignment = Alignment(horizontal='center', vertical='center')
-            summary_ws.row_dimensions[current_row].height = 33  # Keep 33
+            summary_ws.row_dimensions[current_row].height = 33
             
             current_row += 1
             
-            # CHANGE: Remove "Batch" word, show only batch number
             summary_ws.merge_cells(f'A{current_row}:J{current_row}')
             project_cell = summary_ws[f'A{current_row}']
-            project_cell.value = f"{self.client} - {self.ref_project} - {self.batch_number}"  # CHANGED
+            project_cell.value = f"{self.client} - {self.ref_project} - {self.batch_number}"
             project_cell.font = Font(name='Arial', size=14, color=self.COLORS['dark_gray'])
             project_cell.alignment = Alignment(horizontal='center', vertical='center')
             summary_ws.row_dimensions[current_row].height = 25
             
-            current_row += 4  # More spacing
+            current_row += 4
             
-            # Enhanced capability visualization
             current_row = self.create_enhanced_capability_visualization(summary_ws, current_row)
             current_row += 3
             
-            # Enhanced project information section
             current_row = self.create_enhanced_project_info(summary_ws, current_row)
             current_row += 3
             
-            # Enhanced elements summary table
             current_row = self.create_enhanced_elements_summary(summary_ws, current_row)
             
-            # Set column widths for cover page
             column_widths = {
                 'A': 25, 'B': 12, 'C': 12, 'D': 12, 'E': 12,
                 'F': 12, 'G': 12, 'H': 12, 'I': 12, 'J': 15
@@ -984,26 +923,22 @@ class ExcelSPCReportGenerator:
             for col, width in column_widths.items():
                 summary_ws.column_dimensions[col].width = width
             
-            # CHANGE: Center the worksheet both horizontally and vertically
             summary_ws.page_setup.horizontalCentered = True
-            summary_ws.page_setup.verticalCentered = True  # ADDED
+            summary_ws.page_setup.verticalCentered = True
             summary_ws.print_options.horizontalCentered = True
-            summary_ws.print_options.verticalCentered = True  # ADDED
+            summary_ws.print_options.verticalCentered = True
             
-            # Setup page formatting
             self.setup_professional_page_formatting(summary_ws)
             
-            self.logger.info("Created enhanced executive summary sheet")
+            self.logger.info("Created executive summary sheet")
             
         except Exception as e:
             self.logger.error(f"Error creating executive summary: {e}")
 
-
     def create_enhanced_capability_visualization(self, ws: Worksheet, start_row: int) -> int:
-        """Create enhanced capability status visualization with professional descriptions"""
+        """Create capability status visualization"""
         current_row = start_row
 
-        # Section header
         ws.merge_cells(f'A{current_row}:J{current_row}')
         vis_header = ws[f'A{current_row}']
         vis_header.value = "PROCESS CAPABILITY OVERVIEW"
@@ -1012,7 +947,6 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'J{current_row}')
         current_row += 1
 
-        # Count capability statuses
         status_counts = {
             "Superior (CPK ≥ 2.0)": 0,
             "Robust (1.67 ≤ CPK < 2.0)": 0,
@@ -1035,7 +969,6 @@ class ExcelSPCReportGenerator:
             else:
                 status_counts["N/A"] += 1
 
-        # Table headers
         ws.row_dimensions[current_row].height = 30
         headers = ["Capability Status", "Count", "Percentage", "Quality Assessment"]
         ws.merge_cells(f'A{current_row}:B{current_row}')
@@ -1057,7 +990,6 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'J{current_row}')
         current_row += 1
 
-        # Descriptions and colors
         quality_levels = {
             "Superior (CPK ≥ 2.0)": "Superior Process Control - Exceeds Requirements",
             "Robust (1.67 ≤ CPK < 2.0)": "Robust Process - Meets PPAP Standards",
@@ -1082,25 +1014,21 @@ class ExcelSPCReportGenerator:
 
             ws.row_dimensions[current_row].height = 28
 
-            # Status
             ws.merge_cells(f'A{current_row}:B{current_row}')
             ws[f'A{current_row}'].value = status
             ws[f'A{current_row}'].style = 'param_label'
 
-            # Count
             ws.merge_cells(f'C{current_row}:D{current_row}')
             ws[f'C{current_row}'].value = count
             ws[f'C{current_row}'].style = 'data_cell'
             ws[f'C{current_row}'].font = Font(name='Arial', size=10, bold=True)
 
-            # Percentage
             ws.merge_cells(f'E{current_row}:F{current_row}')
             percentage = (count / total_elements) * 100
             ws[f'E{current_row}'].value = f"{percentage:.1f}%"
             ws[f'E{current_row}'].style = 'data_cell'
             ws[f'E{current_row}'].font = Font(name='Arial', size=10, bold=True)
 
-            # Quality Assessment
             ws.merge_cells(f'G{current_row}:J{current_row}')
             cell = ws[f'G{current_row}']
             cell.value = quality_levels[status]
@@ -1113,13 +1041,11 @@ class ExcelSPCReportGenerator:
 
         return current_row
 
-
     def create_enhanced_project_info(self, ws: Worksheet, start_row: int) -> int:
-        """Create enhanced project information section with better layout"""
+        """Create project information section"""
         
         current_row = start_row
         
-        # Section header
         ws.merge_cells(f'A{current_row}:J{current_row}')
         info_header = ws[f'A{current_row}']
         info_header.value = "PROJECT INFORMATION"
@@ -1129,14 +1055,11 @@ class ExcelSPCReportGenerator:
         
         current_row += 1
         
-        # CHANGE: Enhanced project details with better layout and methodology-based standard
-        date_only_str = datetime.now().strftime("%d/%m/%Y")  # No time, just date
+        date_only_str = datetime.now().strftime("%d/%m/%Y")
         
-        # Get first element to extract part description if available
         first_element_data = next(iter(self.elements_data.values()), {})
         part_description = first_element_data.get('part_description', 'See detailed sheets')
         
-        # Determine standard based on methodology
         methodology_standards = {
             'cmm': 'ITM-1 CMM Standards',
             'msa': 'AIAG MSA-4 Standards', 
@@ -1146,7 +1069,6 @@ class ExcelSPCReportGenerator:
             'gauge': 'ITM-5 Gauge Standards'
         }
         
-        # Extract methodology from first element or use default
         methodology = first_element_data.get('methodology', 'cmm')
         standard = methodology_standards.get(str(methodology).lower(), 'PPAP Standards')
 
@@ -1160,26 +1082,24 @@ class ExcelSPCReportGenerator:
         for info_row in project_info:
             ws.row_dimensions[current_row].height = 28
             
-            # Left side - keep A for label
             ws[f'A{current_row}'].value = info_row[0]
             ws[f'A{current_row}'].style = 'param_label'
-            # Left value spans B:D (3 columns for better space)
+            
             ws.merge_cells(f'B{current_row}:D{current_row}')
             ws[f'B{current_row}'].value = info_row[1]
             ws[f'B{current_row}'].style = 'data_cell'
             ws[f'B{current_row}'].font = Font(name='Arial', size=10)
-            ws[f'B{current_row}'].alignment = Alignment(horizontal='left', vertical='center')  # Left aligned
+            ws[f'B{current_row}'].alignment = Alignment(horizontal='left', vertical='center')
             
-            # Right side - E:F
             ws.merge_cells(f'E{current_row}:F{current_row}')
             ws[f'E{current_row}'].value = info_row[2]
             ws[f'E{current_row}'].style = 'param_label'
-            # Right value spans G:J (4 columns to prevent text cutoff)
+            
             ws.merge_cells(f'G{current_row}:J{current_row}')
             ws[f'G{current_row}'].value = info_row[3]
             ws[f'G{current_row}'].style = 'data_cell'
             ws[f'G{current_row}'].font = Font(name='Arial', size=10)
-            ws[f'G{current_row}'].alignment = Alignment(horizontal='left', vertical='center')  # Left aligned
+            ws[f'G{current_row}'].alignment = Alignment(horizontal='left', vertical='center')
             
             self.apply_complete_borders_to_range(ws, f'A{current_row}', f'J{current_row}')
             current_row += 1
@@ -1187,11 +1107,10 @@ class ExcelSPCReportGenerator:
         return current_row
 
     def create_enhanced_elements_summary(self, ws: Worksheet, start_row: int) -> int:
-        """Create enhanced elements summary table"""
+        """Create elements summary table"""
         
         current_row = start_row
         
-        # Section header
         ws.merge_cells(f'A{current_row}:J{current_row}')
         table_header = ws[f'A{current_row}']
         table_header.value = "DETAILED ELEMENTS ANALYSIS SUMMARY"
@@ -1201,7 +1120,6 @@ class ExcelSPCReportGenerator:
         
         current_row += 1
         
-        # Enhanced table headers
         headers = [
             "Element", "Cavity", "Mean", "CP", "CPK", 
             "Short σ", "PP", "PPK", "Long σ", "Status"
@@ -1209,7 +1127,7 @@ class ExcelSPCReportGenerator:
         
         ws.row_dimensions[current_row].height = 30
         for i, header in enumerate(headers):
-            col = chr(65 + i)  # A, B, C, etc.
+            col = chr(65 + i)
             ws[f'{col}{current_row}'].value = header
             ws[f'{col}{current_row}'].style = 'table_header'
             ws[f'{col}{current_row}'].font = Font(name='Arial', size=10, bold=True)
@@ -1217,11 +1135,9 @@ class ExcelSPCReportGenerator:
         self.apply_complete_borders_to_range(ws, f'A{current_row}', f'J{current_row}')
         current_row += 1
         
-        # Enhanced element data rows
         for element_key, element_data in self.elements_data.items():
             ws.row_dimensions[current_row].height = 25
             
-            # Clean element name and cavity
             clean_name = self.extract_element_name(element_key)
             ws[f'A{current_row}'].value = clean_name
             ws[f'A{current_row}'].style = 'data_cell'
@@ -1230,7 +1146,6 @@ class ExcelSPCReportGenerator:
             ws[f'B{current_row}'].value = element_data.get('cavity', 'N/A')
             ws[f'B{current_row}'].style = 'data_cell'
             
-            # Statistical values with improved formatting
             params = [
                 ('mean', 'C', '.4f'),
                 ('cp', 'D', '.3f'),
@@ -1251,7 +1166,6 @@ class ExcelSPCReportGenerator:
                 ws[f'{col}{current_row}'].value = formatted_value
                 ws[f'{col}{current_row}'].style = 'data_cell'
             
-            # Enhanced status with color coding
             cpk = element_data.get('cpk', 0)
             if isinstance(cpk, (int, float)):
                 if cpk >= 2:
@@ -1260,8 +1174,8 @@ class ExcelSPCReportGenerator:
                     font_color = self.COLORS['dark_gray']
                 elif cpk >= 1.67:
                     status = "Good"
-                    color = self.COLORS['warning_orange']
-                    font_color = 'FFFFFF'
+                    color = self.COLORS['excellent_teal']  # FIXED - Turquoise
+                    font_color = self.COLORS['dark_gray']  # Dark text on light turquoise
                 elif cpk >= 1.33:
                     status = "Acceptable"
                     color = self.COLORS['warning_orange']

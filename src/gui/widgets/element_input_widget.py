@@ -707,7 +707,8 @@ class ElementInputWidget(QWidget):
         # Update the element data in the list
         for elem in self.elements:
             if elem['element_id'] == element_id:
-                if 'metrics' not in elem:
+                # FIXED: Ensure metrics exists and handle None case
+                if elem.get('metrics') is None:
                     elem['metrics'] = {}
                 elem['metrics'].update(metrics)
                 break
