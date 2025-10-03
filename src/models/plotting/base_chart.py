@@ -1,22 +1,54 @@
-# src/models/plotting/base_chart.py - FIXED VERSION
+# src/models/plotting/base_chart.py - PROFESSIONAL PPAP AESTHETIC
 import json
 from pathlib import Path
 from abc import ABC, abstractmethod
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib.patches import Rectangle
 import logging
 from .logging_config import logger as base_logger
 
 
 class SPCChartBase(ABC):
+    """Professional base class for SPC charts with PPAP-compliant styling"""
+    
+    # Professional color palette (matching Excel export)
+    COLOR_PRIMARY_BLUE = "#1B365D"      # Main headers, serious tone
+    COLOR_SECONDARY_BLUE = "#2E5266"    # Secondary elements
+    COLOR_ACCENT_BLUE = "#4A90A4"       # Data points, lines
+    COLOR_SUCCESS_GREEN = "#27AE60"     # Nominal/target values
+    COLOR_EXCELLENT_TEAL = "#1ABC9C"    # Superior performance
+    COLOR_WARNING_ORANGE = "#F39C12"    # Warning zones
+    COLOR_DANGER_RED = "#E74C3C"        # Out of control, reject zones
+    COLOR_DARK_GRAY = "#2C3E50"         # Text, borders
+    COLOR_MEDIUM_GRAY = "#95A5A6"       # Grid lines
+    COLOR_LIGHT_GRAY = "#ECF0F1"        # Background accents
+    COLOR_WHITE = "#FFFFFF"
+    
+    # Professional font settings
     FONT_NAME = "Arial"
-    COLOR_BLAU = "#0072B2"
-    COLOR_NEGRE = "#000000"
-    COLOR_TARONJA = "#E69F00"
-    COLOR_VERMELL = "#D50E00"
-    COLOR_VERD = "#0C9661"
-    COLOR_GRIS = "#999999"
+    FONT_SIZE_TITLE = 14
+    FONT_SIZE_SUBTITLE = 11
+    FONT_SIZE_LABEL = 10
+    FONT_SIZE_TICK = 9
+    FONT_SIZE_LEGEND = 9
+    FONT_SIZE_ANNOTATION = 8
+    
+    # Layout settings
     GOLDEN_RATIO = (1 + 5**0.5) / 2
+    DPI = 300
+    FIGURE_FACECOLOR = "#FFFFFF"
+    AXES_FACECOLOR = "#FAFAFA"
+    
+    # Line weights (professional standards)
+    LINEWIDTH_CONTROL = 1.8
+    LINEWIDTH_DATA = 1.2
+    LINEWIDTH_GRID = 0.6
+    LINEWIDTH_SPEC = 1.0
+    
+    # Marker settings
+    MARKERSIZE = 6
+    MARKER_EDGEWIDTH = 0.8
 
     def __init__(
         self,
@@ -27,10 +59,10 @@ class SPCChartBase(ABC):
         i18n_folder: str | Path = None,
         extra_rcparams: dict = None,
         logger: logging.Logger = None,
-        element_name: str = None,  # NEW: allows targeting a single element from the JSON
+        element_name: str = None,
     ):
         self.logger = logger or base_logger.getChild(self.__class__.__name__)
-        self.logger.info(f"🔄 Initializing {self.__class__.__name__} with input: {input_json_path}")
+        self.logger.info(f"🔄 Initializing {self.__class__.__name__} with professional styling")
 
         self.input_json_path = Path(input_json_path)
         self.lang = lang
@@ -43,11 +75,6 @@ class SPCChartBase(ABC):
         )
         self.extra_rcparams = extra_rcparams or {}
 
-        # Debug logging
-        self.logger.info(f"📁 Save path: {self.save_path}")
-        if self.save_path:
-            self.logger.info(f"📂 Save directory: {self.save_path.parent}")
-
         try:
             self.elements_data = self._load_data()
             if not self.elements_data:
@@ -58,152 +85,212 @@ class SPCChartBase(ABC):
                 raise KeyError(f"Element '{self.element_name}' not found in SPC data.")
 
             self.element_data = self.elements_data[self.element_name]
-            self.logger.info(f"📊 Selected SPC element: {self.element_name}")
-            self.logger.info(f"📈 Element data keys: {list(self.element_data.keys())}")
-
             self.labels = self._load_translations()
-            self._configure_style()
+            self._configure_professional_style()
 
         except Exception as e:
             self.logger.error(f"❌ Error during initialization: {e}", exc_info=True)
             raise
 
     def _load_data(self) -> dict:
-        self.logger.debug(f"Loading data from {self.input_json_path}")
+        """Load data from JSON file"""
         if not self.input_json_path.exists():
-            raise FileNotFoundError(
-                f"Input JSON file not found: {self.input_json_path}"
-            )
+            raise FileNotFoundError(f"Input JSON file not found: {self.input_json_path}")
         with self.input_json_path.open("r", encoding="utf-8") as f:
             data = json.load(f)
-
         if not isinstance(data, dict):
             raise ValueError("SPC input JSON must be a dictionary of elements.")
-        self.logger.info(f"✅ Loaded SPC data for {len(data)} element(s).")
         return data
 
     def _load_translations(self) -> dict:
+        """Load translations with fallback"""
         lang_file = self.i18n_folder / f"{self.lang}.json"
         default_file = self.i18n_folder / "ca.json"
         fallback_labels = {
-            "title": "Chart",
-            "xlabel": "Eix X",
-            "ylabel": "Eix Y",
-            "legend": "Legend",
+            "title": "Control Chart",
+            "xlabel": "Sample Number",
+            "ylabel": "Measurement Value",
         }
 
         if lang_file.exists():
             path = lang_file
-            self.logger.info(f"Loading translations from {lang_file}")
         elif default_file.exists():
             path = default_file
-            self.logger.warning(
-                f"Translation file for '{self.lang}' not found. Using default 'ca.json'."
-            )
         else:
-            self.logger.warning("No translation file found. Using fallback labels.")
             return fallback_labels
 
         try:
             with path.open("r", encoding="utf-8") as f:
-                translations = json.load(f)
-            self.logger.info("Translations loaded successfully.")
-            return translations
-        except Exception as e:
-            self.logger.error(f"Failed to load translation file: {e}")
+                return json.load(f)
+        except Exception:
             return fallback_labels
 
-    def _configure_style(self):
-        self.logger.debug("Configuring matplotlib style.")
-        base_params = {
-            "font.family": self.FONT_NAME,
-            "axes.titlesize": 14,
-            "axes.labelsize": 12,
-            "axes.labelcolor": self.COLOR_NEGRE,
-            "axes.edgecolor": self.COLOR_GRIS,
-            "axes.grid": True,
-            "grid.color": self.COLOR_GRIS,
-            "grid.linestyle": "--",
-            "grid.alpha": 0.7,
-            "xtick.color": self.COLOR_NEGRE,
-            "ytick.color": self.COLOR_NEGRE,
-            "legend.fontsize": 11,
-            "legend.loc": "best",
-            "figure.figsize": (8, 5),
-            "lines.linewidth": 2,
-            "lines.markersize": 6,
-            "axes.prop_cycle": mpl.cycler(
-                color=[
-                    self.COLOR_BLAU,
-                    self.COLOR_TARONJA,
-                    self.COLOR_VERMELL,
-                    self.COLOR_VERD,
-                    self.COLOR_GRIS,
-                ]
-            ),
+    def _configure_professional_style(self):
+        """Configure professional PPAP-compliant matplotlib style"""
+        professional_params = {
+            # Font settings
+            'font.family': self.FONT_NAME,
+            'font.size': self.FONT_SIZE_LABEL,
+            
+            # Figure settings
+            'figure.facecolor': self.FIGURE_FACECOLOR,
+            'figure.edgecolor': self.COLOR_DARK_GRAY,
+            'figure.dpi': self.DPI,
+            'savefig.dpi': self.DPI,
+            'savefig.facecolor': self.FIGURE_FACECOLOR,
+            'savefig.edgecolor': 'none',
+            'savefig.bbox': 'tight',
+            'savefig.pad_inches': 0.1,
+            
+            # Axes settings
+            'axes.facecolor': self.AXES_FACECOLOR,
+            'axes.edgecolor': self.COLOR_DARK_GRAY,
+            'axes.linewidth': 1.2,
+            'axes.labelsize': self.FONT_SIZE_LABEL,
+            'axes.labelweight': 'normal',
+            'axes.labelcolor': self.COLOR_DARK_GRAY,
+            'axes.titlesize': self.FONT_SIZE_TITLE,
+            'axes.titleweight': 'bold',
+            'axes.titlecolor': self.COLOR_PRIMARY_BLUE,
+            'axes.titlepad': 15,
+            'axes.grid': True,
+            'axes.axisbelow': True,
+            'axes.spines.top': True,
+            'axes.spines.right': True,
+            'axes.spines.left': True,
+            'axes.spines.bottom': True,
+            
+            # Grid settings
+            'grid.color': self.COLOR_MEDIUM_GRAY,
+            'grid.linestyle': '--',
+            'grid.linewidth': self.LINEWIDTH_GRID,
+            'grid.alpha': 0.3,
+            
+            # Tick settings
+            'xtick.labelsize': self.FONT_SIZE_TICK,
+            'xtick.color': self.COLOR_DARK_GRAY,
+            'xtick.major.size': 5,
+            'xtick.major.width': 1,
+            'xtick.direction': 'out',
+            'ytick.labelsize': self.FONT_SIZE_TICK,
+            'ytick.color': self.COLOR_DARK_GRAY,
+            'ytick.major.size': 5,
+            'ytick.major.width': 1,
+            'ytick.direction': 'out',
+            
+            # Legend settings
+            'legend.fontsize': self.FONT_SIZE_LEGEND,
+            'legend.frameon': True,
+            'legend.framealpha': 0.95,
+            'legend.facecolor': self.COLOR_WHITE,
+            'legend.edgecolor': self.COLOR_MEDIUM_GRAY,
+            'legend.loc': 'best',
+            'legend.borderpad': 0.6,
+            'legend.labelspacing': 0.5,
+            
+            # Line settings
+            'lines.linewidth': self.LINEWIDTH_DATA,
+            'lines.markersize': self.MARKERSIZE,
+            'lines.markeredgewidth': self.MARKER_EDGEWIDTH,
         }
-        base_params.update(self.extra_rcparams)
-        mpl.rcParams.update(base_params)
-        self.logger.debug("Matplotlib style configured.")
+        
+        professional_params.update(self.extra_rcparams)
+        mpl.rcParams.update(professional_params)
 
     def _create_figure(self, figsize=None):
+        """Create figure with professional styling"""
         if figsize is None:
-            width = 10
+            width = 12
             height = width / self.GOLDEN_RATIO
             figsize = (width, height)
-        self.logger.debug(f"Creating figure with size: {figsize}")
+        
         fig, ax = plt.subplots(figsize=figsize)
+        
+        # Professional border
+        for spine in ax.spines.values():
+            spine.set_edgecolor(self.COLOR_DARK_GRAY)
+            spine.set_linewidth(1.2)
+        
         return fig, ax
 
-    def _set_titles_and_labels(self, ax, title=None, xlabel=None, ylabel=None):
-        self.logger.debug(
-            f"Setting titles and labels: title={title}, xlabel={xlabel}, ylabel={ylabel}"
-        )
-        ax.set_title(title or self.labels.get("title", ""))
-        ax.set_xlabel(xlabel or self.labels.get("xlabel", ""))
-        ax.set_ylabel(ylabel or self.labels.get("ylabel", ""))
+    def _set_titles_and_labels(self, ax, title=None, xlabel=None, ylabel=None, subtitle=None):
+        """Set titles and labels with professional formatting and proper spacing"""
+        if title:
+            ax.set_title(title, fontsize=self.FONT_SIZE_TITLE, 
+                        fontweight='bold', color=self.COLOR_PRIMARY_BLUE, pad=10)
+        
+        if subtitle:
+            # Position subtitle below title with proper spacing
+            ax.text(0.5, 1.00, subtitle, transform=ax.transAxes,
+                   fontsize=self.FONT_SIZE_SUBTITLE, color=self.COLOR_DARK_GRAY,
+                   ha='center', va='bottom', style='italic')
+        
+        if xlabel:
+            ax.set_xlabel(xlabel, fontsize=self.FONT_SIZE_LABEL, 
+                         color=self.COLOR_DARK_GRAY, fontweight='normal')
+        
+        if ylabel:
+            ax.set_ylabel(ylabel, fontsize=self.FONT_SIZE_LABEL, 
+                         color=self.COLOR_DARK_GRAY, fontweight='normal')
 
-    def _set_legend(self, ax):
-        self.logger.debug("Setting legend.")
-        ax.legend(title=self.labels.get("legend", ""))
+    def _set_legend(self, ax, **kwargs):
+        """Set legend with professional styling"""
+        legend_props = {
+            'fontsize': self.FONT_SIZE_LEGEND,
+            'frameon': True,
+            'framealpha': 0.95,
+            'facecolor': self.COLOR_WHITE,
+            'edgecolor': self.COLOR_MEDIUM_GRAY,
+            'loc': 'best',
+            'ncol': 1,
+        }
+        legend_props.update(kwargs)
+        
+        legend = ax.legend(**legend_props)
+        legend.get_frame().set_linewidth(0.8)
+
+    def _add_professional_annotation(self, ax, x, y, text, color=None):
+        """Add professional annotation to chart"""
+        if color is None:
+            color = self.COLOR_DARK_GRAY
+        
+        ax.annotate(text, xy=(x, y), xytext=(5, 5),
+                   textcoords='offset points',
+                   fontsize=self.FONT_SIZE_ANNOTATION,
+                   color=color, weight='normal',
+                   bbox=dict(boxstyle='round,pad=0.3', 
+                            facecolor=self.COLOR_WHITE,
+                            edgecolor=color, linewidth=0.8, alpha=0.9))
 
     @abstractmethod
     def plot(self):
-        """Implement this method in subclasses to generate the desired SPC chart."""
+        """Implement this method in subclasses"""
         pass
 
     def _finalize(self):
-        """FIXED: Improved finalization with better error handling and directory creation"""
+        """Finalize and save chart"""
         try:
+            plt.tight_layout()
+            
             if self.save_path:
-                # Ensure the save path is a Path object
                 if not isinstance(self.save_path, Path):
                     self.save_path = Path(self.save_path)
                 
-                # Create directory if it doesn't exist
                 self.save_path.parent.mkdir(parents=True, exist_ok=True)
-                self.logger.info(f"📁 Ensured directory exists: {self.save_path.parent}")
+                plt.savefig(self.save_path, dpi=self.DPI, bbox_inches='tight',
+                           facecolor=self.FIGURE_FACECOLOR, edgecolor='none')
                 
-                # Save the figure
-                self.logger.info(f"💾 Attempting to save figure to: {self.save_path}")
-                plt.savefig(self.save_path, dpi=300, bbox_inches="tight")
-                
-                # Verify the file was created
                 if self.save_path.exists():
                     file_size = self.save_path.stat().st_size
-                    self.logger.info(f"✅ Chart saved successfully: {self.save_path} (size: {file_size} bytes)")
+                    self.logger.info(f"✅ Chart saved: {self.save_path.name} ({file_size} bytes)")
                 else:
-                    self.logger.error(f"❌ Chart file was not created: {self.save_path}")
                     raise RuntimeError(f"Chart file was not created: {self.save_path}")
             
             if self.show:
-                self.logger.info("📺 Displaying figure on screen")
                 plt.show()
                 
         except Exception as e:
             self.logger.error(f"❌ Error in _finalize(): {e}", exc_info=True)
             raise
         finally:
-            # Always close the figure to free memory
             plt.close()
-            self.logger.debug("🔒 Figure closed")
