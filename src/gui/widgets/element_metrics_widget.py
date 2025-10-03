@@ -1,4 +1,4 @@
-# src/gui/widgets/element_metrics_widget.py - FIXED COMPACT VERSION
+# src/gui/widgets/element_metrics_widget.py - IMPROVED READABLE CARD
 from PyQt5.QtWidgets import (
     QFrame, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel, 
     QPushButton, QMessageBox
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class ElementMetricsWidget(QFrame):
-    """Compact widget to display and edit metrics for a single element"""
+    """Improved readable widget to display element info"""
     metricsChanged = pyqtSignal(str, dict)
     removeRequested = pyqtSignal(object)
     valuesChanged = pyqtSignal(str, list)
@@ -22,7 +22,7 @@ class ElementMetricsWidget(QFrame):
         super().__init__(parent)
         self.element_data = element_data.copy()
         self.element_id = element_data['element_id']
-        self.sigma = element_data.get('sigma', '6σ')  # Get sigma from element data
+        self.sigma = element_data.get('sigma', '6σ')
         self.metrics = {}
         self.has_extrapolation = element_data.get('has_extrapolation', False)
         self.extrapolated_values = element_data.get('extrapolated_values', [])
@@ -36,59 +36,56 @@ class ElementMetricsWidget(QFrame):
         self.calculate_and_display_metrics()
     
     def setup_ui(self):
-        """Setup compact UI"""
+        """Setup improved readable UI"""
         self.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
         self.setStyleSheet("""
             QFrame {
                 background-color: #ffffff;
                 border: 2px solid #dee2e6;
-                border-radius: 6px;
-                padding: 8px;
-                margin: 2px;
+                border-radius: 8px;
+                padding: 12px;
+                margin: 3px;
             }
             QFrame:hover {
                 border-color: #3498db;
+                background-color: #f8f9fa;
             }
         """)
         
         layout = QVBoxLayout()
-        layout.setSpacing(4)
-        layout.setContentsMargins(8, 8, 8, 8)
+        layout.setSpacing(8)
+        layout.setContentsMargins(12, 12, 12, 12)
         
-        # Header - more compact
+        # HEADER ROW - Prominent Element Info
         header_layout = QHBoxLayout()
-        header_layout.setSpacing(5)
+        header_layout.setSpacing(10)
         
-        header = QLabel(f"{self.element_id}")
-        header.setFont(QFont("Segoe UI", 9, QFont.Bold))
-        header.setStyleSheet("color: #2c3e50; background: transparent; border: none;")
-        header_layout.addWidget(header)
-        
-        info = QLabel(f"Cav:{self.element_data.get('cavity', 'N/A')} | {self.element_data.get('class', 'N/A')} | {self.sigma}")
-        info.setFont(QFont("Segoe UI", 7))
-        info.setStyleSheet("color: #6c757d; background: transparent; border: none;")
-        header_layout.addWidget(info)
+        # Element ID - Large and Bold
+        element_label = QLabel(f"📋 {self.element_id}")
+        element_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        element_label.setStyleSheet("color: #2c3e50; background: transparent; border: none;")
+        header_layout.addWidget(element_label)
         
         if self.has_extrapolation:
-            extrap_label = QLabel("🔬")
-            extrap_label.setFont(QFont("Segoe UI", 8))
-            extrap_label.setStyleSheet("color: #17a2b8; background: transparent; border: none;")
-            extrap_label.setToolTip("Extrapolated")
-            header_layout.addWidget(extrap_label)
+            extrap_badge = QLabel("🔬")
+            extrap_badge.setFont(QFont("Segoe UI", 10))
+            extrap_badge.setStyleSheet("color: #17a2b8; background: transparent; border: none;")
+            extrap_badge.setToolTip(f"Extrapolated: {len(self.extrapolated_values)} values")
+            header_layout.addWidget(extrap_badge)
         
         header_layout.addStretch()
         
-        # Action buttons - inline
+        # Action buttons
         edit_btn = QPushButton("✏️")
         edit_btn.setToolTip("Edit Values & Metrics")
-        edit_btn.setFixedSize(24, 24)
+        edit_btn.setFixedSize(28, 28)
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #007bff;
                 color: white;
                 border: none;
-                border-radius: 3px;
-                font-size: 10pt;
+                border-radius: 4px;
+                font-size: 11pt;
             }
             QPushButton:hover { background-color: #0056b3; }
         """)
@@ -97,14 +94,14 @@ class ElementMetricsWidget(QFrame):
         
         remove_btn = QPushButton("🗑️")
         remove_btn.setToolTip("Remove")
-        remove_btn.setFixedSize(24, 24)
+        remove_btn.setFixedSize(28, 28)
         remove_btn.setStyleSheet("""
             QPushButton {
                 background-color: #dc3545;
                 color: white;
                 border: none;
-                border-radius: 3px;
-                font-size: 10pt;
+                border-radius: 4px;
+                font-size: 11pt;
             }
             QPushButton:hover { background-color: #c82333; }
         """)
@@ -113,15 +110,74 @@ class ElementMetricsWidget(QFrame):
         
         layout.addLayout(header_layout)
         
-        # Compact metrics in single grid
-        self.metrics_layout = QGridLayout()
-        self.metrics_layout.setSpacing(3)
-        self.metrics_layout.setVerticalSpacing(2)
-        self.metrics_layout.setContentsMargins(0, 0, 0, 0)
+        # KEY INFO ROW - Most Important Data
+        key_info_layout = QGridLayout()
+        key_info_layout.setSpacing(8)
+        key_info_layout.setVerticalSpacing(12)
+        
+        # Nominal
+        nom_lbl = QLabel("Nominal:")
+        nom_lbl.setStyleSheet("color: #6c757d; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(nom_lbl, 0, 0)
+        
+        nom_val = QLabel(f"{self.element_data['nominal']:.4f}")
+        nom_val.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(nom_val, 0, 1)
+        
+        # Class
+        class_lbl = QLabel("Class:")
+        class_lbl.setStyleSheet("color: #6c757d; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(class_lbl, 0, 2)
+        
+        class_val = QLabel(self.element_data.get('class', 'N/A'))
+        class_val.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(class_val, 0, 3)
+        
+        # Sigma
+        sigma_lbl = QLabel("Sigma:")
+        sigma_lbl.setStyleSheet("color: #6c757d; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(sigma_lbl, 0, 4)
+        
+        sigma_val = QLabel(self.sigma)
+        sigma_val.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(sigma_val, 0, 5)
+        
+        # Cavity
+        cav_lbl = QLabel("Cavity:")
+        cav_lbl.setStyleSheet("color: #6c757d; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(cav_lbl, 1, 0)
+        
+        cav_val = QLabel(str(self.element_data.get('cavity', 'N/A')))
+        cav_val.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(cav_val, 1, 1)
+        
+        # Average - will be filled after calculation
+        avg_lbl = QLabel("Average:")
+        avg_lbl.setStyleSheet("color: #6c757d; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(avg_lbl, 1, 2)
+        
+        self.avg_val = QLabel("0.0000")
+        self.avg_val.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(self.avg_val, 1, 3)
+        
+        # Sample size
+        n_lbl = QLabel("n:")
+        n_lbl.setStyleSheet("color: #6c757d; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(n_lbl, 1, 4)
+        
+        self.n_val = QLabel(str(len(self.element_data['values'])))
+        self.n_val.setStyleSheet("color: #2c3e50; font-weight: bold; font-size: 9pt; background: transparent; border: none;")
+        key_info_layout.addWidget(self.n_val, 1, 5)
+        
+        layout.addLayout(key_info_layout)
+        
+        # CAPABILITY METRICS ROW - Compact
+        self.metrics_layout = QHBoxLayout()
+        self.metrics_layout.setSpacing(6)
         layout.addLayout(self.metrics_layout)
         
         self.setLayout(layout)
-        self.setFixedHeight(85)  # Compact fixed height
+        self.setFixedHeight(200)
     
     def calculate_and_display_metrics(self):
         """Calculate metrics and update display"""
@@ -129,17 +185,13 @@ class ElementMetricsWidget(QFrame):
         self._display_metrics()
     
     def _calculate_all_metrics(self):
-        """Calculate metrics from CURRENT values (including extrapolated)"""
-        # Use self.element_data['values'] which includes extrapolated if present
+        """Calculate metrics from CURRENT values"""
         values = self.element_data['values']
         n = len(values)
-
-        logger.debug(f"Calculating metrics from {n} values (has_extrap={self.has_extrapolation})")
 
         if n == 0:
             return self._get_empty_metrics()
         
-        # Calculate from ALL current values
         average = sum(values) / n
         variance = sum((x - average) ** 2 for x in values) / (n - 1) if n > 1 else 0
         sigma_long = math.sqrt(variance)
@@ -151,7 +203,6 @@ class ElementMetricsWidget(QFrame):
         else:
             sigma_short = 0
         
-        # Calculate capability indices
         nominal = self.element_data['nominal']
         tol_minus = abs(self.element_data['tol_minus'])
         tol_plus = abs(self.element_data['tol_plus'])
@@ -204,53 +255,50 @@ class ElementMetricsWidget(QFrame):
         }
     
     def _display_metrics(self):
-        """Display metrics in compact format"""
-        self._clear_layout(self.metrics_layout)
+        """Display key metrics in compact format"""
+        # Update average in key info
+        self.avg_val.setText(f"{self.metrics['average']:.4f}")
+        self.n_val.setText(str(self.metrics['sample_size']))
         
-        # All metrics in 2 rows
-        all_metrics = [
-            ('Avg', self.metrics['average'], False, False),
-            ('σs', self.metrics['sigma_short'], False, False),
-            ('Cp', self.metrics['cp'], True, False),
-            ('Cpk', self.metrics['cpk'], True, False),
-            ('n', self.metrics['sample_size'], False, False),
-            ('σl', self.metrics['sigma_long'], False, False),
-            ('Pp', self.metrics['pp'], True, True),
-            ('Ppk', self.metrics['ppk'], True, True),
-            ('PPM', f"{int(self.metrics['ppm_short']):,}", False, False),
-        ]
-        
-        for i, (label, value, color_code, is_long_term) in enumerate(all_metrics):
-            row = i // 5
-            col = (i % 5) * 2
-            
-            lbl = QLabel(f"{label}:")
-            lbl.setStyleSheet("color: #495057; font-size: 7pt; background: transparent; border: none;")
-            lbl.setFixedWidth(25)
-            self.metrics_layout.addWidget(lbl, row, col)
-            
-            if isinstance(value, str):
-                value_text = value
-                color = "#495057"
-            else:
-                value_text = f"{value:.2f}" if abs(value) >= 0.01 else f"{value:.3f}"
-                color = self._get_metric_color(label, value, is_long_term) if color_code else "#495057"
-            
-            value_lbl = QLabel(value_text)
-            value_lbl.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 7pt; background: transparent; border: none;")
-            value_lbl.setFixedWidth(35)
-            self.metrics_layout.addWidget(value_lbl, row, col + 1)
-    
-    def _clear_layout(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)
+        # Clear metrics layout
+        while self.metrics_layout.count():
+            item = self.metrics_layout.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
+        
+        # Key capability metrics only
+        key_metrics = [
+            ('Cpk', self.metrics['cpk'], True, False),
+            ('Ppk', self.metrics['ppk'], True, True),
+            ('Cp', self.metrics['cp'], False, False),
+            ('Pp', self.metrics['pp'], False, True),
+        ]
+        
+        for label, value, color_code, is_long_term in key_metrics:
+            container = QFrame()
+            container.setStyleSheet("background: transparent; border: none;")
+            cont_layout = QHBoxLayout(container)
+            cont_layout.setContentsMargins(0, 0, 0, 0)
+            cont_layout.setSpacing(3)
+            
+            lbl = QLabel(f"{label}:")
+            lbl.setStyleSheet("color: #495057; font-size: 8pt; background: transparent; border: none;")
+            cont_layout.addWidget(lbl)
+            
+            value_text = f"{value:.2f}" if abs(value) >= 0.01 else f"{value:.3f}"
+            color = self._get_metric_color(label, value, is_long_term) if color_code else "#495057"
+            
+            value_lbl = QLabel(value_text)
+            value_lbl.setStyleSheet(f"color: {color}; font-weight: bold; font-size: 8pt; background: transparent; border: none;")
+            cont_layout.addWidget(value_lbl)
+            
+            self.metrics_layout.addWidget(container)
+        
+        self.metrics_layout.addStretch()
     
     def _get_metric_color(self, metric_type, value, is_long_term=False):
-        """Get color based on metric value and sigma setting - FIXED"""
+        """Get color based on metric value and sigma setting"""
         if any(x in metric_type.lower() for x in ['cp', 'pp']):
-            # Determine thresholds based on sigma
             if self.sigma == '6σ':
                 excellent = 2.0
                 good = 1.67
@@ -261,22 +309,22 @@ class ElementMetricsWidget(QFrame):
                 acceptable = 1.0
             
             if value >= excellent:
-                return "#28a745"  # Green
+                return "#28a745"
             elif value >= good:
-                return "#17a2b8"  # Cyan
+                return "#17a2b8"
             elif value >= acceptable:
-                return "#ffc107"  # Yellow
+                return "#ffc107"
             else:
-                return "#dc3545"  # Red
+                return "#dc3545"
         return "#495057"
     
     def _edit_element(self):
-        """Edit element - NO MORE BUGS"""
-        from .element_edit_dialog import EnhancedElementEditDialog
+        """Edit element"""
+        from .element_edit_dialog import ElementEditDialog
         
-        dialog = EnhancedElementEditDialog(
+        dialog = ElementEditDialog(
             element_id=self.element_id,
-            element_data=self.element_data.copy(),  # Pass copy
+            element_data=self.element_data.copy(),
             metrics=self.metrics.copy(),
             parent=self
         )
@@ -284,13 +332,6 @@ class ElementMetricsWidget(QFrame):
         if dialog.exec_():
             updated = dialog.get_updated_data()
             
-            logger.info(f"=== WIDGET RECEIVED UPDATE: {self.element_id} ===")
-            logger.info(f"  values: {len(updated['values'])}")
-            logger.info(f"  original: {len(updated['original_values'])}")
-            logger.info(f"  extrapolated: {len(updated['extrapolated_values'])}")
-            logger.info(f"  has_extrapolation: {updated['has_extrapolation']}")
-            
-            # Update EVERYTHING
             self.element_data['values'] = updated['values']
             self.element_data['original_values'] = updated['original_values']
             self.element_data['extrapolated_values'] = updated['extrapolated_values']
@@ -300,7 +341,6 @@ class ElementMetricsWidget(QFrame):
             self.extrapolated_values = updated['extrapolated_values']
             self.has_extrapolation = updated['has_extrapolation']
             
-            # Metrics
             if updated.get('custom_metrics'):
                 self.element_data['metrics'] = updated['custom_metrics']
                 self.metrics.update(updated['custom_metrics'])
@@ -313,9 +353,6 @@ class ElementMetricsWidget(QFrame):
             self._display_metrics()
             self.metricsChanged.emit(self.element_id, self.metrics)
             self.valuesChanged.emit(self.element_id, updated['values'])
-            
-            logger.info(f"✓✓✓ SAVED: extrap={self.has_extrapolation}, values={len(updated['values'])}")
-
     
     def _recalculate_capability_with_custom_metrics(self, custom_metrics):
         """Recalculate capability indices using custom metrics"""
@@ -330,7 +367,6 @@ class ElementMetricsWidget(QFrame):
         LSL = nominal - tol_minus
         tolerance = USL - LSL
         
-        # Short-term
         if sigma_short > 0:
             cp = tolerance / (6 * sigma_short)
             cpu = (USL - average) / (3 * sigma_short)
@@ -343,7 +379,6 @@ class ElementMetricsWidget(QFrame):
         else:
             cp = cpk = ppm_short = 0
         
-        # Long-term
         if sigma_long > 0:
             pp = tolerance / (6 * sigma_long)
             ppu = (USL - average) / (3 * sigma_long)
@@ -356,7 +391,6 @@ class ElementMetricsWidget(QFrame):
         else:
             pp = ppk = ppm_long = 0
         
-        # Update metrics
         self.metrics.update({
             'cp': cp,
             'cpk': cpk,
@@ -376,13 +410,13 @@ class ElementMetricsWidget(QFrame):
             self.removeRequested.emit(self)
     
     def get_element_data(self):
-        """Get complete element data - ENSURE ALL FIELDS"""
+        """Get complete element data"""
         return {
             'element_id': self.element_id,
             'cavity': self.element_data.get('cavity', ''),
             'class': self.element_data.get('class', ''),
             'sigma': self.sigma,
-            'instrument': self.element_data.get('instrument', '3D Scanner'),  # NEW
+            'instrument': self.element_data.get('instrument', '3D Scanner'),
             'nominal': self.element_data['nominal'],
             'tol_minus': self.element_data['tol_minus'],
             'tol_plus': self.element_data['tol_plus'],
@@ -390,5 +424,5 @@ class ElementMetricsWidget(QFrame):
             'original_values': self.original_values,
             'has_extrapolation': self.has_extrapolation,
             'extrapolated_values': self.extrapolated_values,
-            'metrics': self.element_data.get('metrics'),  # Custom metrics if edited
+            'metrics': self.element_data.get('metrics'),
         }

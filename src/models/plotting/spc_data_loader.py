@@ -164,8 +164,11 @@ class SPCDataLoader:
                 "ppk": element_info.get("capability", {}).get("ppk"),
                 "ppm_short": element_info.get("capability", {}).get("ppm_short"),
                 "ppm_long": element_info.get("capability", {}).get("ppm_long"),
-                "ad_value": element_info.get("statistics", {}).get("ad_statistic"),
+                "ad_value": element_info.get("statistics", {}).get("ad_value"),  # FIXED: was "ad_statistic"
                 "p_value": element_info.get("statistics", {}).get("p_value"),
+                "instrument": element_info.get("instrument", "CMM"),  # ADD THIS
+                "class": element_info.get("class", "CC"),              # ADD THIS
+                "sigma": element_info.get("sigma", "6σ"),              # ADD THIS
                 "extrapolated_values": extrap_values,  # CRITICAL: Store extrapolated values
                 "extrapolated_ad_value": extrapolated.get("ad_statistic"),
                 "extrapolated_p_value": extrapolated.get("p_value"),

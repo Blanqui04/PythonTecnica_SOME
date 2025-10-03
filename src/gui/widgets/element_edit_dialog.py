@@ -15,7 +15,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class EnhancedElementEditDialog(QDialog):
+class ElementEditDialog(QDialog):
     """Enhanced dialog for editing element values, metrics, and extrapolation"""
     
     def __init__(self, element_id, element_data, metrics, parent=None):
@@ -41,7 +41,7 @@ class EnhancedElementEditDialog(QDialog):
         self.metric_inputs = {}
         
         self.setWindowTitle(f"Edit Element - {element_id}")
-        self.setMinimumSize(900, 700)
+        self.setMinimumSize(800, 900)
         self.setup_ui()
         
     def setup_ui(self):
@@ -153,6 +153,37 @@ class EnhancedElementEditDialog(QDialog):
         # Values editing with table
         values_group = QGroupBox("Measured Values")
         values_layout = QVBoxLayout()
+
+        btn_layout = QHBoxLayout()
+
+        add_value_btn = QPushButton("➕ Add Value")
+        add_value_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #28a745;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #218838; }
+        """)
+        add_value_btn.clicked.connect(self._add_new_value)
+        btn_layout.addWidget(add_value_btn)
+        
+        remove_value_btn = QPushButton("➖ Remove Selected")
+        remove_value_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                padding: 6px 12px;
+                border-radius: 4px;
+            }
+            QPushButton:hover { background-color: #c82333; }
+        """)
+        remove_value_btn.clicked.connect(self._remove_selected_value)
+        btn_layout.addWidget(remove_value_btn)
+        
+        btn_layout.addStretch()
+        values_layout.addLayout(btn_layout)
         
         # Show extrapolation status
         if self.has_extrapolation:
@@ -173,12 +204,14 @@ class EnhancedElementEditDialog(QDialog):
             """)
             values_layout.addWidget(show_original_btn)
         
-        # Table for values
+        # Table for values - IMPROVED HEIGHT
         self.values_table = QTableWidget()
         self.values_table.setColumnCount(2)
         self.values_table.setHorizontalHeaderLabels(["#", "Value"])
         self.values_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeToContents)
         self.values_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.Stretch)
+        self.values_table.setMinimumHeight(180)  # Show ~4 rows clearly
+        self.values_table.setMaximumHeight(250)
         self.values_table.setRowCount(len(self.current_values))
         
         for i, value in enumerate(self.current_values):
@@ -241,6 +274,83 @@ class EnhancedElementEditDialog(QDialog):
         self.update_statistics()
         
         return tab
+    
+    def _add_new_value(self):
+        """Add a new value to the table"""
+        from PyQt5.QtWidgets import QInputDialog
+        
+        value, ok = QInputDialog.getDouble(
+            self, "Add New Value", 
+            "Enter new measured value:", 
+            decimals=4
+        )
+        
+        if ok:
+            # Disconnect signal temporarily
+            self.values_table.cellChanged.disconnect(self._on_value_changed)
+            
+            row_count = self.values_table.rowCount()
+            self.values_table.setRowCount(row_count + 1)
+            
+            index_item = QTableWidgetItem(f"V{row_count + 1}")
+            index_item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsSelectable)
+            self.values_table.setItem(row_count, 0, index_item)
+            
+            value_item = QTableWidgetItem(f"{value:.4f}")
+            self.values_table.setItem(row_count, 1, value_item)
+            
+            # Add to current values
+            self.current_values.append(value)
+            self.original_values.append(value)  # Add to original too
+            
+            # Reconnect signal
+            self.values_table.cellChanged.connect(self._on_value_changed)
+            
+            self.update_statistics()
+            
+            logger.info(f"Added new value: {value:.4f}")
+    
+    def _remove_selected_value(self):
+        """Remove selected value from table"""
+        current_row = self.values_table.currentRow()
+        
+        if current_row < 0:
+            QMessageBox.warning(self, "No Selection", "Please select a value to remove")
+            return
+        
+        if len(self.current_values) <= 5:
+            QMessageBox.warning(self, "Minimum Values", "Cannot remove - minimum 5 values required")
+            return
+        
+        reply = QMessageBox.question(
+            self, 'Remove Value',
+            f'Remove value at row {current_row + 1}?',
+            QMessageBox.Yes | QMessageBox.No
+        )
+        
+        if reply == QMessageBox.Yes:
+            # Disconnect signal
+            self.values_table.cellChanged.disconnect(self._on_value_changed)
+            
+            # Remove from lists
+            del self.current_values[current_row]
+            if current_row < len(self.original_values):
+                del self.original_values[current_row]
+            
+            # Remove from table
+            self.values_table.removeRow(current_row)
+            
+            # Renumber remaining rows
+            for i in range(self.values_table.rowCount()):
+                self.values_table.item(i, 0).setText(f"V{i+1}")
+            
+            # Reconnect signal
+            self.values_table.cellChanged.connect(self._on_value_changed)
+            
+            self.update_statistics()
+            
+            logger.info(f"Removed value at row {current_row}")
+    
     
     def _create_metrics_tab(self):
         """Create tab for directly editing metrics - FIXED with reset button"""
@@ -377,7 +487,7 @@ class EnhancedElementEditDialog(QDialog):
         config_layout.addWidget(QLabel("Target Sample Size:"), 0, 0)
         self.target_size_spin = QSpinBox()
         self.target_size_spin.setRange(10, 200)
-        self.target_size_spin.setValue(50)
+        self.target_size_spin.setValue(100)
         self.target_size_spin.setSuffix(" values")
         config_layout.addWidget(self.target_size_spin, 0, 1)
         
@@ -391,7 +501,7 @@ class EnhancedElementEditDialog(QDialog):
         config_layout.addWidget(QLabel("Max Attempts:"), 2, 0)
         self.max_attempts_spin = QSpinBox()
         self.max_attempts_spin.setRange(10, 200)
-        self.max_attempts_spin.setValue(100)
+        self.max_attempts_spin.setValue(10)
         config_layout.addWidget(self.max_attempts_spin, 2, 1)
         
         config_group.setLayout(config_layout)
@@ -507,7 +617,6 @@ class EnhancedElementEditDialog(QDialog):
             else:
                 std_dev = 0.0
             
-            # Update labels
             self.stat_labels['count'].setText(str(n))
             self.stat_labels['mean'].setText(f"{mean:.4f}")
             self.stat_labels['std_dev'].setText(f"{std_dev:.4f}")
@@ -515,7 +624,6 @@ class EnhancedElementEditDialog(QDialog):
             self.stat_labels['max'].setText(f"{max_val:.4f}")
             self.stat_labels['range'].setText(f"{range_val:.4f}")
             
-            # Color code mean
             nominal = self.tolerances['nominal']
             tol_minus = abs(self.tolerances['tol_minus'])
             tol_plus = abs(self.tolerances['tol_plus'])
@@ -527,6 +635,7 @@ class EnhancedElementEditDialog(QDialog):
                 
         except Exception as e:
             logger.error(f"Error updating statistics: {e}")
+    
     
     def _recalculate_capability(self):
         """Recalculate capability indices when metrics change"""
@@ -542,7 +651,7 @@ class EnhancedElementEditDialog(QDialog):
             LSL = nominal - tol_minus
             tolerance = USL - LSL
             
-            # Short-term indices
+            # Short-term
             if sigma_short > 0:
                 cp = tolerance / (6 * sigma_short)
                 cpu = (USL - average) / (3 * sigma_short)
@@ -555,7 +664,7 @@ class EnhancedElementEditDialog(QDialog):
             else:
                 cp = cpk = ppm_short = 0
             
-            # Long-term indices
+            # Long-term
             if sigma_long > 0:
                 pp = tolerance / (6 * sigma_long)
                 ppu = (USL - average) / (3 * sigma_long)
@@ -568,7 +677,6 @@ class EnhancedElementEditDialog(QDialog):
             else:
                 pp = ppk = ppm_long = 0
             
-            # Update calculated labels
             self.calc_labels['cp'].setText(self._format_metric('cp', cp))
             self.calc_labels['cpk'].setText(self._format_metric('cpk', cpk))
             self.calc_labels['ppm_short'].setText(self._format_metric('ppm_short', ppm_short))
@@ -584,7 +692,7 @@ class EnhancedElementEditDialog(QDialog):
         if 'ppm' in key:
             return f"{int(value):,}"
         else:
-            return f"{value:.3f}"
+            return f"{value:.4f}"
     
     def _show_original_values(self):
         """Show only original values (remove extrapolated)"""
@@ -727,7 +835,6 @@ class EnhancedElementEditDialog(QDialog):
             self.has_extrapolation = False
             self.extrapolated_values = []
             
-            # Refresh dialog
             self.close()
             self.__init__(
                 self.element_id, 
