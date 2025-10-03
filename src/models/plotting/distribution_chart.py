@@ -1,112 +1,58 @@
-# src/models/plotting/extrapolation_chart.py
+# src/models/plotting/distribution_chart.py - PROFESSIONAL PPAP AESTHETIC
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import stats
 from matplotlib.ticker import FuncFormatter
+from matplotlib.patches import Polygon
 from pathlib import Path
+from .base_chart import SPCChartBase
 from .logging_config import logger as base_logger
 from typing import Dict, Any
 
-from .base_chart import SPCChartBase
-
 
 class DistributionSPCChart(SPCChartBase):
-    """
-    Extrapolated SPC Chart implementation based on SPCChartBase.
+    """Professional Distribution Chart with PPAP-compliant styling"""
 
-    This chart displays the distribution of measured values with extrapolated normal curve,
-    showing control limits, nominal values, and statistical indicators.
-    """
-
-    COLOR_VERMELL_CLAR = "#FFE6E6"  # Light red for rejection zones
-
-    def __init__(
-        self,
-        input_json_path: str | Path,
-        lang: str = "ca",
-        show: bool = False,
-        save_path: str | Path = None,
-        i18n_folder: str | Path = None,
-        extra_rcparams: dict = None,
-        logger=None,
-        element_name: str = None,
-        bins: int = 30,
-    ):
-        """
-        Initialize the ExtrapolatedSPCChart.
-
-        Args:
-            input_json_path: Path to JSON file containing SPC data
-            lang: Language code for translations <- not active
-            show: Whether to display the chart
-            save_path: Path to save the chart
-            i18n_folder: Path to i18n folder
-            extra_rcparams: Additional matplotlib rcParams
-            logger: Logger instance
-            element_name: Name of the element to plot
-            bins: Number of bins for histogram
-        """
+    def __init__(self, input_json_path, lang="ca", show=False, save_path=None,
+                 i18n_folder=None, extra_rcparams=None, logger=None,
+                 element_name=None, bins=30):
         self.bins = bins
         super().__init__(
-            input_json_path=input_json_path,
-            lang=lang,
-            show=show,
-            save_path=save_path,
-            i18n_folder=i18n_folder,
+            input_json_path=input_json_path, lang=lang, show=show,
+            save_path=save_path, i18n_folder=i18n_folder,
             extra_rcparams=extra_rcparams,
             logger=logger or base_logger.getChild(self.__class__.__name__),
             element_name=element_name,
         )
 
-        self.logger.info(
-            f"ExtrapolatedSPCChart initialized for element: {self.element_name}"
-        )
-
-    def _validate_data(self) -> None:
-        """Validate data - chart works with ANY sufficient data"""
-        self.logger.debug("Validating element data for distribution chart")
-
-        required_fields = ["nominal", "tolerance", "mean", "std_long"]
-        
-        # CRITICAL FIX: Check for ANY usable data source
+    def _validate_data(self):
+        """Validate data availability"""
         has_extrapolated = ("extrapolated_values" in self.element_data and 
-                        len(self.element_data.get("extrapolated_values", [])) > 0)
-                        
+                           len(self.element_data.get("extrapolated_values", [])) > 0)
         has_original = ("original_values" in self.element_data and 
-                    len(self.element_data.get("original_values", [])) >= 5)
+                       len(self.element_data.get("original_values", [])) >= 5)
         
         if not (has_extrapolated or has_original):
-            error_msg = "Need either extrapolated values OR ≥5 original values"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
+            raise ValueError("Need either extrapolated or ≥5 original values")
 
-        missing_fields = [field for field in required_fields if field not in self.element_data]
-        if missing_fields:
-            error_msg = f"Missing required fields: {missing_fields}"
-            self.logger.error(error_msg)
-            raise ValueError(error_msg)
-
-        self.logger.info("✓ Element data validation passed")
-
+        required_fields = ["nominal", "tolerance", "mean", "std_long"]
+        missing = [f for f in required_fields if f not in self.element_data]
+        if missing:
+            raise ValueError(f"Missing required fields: {missing}")
 
     def _extract_data(self) -> Dict[str, Any]:
-        """Extract data - prefer extrapolated, fallback to original"""
-        self.logger.debug("Extracting data for distribution chart")
-
-        # CRITICAL: Determine which values to use
+        """Extract data for plotting"""
         if ("extrapolated_values" in self.element_data and 
             len(self.element_data.get("extrapolated_values", [])) > 0):
-            values_to_use = self.element_data["extrapolated_values"]
+            values = self.element_data["extrapolated_values"]
             data_type = "extrapolated"
-            self.logger.info(f"Using {len(values_to_use)} extrapolated values")
         else:
-            values_to_use = self.element_data.get("original_values", [])
+            values = self.element_data.get("original_values", [])
             data_type = "original"
-            self.logger.info(f"Using {len(values_to_use)} original values")
 
         data = {
-            "extrapolated_values": np.array(values_to_use),
+            "values": np.array(values),
             "nominal": float(self.element_data["nominal"]),
             "tolerance": self.element_data["tolerance"],
             "mean": float(self.element_data["mean"]),
@@ -114,297 +60,93 @@ class DistributionSPCChart(SPCChartBase):
             "data_type": data_type,
         }
 
-        # Calculate limits
         data["lsl"] = data["nominal"] + data["tolerance"][0]
         data["usl"] = data["nominal"] + data["tolerance"][1]
-
-        # Get capability indices
         data["pp"] = self.element_data.get("pp")
         data["ppk"] = self.element_data.get("ppk")
-        data["pval"] = self.element_data.get("p_value")
-        data["is_normal"] = (data["pval"] > 0.05) if data["pval"] is not None else None
 
         return data
 
-    def _create_normal_curve(self, data: Dict[str, Any]) -> tuple:
-        """Create normal distribution curve data."""
-        self.logger.debug("Creating normal distribution curve")
-
-        # Generate x values for normal curve (±3 sigma range)
-        x_min = data["mean"] - 3 * data["std_long"]
-        x_max = data["mean"] + 3 * data["std_long"]
-        x = np.linspace(x_min, x_max, 200)
-
-        # Calculate probability density
-        p = stats.norm.pdf(x, data["mean"], data["std_long"])
-
-        # Scale to match histogram frequency
-        bin_width = (
-            max(data["extrapolated_values"]) - min(data["extrapolated_values"])
-        ) / self.bins
-        normal_scaled = p * len(data["extrapolated_values"]) * bin_width
-
-        self.logger.debug(
-            f"Normal curve created: x range [{x_min:.4f}, {x_max:.4f}], "
-            f"max density: {max(normal_scaled):.4f}"
-        )
-
-        return x, normal_scaled
-
-    def _plot_histogram_and_kde(self, ax, data: Dict[str, Any]) -> None:
-        """Plot histogram and KDE."""
-        self.logger.debug("Plotting histogram and KDE")
-
-        histogram_label = self.labels.get("histogram_kde", "Histogram and KDE")
-
-        sns.histplot(
-            data["extrapolated_values"],
-            bins=self.bins,
-            kde=True,
-            stat="count",
-            alpha=0.6,
-            color=self.COLOR_BLAU,
-            edgecolor="k",
-            label=histogram_label,
-            ax=ax,
-        )
-
-        self.logger.debug(f"Histogram plotted with {self.bins} bins")
-
-    def _plot_normal_curve(
-        self, ax, x: np.ndarray, normal_scaled: np.ndarray, data: Dict[str, Any]
-    ) -> None:
-        """Plot the normal distribution curve."""
-        self.logger.debug("Plotting normal distribution curve")
-
-        curve_label = (
-            f"$\\bar{{x}}$ = {data['mean']:.4f}, $\\sigma$ = {data['std_long']:.4f}"
-        )
-
-        ax.plot(
-            x, normal_scaled, color=self.COLOR_NEGRE, linewidth=1, label=curve_label
-        )
-
-        self.logger.debug("Normal curve plotted")
-
-    def _plot_control_limits(self, ax, data: Dict[str, Any]) -> None:
-        """Plot control limits and nominal value."""
-        self.logger.debug("Plotting control limits and nominal value")
-
-        ymax = ax.get_ylim()[1]
-
-        # LSL (Lower Specification Limit)
-        if data["lsl"] != data["nominal"]:
-            ax.axvline(
-                data["lsl"], color=self.COLOR_VERMELL, linestyle="-", linewidth=0.75
-            )
-            ax.text(
-                data["lsl"],
-                ymax * 0.94,
-                f"LSL ({data['lsl']:.2f})",
-                color=self.COLOR_VERMELL,
-                fontsize=9,
-                fontname=self.FONT_NAME,
-                ha="center",
-                va="bottom",
-                bbox=dict(
-                    facecolor="white", edgecolor="none", boxstyle="round,pad=0.1"
-                ),
-            )
-            self.logger.debug(f"LSL plotted at {data['lsl']:.4f}")
-
-        # Nominal value
-        ax.axvline(
-            data["nominal"], color=self.COLOR_VERD, linestyle="-", linewidth=0.75
-        )
-        ax.text(
-            data["nominal"],
-            ymax * 0.95,
-            f"$x_{{0}}$ ({data['nominal']:.2f})",
-            color=self.COLOR_VERD,
-            fontsize=9,
-            fontname=self.FONT_NAME,
-            ha="center",
-            va="bottom",
-            bbox=dict(facecolor="white", edgecolor="none", boxstyle="round,pad=0.1"),
-        )
-        self.logger.debug(f"Nominal value plotted at {data['nominal']:.4f}")
-
-        # Mean value (mu)
-        ax.axvline(data["mean"], color=self.COLOR_NEGRE, linestyle="--", linewidth=0.75)
-        self.logger.debug(f"Mean value plotted at {data['mean']:.4f}")
-
-        # USL (Upper Specification Limit)
-        if data["usl"] != data["nominal"]:
-            ax.axvline(
-                data["usl"], color=self.COLOR_VERMELL, linestyle="-", linewidth=0.75
-            )
-            ax.text(
-                data["usl"],
-                ymax * 0.95,
-                f"USL ({data['usl']:.2f})",
-                color=self.COLOR_VERMELL,
-                fontsize=9,
-                fontname=self.FONT_NAME,
-                ha="center",
-                va="bottom",
-                bbox=dict(
-                    facecolor="white", edgecolor="none", boxstyle="round,pad=0.1"
-                ),
-            )
-            self.logger.debug(f"USL plotted at {data['usl']:.4f}")
-
-    def _plot_rejection_zones(
-        self, ax, x: np.ndarray, normal_scaled: np.ndarray, data: Dict[str, Any]
-    ) -> None:
-        """Plot shaded rejection zones."""
-        self.logger.debug("Plotting rejection zones")
-
-        # Shade areas outside specification limits
-        ax.fill_between(
-            x,
-            0,
-            normal_scaled,
-            where=(x < data["lsl"]) | (x > data["usl"]),
-            color=self.COLOR_VERMELL_CLAR,
-            alpha=0.4,
-        )
-
-        self.logger.debug("Rejection zones plotted")
-
-    def _set_axis_limits(self, ax, x: np.ndarray, data: Dict[str, Any]) -> None:
-        """Set appropriate axis limits."""
-        self.logger.debug("Setting axis limits")
-
-        x_min_val = min(
-            min(data["extrapolated_values"]), min(x), data["lsl"], data["nominal"]
-        )
-        x_max_val = max(
-            max(data["extrapolated_values"]), max(x), data["usl"], data["nominal"]
-        )
-        x_margin = 0.02 * (x_max_val - x_min_val)
-
-        ax.set_xlim(x_min_val - x_margin, x_max_val + x_margin)
-
-        self.logger.debug(
-            f"X-axis limits set: [{x_min_val - x_margin:.4f}, {x_max_val + x_margin:.4f}]"
-        )
-
-    def _format_axes(self, ax) -> None:
-        """Format axis ticks and labels."""
-        self.logger.debug("Formatting axes")
-
-        # Format tick labels
-        ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
-        ax.tick_params(axis="x", labelsize=10)
-        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.2f}"))
-        ax.tick_params(axis="y", labelsize=10)
-
-        # Set font for tick labels
-        for label in ax.get_xticklabels() + ax.get_yticklabels():
-            label.set_fontname(self.FONT_NAME)
-
-        self.logger.debug("Axis formatting completed")
-
-    def _create_subtitle(self, data: Dict[str, Any]) -> str:
-        """Create subtitle with statistical indicators and data type."""
-        self.logger.debug("Creating subtitle with statistical indicators")
-
-        subtitle_parts = []
-        
-        # Add data type indicator
-        data_type = data.get("data_type", "unknown")
-        if data_type == "extrapolated":
-            data_type_text = self.labels.get("subtitle_extrapolated", "Extrapolated Data")
-        elif data_type == "real":
-            data_type_text = self.labels.get("subtitle_real", f"Real Data (n={len(data['extrapolated_values'])})")
-        else:
-            data_type_text = "Unknown Data Type"
-        
-        subtitle_parts.append(data_type_text)
-
-        # Pp and Ppk values
-        if data["pp"] is not None and data["ppk"] is not None:
-            pp_ppk_text = self.labels.get(
-                "subtitle_pp_ppk", "Pp = {pp:.2f}, Ppk = {ppk:.2f}"
-            )
-            subtitle_parts.append(pp_ppk_text.format(pp=data["pp"], ppk=data["ppk"]))
-
-        # P-value
-        if data["pval"] is not None:
-            pval_text = self.labels.get("subtitle_pval", "p-value = {pval:.4f}")
-            subtitle_parts.append(pval_text.format(pval=data["pval"]))
-
-        # Normality test result
-        if data["is_normal"] is not None:
-            yes_text = self.labels.get("yes", "Yes")
-            no_text = self.labels.get("no", "No")
-            normal_text = self.labels.get("subtitle_normal", "Normal: {normal}")
-            subtitle_parts.append(
-                normal_text.format(normal=yes_text if data["is_normal"] else no_text)
-            )
-
-        subtitle = "   ".join(subtitle_parts)
-        self.logger.debug(f"Subtitle created: {subtitle}")
-
-        return subtitle
-
-    def plot(self) -> None:
-        """Create the extrapolated SPC chart."""
-        self.logger.info("Starting extrapolated SPC chart creation")
-
+    def plot(self):
+        """Create professional distribution chart"""
         try:
-            self._validate_data()       # Validate data
-            data = self._extract_data() # Extract data
+            self._validate_data()
+            data = self._extract_data()
 
-            # Create figure with adjusted height to accommodate title and subtitle
-            fig, ax = self._create_figure(figsize=(10, 10 / self.GOLDEN_RATIO + 0.5))  # Added extra height
+            fig, ax = self._create_figure(figsize=(10, 10 / self.GOLDEN_RATIO))
+            
+            # Create normal distribution
+            x_min = data["mean"] - 4 * data["std_long"]
+            x_max = data["mean"] + 4 * data["std_long"]
+            x = np.linspace(x_min, x_max, 300)
+            pdf = stats.norm.pdf(x, data["mean"], data["std_long"])
 
-            x, normal_scaled = self._create_normal_curve(data)      # Create normal distribution curve
-            self._plot_histogram_and_kde(ax, data)                  # Plot histogram and KDE
-            self._plot_normal_curve(ax, x, normal_scaled, data)     # Plot normal curve
-            self._plot_control_limits(ax, data)                     # Plot control limits
-            self._plot_rejection_zones(ax, x, normal_scaled, data)  # Plot rejection zones
-            self._set_axis_limits(ax, x, data)                      # Set axis limits
-            self._format_axes(ax)                                   # Format axes
+            # Scale PDF to histogram
+            bin_width = (max(data["values"]) - min(data["values"])) / self.bins
+            normal_scaled = pdf * len(data["values"]) * bin_width
 
-            # Set labels and title with adjusted spacing
-            xlabel = self.labels.get("distribution_xlabel", "Measured Values")
-            ylabel = self.labels.get("distribution_ylabel", "Frequency")
-            title = self.labels.get(
-                "distribution_title", "Measurement Distribution - {element}"
-            ).format(element=self.element_name)
+            # Plot histogram with professional styling
+            sns.histplot(
+                data["values"], bins=self.bins, kde=False, stat="count",
+                alpha=0.6, color=self.COLOR_ACCENT_BLUE,
+                edgecolor=self.COLOR_DARK_GRAY, linewidth=0.8,
+                ax=ax, label='Measured Distribution'
+            )
 
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(ylabel)
+            # Plot normal curve
+            ax.plot(x, normal_scaled, color=self.COLOR_PRIMARY_BLUE,
+                   linewidth=self.LINEWIDTH_CONTROL, alpha=0.9,
+                   label=f'Normal: μ={data["mean"]:.4f}, σ={data["std_long"]:.4f}')
 
-            ax.set_title(title, pad=20) # Set title with adjusted y-position  
+            # Shade rejection zones with professional colors
+            ax.fill_between(x, 0, normal_scaled,
+                           where=(x < data["lsl"]) | (x > data["usl"]),
+                           color=self.COLOR_DANGER_RED, alpha=0.15,
+                           label='Rejection Zones')
 
-            # Add subtitle with statistical indicators
-            # subtitle = self._create_subtitle(data)
-            # if subtitle.strip():
-            #    ax.text(
-            #        0.5,
-            #        1.05,  # Adjusted y-position to prevent overlap with title
-            #        subtitle.strip(),
-            #        fontsize=11,
-            #        fontname=self.FONT_NAME,
-            #        color="#444444",
-            #        ha="center",
-            #        va="bottom",
-            #        transform=ax.transAxes,
-            #    )
+            # Vertical lines for limits
+            ymax = ax.get_ylim()[1]
+            
+            limit_specs = [
+                (data["lsl"], self.COLOR_DANGER_RED, f'LSL\n{data["lsl"]:.3f}', '-', 1.2),
+                (data["usl"], self.COLOR_DANGER_RED, f'USL\n{data["usl"]:.3f}', '-', 1.2),
+                (data["nominal"], self.COLOR_SUCCESS_GREEN, f'Target\n{data["nominal"]:.3f}', ':', 1.2),
+                (data["mean"], self.COLOR_PRIMARY_BLUE, f'Mean\n{data["mean"]:.3f}', '--', 1.0)
+            ]
+            
+            for x_pos, color, label_text, ls, lw in limit_specs:
+                ax.axvline(x_pos, color=color, linestyle=ls,
+                          linewidth=lw, alpha=0.8, zorder=3)
+                ax.text(x_pos, ymax * 0.92, label_text,
+                       color=color, fontsize=self.FONT_SIZE_ANNOTATION,
+                       ha='center', va='top', weight='bold',
+                       bbox=dict(facecolor='white', edgecolor=color,
+                               boxstyle='round,pad=0.4', alpha=0.95, linewidth=0.8))
 
-            self._set_legend(ax)    # Set legend
-            plt.tight_layout(pad=3.0)   # Apply tight layout with additional padding
+            # Set axis limits
+            x_min_val = min(min(data["values"]), data["lsl"], x_min)
+            x_max_val = max(max(data["values"]), data["usl"], x_max)
+            x_margin = 0.02 * (x_max_val - x_min_val)
+            ax.set_xlim(x_min_val - x_margin, x_max_val + x_margin)
 
-            self.logger.info("Extrapolated SPC chart created successfully")
+            # Format axes
+            ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.3f}"))
+            ax.yaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.0f}"))
+
+            # Title and labels without subtitle
+            title = f"Distribution Analysis: {self.element_name}"
+            
+            self._set_titles_and_labels(ax, title=title,
+                                       xlabel="Measured Value",
+                                       ylabel="Frequency")
+
+            # Professional legend
+            self._set_legend(ax, loc='upper left', ncol=1)
+            ax.grid(True, alpha=0.3, linestyle='--', linewidth=self.LINEWIDTH_GRID)
+
+            plt.tight_layout()
+            self._finalize()
 
         except Exception as e:
-            self.logger.error(
-                f"Error creating extrapolated SPC chart: {e}", exc_info=True
-            )
+            self.logger.error(f"Error creating distribution chart: {e}", exc_info=True)
             raise
-        finally:
-            # Finalize (save/show/close)
-            self._finalize()
