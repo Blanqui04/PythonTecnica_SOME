@@ -3,11 +3,12 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
     QGroupBox, QFrame, QGridLayout, QScrollArea, QPushButton, 
     QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup,
-    QSplitter, QTabWidget, QTableWidgetItem
+    QSplitter, QTabWidget, QTableWidgetItem, QComboBox
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QThread, QObject, pyqtSlot
 from PyQt5.QtGui import QFont, QPalette, QColor
 from src.gui.utils.element_input_styles import get_element_input_styles
+from ..utils.responsive_utils import ResponsiveWidget, ScreenUtils
 from .buttons import ModernButton, CompactButton
 from .inputs import ModernLineEdit, ModernComboBox
 from src.services.measurement_history_service import MeasurementHistoryService
@@ -18,20 +19,29 @@ from scipy import stats
 logger = logging.getLogger(__name__)
 
 
-class ElementInputWidget(QWidget):
+class ElementInputWidget(QWidget, ResponsiveWidget):
     study_requested = pyqtSignal(list, dict)
     metrics_updated = pyqtSignal(dict)
     
     def __init__(self, parent=None, client=None, project_reference=None, batch_lot=None):
-        super().__init__(parent)
+        QWidget.__init__(self, parent)
+        ResponsiveWidget.__init__(self)
         self.elements = []
         self.element_widgets = []
         self.client = client
         self.project_reference = project_reference
         self.batch_lot = batch_lot
         
+        # Initialize input collections
+        self.values_inputs = []  # For compatibility with existing code
+        self.values_layout = None  # Will be set during UI initialization
+        self.measurement_limit = 10  # Default measurement limit
+        
         self.setStyleSheet(get_element_input_styles())
         self.init_ui()
+        
+        # Apply responsive scaling
+        self.apply_responsive_scaling()
         
         if self.client and self.project_reference:
             self.load_elements_button.setEnabled(True)
@@ -244,6 +254,25 @@ class ElementInputWidget(QWidget):
         self.load_data_button.setEnabled(False)
         db_btn_layout.addWidget(self.load_data_button)
         
+        # Measurement quantity selector
+        db_btn_layout.addWidget(QLabel("Measurements:"))
+        self.quantity_selector = QComboBox()
+        self.quantity_selector.addItems(["5", "10", "15", "20", "All"])
+        self.quantity_selector.setCurrentText("10")
+        self.quantity_selector.setStyleSheet("""
+            QComboBox {
+                padding: 4px 8px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+                background-color: white;
+            }
+            QComboBox:hover {
+                border-color: #80bdff;
+            }
+        """)
+        self.quantity_selector.currentTextChanged.connect(self._on_quantity_changed)
+        db_btn_layout.addWidget(self.quantity_selector)
+        
         self.db_buttons_frame.hide()
         layout.addWidget(self.db_buttons_frame)
         
@@ -257,8 +286,8 @@ class ElementInputWidget(QWidget):
                 padding: 10px;
             }
         """)
-        values_layout = QVBoxLayout(values_frame)
-        values_layout.setSpacing(5)
+        self.values_layout = QVBoxLayout(values_frame)
+        self.values_layout.setSpacing(5)
         
         values_header = QHBoxLayout()
         values_label = QLabel("📊 Measured Values")
@@ -276,7 +305,7 @@ class ElementInputWidget(QWidget):
         values_header.addWidget(clear_values_btn)
         values_header.addStretch()
         
-        values_layout.addLayout(values_header)
+        self.values_layout.addLayout(values_header)
         
         # TABLE FOR VALUES - MAXIMIZED HEIGHT
         from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
@@ -311,7 +340,7 @@ class ElementInputWidget(QWidget):
             item.setTextAlignment(Qt.AlignCenter)
             self.values_table.setItem(row, 0, item)
         
-        values_layout.addWidget(self.values_table)
+        self.values_layout.addWidget(self.values_table)
         layout.addWidget(values_frame)
         
         # Add element button
@@ -349,17 +378,11 @@ class ElementInputWidget(QWidget):
             self.values_table.setItem(row, 0, QTableWidgetItem(""))
     
     def _add_value_inputs(self, count):
-        """Add value input fields"""
-        current = len(self.values_inputs)
-        for i in range(count):
-            row = (current + i) // 5
-            col = (current + i) % 5
-            
-            value_input = ModernLineEdit()
-            value_input.setPlaceholderText(f"V{current + i + 1}")
-            value_input.setMaximumWidth(100)
-            self.values_inputs.append(value_input)
-            self.values_layout.addWidget(value_input, row, col)
+        """Add value input fields (compatibility method)"""
+        # This method is kept for compatibility but now works with the table
+        current_rows = self.values_table.rowCount()
+        required_rows = current_rows + count
+        self.values_table.setRowCount(required_rows)
     
     def _create_elements_area(self, main_layout):
         """Create scrollable area for element widgets - FIXED"""
@@ -873,8 +896,23 @@ class ElementInputWidget(QWidget):
             
             self.element_selector.clear()
             self.element_selector.addItem("Select an element...")
+            
+            # Store elements for later reference
+            self.available_elements = elements
+            
             for elem in elements:
-                self.element_selector.addItem(elem['element_id'])
+                # Use 'element' field instead of 'element_id'
+                element_name = elem.get('element', 'Unknown')
+                property_name = elem.get('property', '')
+                count = elem.get('count', 0)
+                
+                # Create descriptive display name
+                display_name = f"{element_name}"
+                if property_name and property_name != 'N/A':
+                    display_name += f" ({property_name})"
+                display_name += f" [{count} mesures]"
+                
+                self.element_selector.addItem(display_name)
             
             self.element_selector.setEnabled(True)
             self.load_data_button.setEnabled(True)
@@ -889,44 +927,88 @@ class ElementInputWidget(QWidget):
             logger.error(f"Error loading elements: {e}")
             QMessageBox.critical(self, "Error", f"Failed to load elements: {e}")
     
+    def _on_quantity_changed(self, quantity_text):
+        """Handle measurement quantity selection change"""
+        if quantity_text == "All":
+            self.measurement_limit = None  # No limit for "All"
+        else:
+            self.measurement_limit = int(quantity_text)
+        logger.info(f"Measurement limit changed to: {self.measurement_limit}")
+    
     def _load_element_data(self):
         """Load data for selected element"""
-        element_id = self.element_selector.currentText()
-        if element_id == "Select an element...":
+        selected_text = self.element_selector.currentText()
+        if selected_text == "Select an element...":
             return
         
         try:
-            service = MeasurementHistoryService()
-            measurements = service.get_element_measurement_history(
-                self.client, self.project_reference, element_id, 
-                limit=50, batch_lot=self.batch_lot
-            )
-            service.close()
+            # Find the selected element from stored data
+            selected_element = None
+            selected_index = self.element_selector.currentIndex() - 1  # -1 because first item is "Select..."
             
-            if measurements:
-                # Auto-fill form with loaded data
-                first_measurement = measurements[0]
-                self.cavity_input.setText(str(first_measurement.get('cavity', '')))
-                self.nominal_input.setText(str(first_measurement.get('nominal', '')))
-                self.tol_minus_input.setText(str(first_measurement.get('tol_minus', '')))
-                self.tol_plus_input.setText(str(first_measurement.get('tol_plus', '')))
+            if 0 <= selected_index < len(self.available_elements):
+                selected_element = self.available_elements[selected_index]
+                element_name = selected_element['element']
+                property_name = selected_element.get('property', '')
                 
-                # Fill values
-                values = [m.get('value', 0) for m in measurements]
-                if len(values) > len(self.values_inputs):
-                    self._add_value_inputs(len(values) - len(self.values_inputs))
+                logger.info(f"Loading data for element: {element_name}, property: {property_name}")
                 
-                for i, value in enumerate(values):
-                    if i < len(self.values_inputs):
-                        self.values_inputs[i].setText(str(value))
-                
-                logger.info(f"Loaded {len(values)} measurements for {element_id}")
-                QMessageBox.information(
-                    self, "Data Loaded", 
-                    f"Loaded {len(values)} measurements for {element_id}"
+                # Use the new specific element method
+                service = MeasurementHistoryService()
+                # Set limit based on selection (None for "All" means no limit)
+                limit = self.measurement_limit if self.measurement_limit is not None else 10000
+                filtered_measurements = service.get_element_measurements(
+                    self.client, self.project_reference, 
+                    element_name, property_name,
+                    batch_lot=self.batch_lot,
+                    limit=limit
                 )
-            else:
-                QMessageBox.warning(self, "No Data", f"No measurements found for {element_id}")
+                service.close()
+                
+                if filtered_measurements:
+                    # Auto-fill form with loaded data
+                    first_measurement = filtered_measurements[0]
+                    
+                    # Use correct field names from the service
+                    self.nominal_input.setText(str(first_measurement.get('nominal', '')))
+                    
+                    # Calculate tolerances from the data
+                    tol_neg = first_measurement.get('tolerancia_negativa', '')
+                    tol_pos = first_measurement.get('tolerancia_positiva', '')
+                    self.tol_minus_input.setText(str(tol_neg) if tol_neg else '')
+                    self.tol_plus_input.setText(str(tol_pos) if tol_pos else '')
+                    
+                    # Fill actual values in the table
+                    values = []
+                    for m in filtered_measurements:
+                        actual_value = m.get('actual')
+                        if actual_value is not None:
+                            values.append(actual_value)
+                    
+                    if values:
+                        # Clear existing table content
+                        self.values_table.setRowCount(0)
+                        
+                        # Ensure we have enough rows
+                        required_rows = max(len(values), 20)  # Minimum 20 rows
+                        self.values_table.setRowCount(required_rows)
+                        
+                        # Fill the table with values
+                        for i, value in enumerate(values):
+                            item = QTableWidgetItem(str(value))
+                            self.values_table.setItem(i, 0, item)
+                        
+                        requested_qty = "All" if self.measurement_limit is None else str(self.measurement_limit)
+                        logger.info(f"Loaded {len(values)} measurements for {element_name}")
+                        QMessageBox.information(
+                            self, "Data Loaded", 
+                            f"Loaded {len(values)} measurements for {element_name} ({property_name})\n"
+                            f"Requested: {requested_qty} | Obtained: {len(values)}"
+                        )
+                    else:
+                        QMessageBox.warning(self, "No Values", f"No actual values found for {element_name}")
+                else:
+                    QMessageBox.warning(self, "No Data", f"No measurements found for {element_name}")
                 
         except Exception as e:
             logger.error(f"Error loading element data: {e}")
@@ -1022,3 +1104,81 @@ class ElementInputWidget(QWidget):
                     self.xs_group_size_spin.setValue(chart_config['group_size'])
         
         self._emit_summary_metrics()
+    
+    def apply_responsive_scaling(self):
+        """Apply responsive scaling to the widget"""
+        try:
+            screen_utils = ScreenUtils()
+            scale_factor = screen_utils.scale_factor
+            
+            # Apply scaling to fonts
+            self.scale_fonts(scale_factor)
+            
+            # Apply scaling to spacing and margins
+            self.scale_spacing_and_margins(scale_factor)
+            
+            # Apply scaling to minimum sizes
+            self.scale_widget_sizes(scale_factor)
+            
+        except Exception as e:
+            logger.warning(f"Could not apply responsive scaling: {e}")
+    
+    def scale_fonts(self, scale_factor):
+        """Scale fonts based on screen size"""
+        try:
+            # Scale main widget font
+            current_font = self.font()
+            new_size = max(8, int(current_font.pointSize() * scale_factor))
+            current_font.setPointSize(new_size)
+            self.setFont(current_font)
+            
+            # Scale input field fonts
+            for widget in self.findChildren(ModernLineEdit):
+                font = widget.font()
+                new_size = max(8, int(font.pointSize() * scale_factor))
+                font.setPointSize(new_size)
+                widget.setFont(font)
+            
+            # Scale button fonts  
+            for widget in self.findChildren(ModernButton):
+                font = widget.font()
+                new_size = max(8, int(font.pointSize() * scale_factor))
+                font.setPointSize(new_size)
+                widget.setFont(font)
+                
+        except Exception as e:
+            logger.warning(f"Could not scale fonts: {e}")
+    
+    def scale_spacing_and_margins(self, scale_factor):
+        """Scale spacing and margins"""
+        try:
+            # Scale main layout margins
+            if self.layout():
+                margins = self.layout().contentsMargins()
+                new_margins = [max(5, int(m * scale_factor)) for m in [margins.left(), margins.top(), margins.right(), margins.bottom()]]
+                self.layout().setContentsMargins(*new_margins)
+                
+                # Scale spacing
+                if hasattr(self.layout(), 'setSpacing'):
+                    new_spacing = max(5, int(15 * scale_factor))
+                    self.layout().setSpacing(new_spacing)
+                    
+        except Exception as e:
+            logger.warning(f"Could not scale spacing: {e}")
+    
+    def scale_widget_sizes(self, scale_factor):
+        """Scale widget minimum sizes"""
+        try:
+            # Scale minimum widget size
+            min_width = max(400, int(600 * scale_factor))
+            min_height = max(300, int(500 * scale_factor))
+            self.setMinimumSize(min_width, min_height)
+            
+            # Scale input field sizes
+            for widget in self.findChildren(ModernLineEdit):
+                current_height = widget.minimumHeight()
+                new_height = max(25, int(current_height * scale_factor))
+                widget.setMinimumHeight(new_height)
+                
+        except Exception as e:
+            logger.warning(f"Could not scale widget sizes: {e}")

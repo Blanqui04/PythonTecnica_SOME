@@ -32,8 +32,18 @@ class QualityMeasurementDBAdapter:
         Args:
             db_config: Configuració de la base de dades
         """
-        self.db_config = db_config
         self.connection = None
+        
+        # Debug logging per verificar la configuració rebuda
+        logger.debug(f"QualityMeasurementDBAdapter inicialitzat amb configuració: {db_config}")
+        logger.debug(f"Tipus de db_config: {type(db_config)}")
+        
+        # Si la configuració ve amb clau 'primary', l'extraiem
+        if isinstance(db_config, dict) and 'primary' in db_config:
+            logger.debug("Detectada configuració amb clau 'primary', extraient...")
+            self.db_config = db_config['primary']
+        else:
+            self.db_config = db_config
         
         # Mapatge de columnes CSV a columnes BBDD
         self.column_mapping = {
@@ -71,6 +81,14 @@ class QualityMeasurementDBAdapter:
         try:
             # La configuració ja ve processada del load_db_config (només 'primary')
             config = self.db_config
+            
+            # Verificar que la configuració té totes les claus necessàries
+            required_keys = ['host', 'port', 'database', 'user', 'password']
+            missing_keys = [key for key in required_keys if key not in config]
+            if missing_keys:
+                logger.error(f"Configuració de BBDD incompleta. Claus que falten: {missing_keys}")
+                logger.error(f"Configuració actual: {config}")
+                return False
             
             logger.info(f"Intentant connectar a {config['host']}:{config['port']} -> {config['database']}")
             

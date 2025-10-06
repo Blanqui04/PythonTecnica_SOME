@@ -134,7 +134,8 @@ class DatabaseUploader:
             df = self._clean_dataframe_for_db(df)
 
             try:
-                self.conn.upload_dataframe(df, table)
+                # Use UPSERT mode to handle duplicate keys gracefully
+                self.conn.upload_dataframe(df, table, mode='upsert')
                 logger.info(f"✔️ Dades pujades a la taula '{table}' ({len(df)} files).")
                 print(f"✔️ Taula '{table}': pujada correcta amb {len(df)} files")
             except Exception as e:

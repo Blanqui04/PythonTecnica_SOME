@@ -1,0 +1,112 @@
+Dades necessàries per estructurar una Matriu,
+1 - Nº Matriu:,AL-233972
+2 - SOP projecte,2025-01-01 00:00:00
+3 - EOP projecte,2032-01-01 00:00:00
+4 - Tool Lifetime,3000000
+5 - Volum Anual:,182000
+6 - Volum total Projecte:,1092000
+7 - Referència/es peça:,6652204 00A / 6652205 00A
+8 - Cavitats:,2
+9 - Matricer:,Grifell
+10 - Data entrega matriu:,CW09 2024
+11 - Projecte:,NI-PZ1D EU / NISSAN (NIS)
+12 - Jerarquía:,Adapterframes
+13 - Nº Expedient:,214/23
+14 - Responsable Projecte:,Marc Esteras
+Dades necessàries per estructurar una Matèria prima,
+1 - Descripció material:,S500MC
+2 - Mides (BANDA x PAS x GRUIX):,"497  x  192  x  2,5"
+3 - Proveïdor:,+ THYSSEN
+4 - Preu actualitzat:,1.077
+5 - Volum Anual:,170415.336
+6 - Temps estimat Canvi de Rull:,0
+7 - Pes estimat del Rull:,0
+Dades necessàries per estructurar un Component / Material Aux.,
+COMPONENT ESTAMPACIÓ 1,
+1 - Descripció:,
+2 - Plànol:,
+COMPONENT ESTAMPACIÓ 2,
+1 - Descripció:,
+2 - Plànol:,
+COMPONENT 1 COMPRA,
+1 - Descripció material:,
+2 - Mides:,
+3 - Proveïdor:,
+4 - Preu actualitzat:,0
+5 - Plànol si cal:,
+6 - Volum Anual:,
+7 - SOP:,2025-01-01 00:00:00
+COMPONENT 2 COMPRA,
+1 - Descripció material:,
+2 - Mides:,
+3 - Proveïdor:,
+4 - Preu actualitzat:,0
+5 - Plànol si cal:,
+6 - Volum Anual:,
+7 - SOP:,2025-01-01 00:00:00
+COMPONENT 3 COMPRA,
+1 - Descripció material:,
+2 - Mides:,
+3 - Proveïdor:,
+4 - Preu actualitzat:,0
+5 - Plànol si cal:,
+6 - Volum Anual:,
+7 - SOP:,2025-01-01 00:00:00
+Dades necessàries per estructurar una peça / conjunt,
+1 - Client:,AUTOLIV
+2 - Tipus:  SQB / KSW / MIXTE:,FULL SOME KSW
+3 - Tipus Facturació: A / B / C:,A
+4 - Categoria Peça (Bàscula):,B
+5 - Quantiat Anual:,182000
+6 - Descripció actualitzada:,RETRACTOR BRACKET RH / LH
+7 - Referència client:,6652204 00A / 6652205 00A
+8 - Responsables tècnics i de qualitat:,Marc Esteras /
+9 - Projecte:,NI-PZ1D EU / NISSAN (NIS)
+10 - Tractaments:,
+* Descripció complerta del tractament 1:,KTL
+* proveïdor KSW:,Aalberts
+* preu KSW:                   (Ull preu en Euros),0.3585
+* Descripció complerta del tractament 2:,0
+* proveïdor KSW:,0
+* preu KSW:                   (Ull preu en Euros),0
+* Descripció complerta del tractament 3:,0
+* proveïdor KSW:,0
+* preu KSW:                   (Ull preu en Euros),0
+11 - Embalatge:,
+Es necessàri un nou embalatge?,NO
+11.1 - EUROPA,
+Caixa:,0.0
+Tapa / Altres:,0.0
+Pallet:,0.0
+Peces / Caixa:,0.0
+Caixes / Pallet:,
+11.2 - OVERSEAS,
+Peces / Caixa:,0.0
+Tapa / Altres:,0.0
+12 - Pes Brut:,0.936348
+13 - Pes Net:,0.4105
+14 - Ruta:,
+* Centre Treball,CT- 0500
+* Descripció CT,Stamping
+* cpm o (peces/hora) per CT,"25     / OEE:  35,64%"
+* Centre Treball,
+* Descripció CT,
+* cpm o (peces/hora) per CT,
+* Centre Treball,
+* Descripció CT,
+* cpm o (peces/hora) per CT,
+* Centre Treball,
+* Descripció CT,
+* cpm o (peces/hora) per CT,
+* Centre Treball,
+* Descripció CT,
+* cpm o (peces/hora) per CT,
+* Matriu,AL-233972
+* Cavitats,2 ( LH + RH )
+* Co-producte ( si / no ),Co-Producte
+* Si hi ha subcontractació ( oferta ),
+15 - Plànol actualitzat,6652204 / 6652205 000
+16 - Cost Peça (Intern SOME),1.372822626608201
+17 - Preu Peça (Oferta a Client),2.0184
+18 - Planta Producció Client,ALH
+PD. La resta d'informació que s'entra ja l'aconseguèix la persona que estructura.,

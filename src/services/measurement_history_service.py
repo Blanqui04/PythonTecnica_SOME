@@ -94,9 +94,112 @@ class MeasurementHistoryService:
             logger.error(f"Error obtenint historial de mesures: {e}")
             raise
     
+    def get_element_measurements(self, client: str, project_reference: str, element_name: str, property_name: str = None, batch_lot: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+        """
+        Obté mesures específiques per un element i propietat
+        
+        Args:
+            client: Nom del client
+            project_reference: Referència del projecte  
+            element_name: Nom de l'element
+            property_name: Propietat de l'element (opcional)
+            batch_lot: Batch/lot específic (opcional)
+            limit: Límit de resultats
+            
+        Returns:
+            Llista de mesures per l'element especificat
+        """
+        try:
+            logger.info(f"🔍 Obtenint mesures per element='{element_name}', property='{property_name}'")
+            
+            # Utilitzar cerca universal flexible
+            search_strategies = self._build_universal_search_conditions(client, project_reference)
+            
+            results = []
+            
+            for strategy in search_strategies:
+                try:
+                    # Handle special case for IN clauses  
+                    if 'IN ({})' in strategy['ref_condition']:
+                        ref_params = strategy['params'][1:]
+                        placeholders = ','.join(['%s'] * len(ref_params))
+                        ref_condition = strategy['ref_condition'].replace('{}', placeholders)
+                    else:
+                        ref_condition = strategy['ref_condition']
+                    
+                    # Build base conditions
+                    conditions = [
+                        strategy['client_condition'],
+                        ref_condition,
+                        "element = %s"
+                    ]
+                    params = strategy['params'] + [element_name]
+                    
+                    # Add property condition if specified
+                    if property_name and property_name != 'N/A':
+                        conditions.append("property = %s")
+                        params.append(property_name)
+                    
+                    # Add batch lot condition if specified
+                    if batch_lot:
+                        conditions.append("id_lot = %s")
+                        params.append(batch_lot)
+                    
+                    # Build final query
+                    where_clause = " AND ".join(conditions)
+                    params.append(limit)
+                    
+                    query = f"""
+                        SELECT 
+                            id_referencia_client, element, pieza, datum, property, 
+                            actual, nominal, tolerancia_negativa, tolerancia_positiva, 
+                            desviacio, data_hora, id_lot, cavitat
+                        FROM mesuresqualitat 
+                        WHERE {where_clause}
+                        ORDER BY data_hora DESC
+                        LIMIT %s
+                    """
+                    
+                    results = self.db_connection.fetchall(query, params)
+                    
+                    if results:
+                        logger.info(f"✅ Estratègia '{strategy['name']}' trobada: {len(results)} mesures per {element_name}")
+                        break
+                    else:
+                        logger.debug(f"❌ Estratègia '{strategy['name']}': cap mesura per {element_name}")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Error en estratègia '{strategy['name']}': {e}")
+                    continue
+            
+            measurements = []
+            for row in results:
+                measurements.append({
+                    'id_referencia_client': row[0],
+                    'element': row[1],
+                    'pieza': row[2],
+                    'datum': row[3],
+                    'property': row[4],
+                    'actual': float(row[5]) if row[5] is not None else None,
+                    'nominal': float(row[6]) if row[6] is not None else None,
+                    'tolerancia_negativa': float(row[7]) if row[7] is not None else None,
+                    'tolerancia_positiva': float(row[8]) if row[8] is not None else None,
+                    'desviacio': float(row[9]) if row[9] is not None else None,
+                    'data_hora': row[10],
+                    'id_lot': row[11],
+                    'cavitat': row[12]
+                })
+                
+            logger.info(f"✅ Trobades {len(measurements)} mesures per {element_name}")
+            return measurements
+            
+        except Exception as e:
+            logger.error(f"Error obtenint mesures de l'element: {e}")
+            raise
+    
     def get_available_elements(self, client: str, project_reference: str, batch_lot: str = None) -> List[Dict[str, Any]]:
         """
-        Obté tots els elements disponibles per un client i projecte
+        Obté tots els elements disponibles per un client i projecte amb cerca flexible
         
         Args:
             client: Nom del client
@@ -107,34 +210,72 @@ class MeasurementHistoryService:
             Llista de diccionaris amb els elements disponibles
         """
         try:
-            if batch_lot:
-                query = """
-                    SELECT DISTINCT 
-                        COALESCE(element, 'None') as element,
-                        COALESCE(pieza, 'None') as pieza, 
-                        COALESCE(datum, 'None') as datum,
-                        COALESCE(property, 'None') as property,
-                        COUNT(*) as count
-                    FROM mesuresqualitat 
-                    WHERE client = %s AND id_referencia_client = %s AND id_lot = %s
-                    GROUP BY element, pieza, datum, property
-                    ORDER BY element, pieza, datum, property
-                """
-                results = self.db_connection.fetchall(query, (client, project_reference, batch_lot))
-            else:
-                query = """
-                    SELECT DISTINCT 
-                        COALESCE(element, 'None') as element,
-                        COALESCE(pieza, 'None') as pieza, 
-                        COALESCE(datum, 'None') as datum,
-                        COALESCE(property, 'None') as property,
-                        COUNT(*) as count
-                    FROM mesuresqualitat 
-                    WHERE client = %s AND id_referencia_client = %s
-                    GROUP BY element, pieza, datum, property
-                    ORDER BY element, pieza, datum, property
-                """
-                results = self.db_connection.fetchall(query, (client, project_reference))
+            logger.info(f"🔍 Buscant elements per client='{client}', project_reference='{project_reference}'")
+            
+            # Utilitzar el mètode universal per generar estratègies de cerca
+            search_strategies = self._build_universal_search_conditions(client, project_reference)
+            
+            results = []
+            
+            for strategy in search_strategies:
+                try:
+                    # Handle special case for IN clauses
+                    if 'IN ({})' in strategy['ref_condition']:
+                        # Replace {} with correct number of placeholders
+                        ref_params = strategy['params'][1:]  # Skip client param
+                        placeholders = ','.join(['%s'] * len(ref_params))
+                        ref_condition = strategy['ref_condition'].replace('{}', placeholders)
+                    else:
+                        ref_condition = strategy['ref_condition']
+                    
+                    if batch_lot:
+                        query = f"""
+                            SELECT DISTINCT 
+                                COALESCE(element, 'N/A') as element,
+                                COALESCE(pieza, 'N/A') as pieza, 
+                                COALESCE(datum, 'N/A') as datum,
+                                COALESCE(property, 'N/A') as property,
+                                id_referencia_client,
+                                COUNT(*) as count
+                            FROM mesuresqualitat 
+                            WHERE {strategy['client_condition']} 
+                            AND {ref_condition} 
+                            AND id_lot = %s
+                            GROUP BY element, pieza, datum, property, id_referencia_client
+                            ORDER BY element, pieza, datum, property
+                        """
+                        params = strategy['params'] + [batch_lot]
+                    else:
+                        query = f"""
+                            SELECT DISTINCT 
+                                COALESCE(element, 'N/A') as element,
+                                COALESCE(pieza, 'N/A') as pieza, 
+                                COALESCE(datum, 'N/A') as datum,
+                                COALESCE(property, 'N/A') as property,
+                                id_referencia_client,
+                                COUNT(*) as count
+                            FROM mesuresqualitat 
+                            WHERE {strategy['client_condition']} 
+                            AND {ref_condition}
+                            GROUP BY element, pieza, datum, property, id_referencia_client
+                            ORDER BY element, pieza, datum, property
+                        """
+                        params = strategy['params']
+                    
+                    results = self.db_connection.fetchall(query, params)
+                    
+                    if results:
+                        logger.info(f"✅ Estratègia '{strategy['name']}' trobada: {len(results)} elements")
+                        # Show which reference was found
+                        unique_refs = set([row[4] for row in results])
+                        logger.info(f"   📁 Referències trobades: {list(unique_refs)}")
+                        break
+                    else:
+                        logger.debug(f"❌ Estratègia '{strategy['name']}': cap resultat")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Error en estratègia '{strategy['name']}': {e}")
+                    continue
             
             elements = []
             for row in results:
@@ -143,7 +284,8 @@ class MeasurementHistoryService:
                     'pieza': row[1], 
                     'datum': row[2],
                     'property': row[3],
-                    'count': row[4]
+                    'ref_client': row[4],
+                    'count': row[5]
                 })
             
             batch_info = f" per batch {batch_lot}" if batch_lot else ""
@@ -153,6 +295,108 @@ class MeasurementHistoryService:
         except Exception as e:
             logger.error(f"Error obtenint elements disponibles: {e}")
             raise
+    
+    def _build_universal_search_conditions(self, client: str, project_reference: str):
+        """
+        Construeix condicions de cerca universals per qualsevol client i referència
+        
+        Args:
+            client: Nom del client
+            project_reference: Referència del projecte
+            
+        Returns:
+            Llista d'estratègies de cerca amb condicions SQL i paràmetres
+        """
+        
+        # Generar variants de referència universals
+        ref_variants = [
+            project_reference,  # Original
+            f"{project_reference}D",  # Sufig D (molt comú)
+            f"{project_reference}_D",  # Sufig _D
+            f"{project_reference}d",  # Sufig d minúscula
+            project_reference.upper(),  # Majúscules
+            project_reference.lower(),  # Minúscules
+        ]
+        
+        # Si la referència és numèrica, afegir variants amb zeros i separadors
+        if project_reference.replace('-', '').replace('_', '').isdigit():
+            clean_ref = project_reference.replace('-', '').replace('_', '')
+            ref_variants.extend([
+                f"00{clean_ref}",  # Amb zeros al davant
+                f"0{clean_ref}",   # Amb un zero al davant
+                f"{clean_ref[:3]}_{clean_ref[3:]}_002" if len(clean_ref) >= 3 else f"{clean_ref}_002",  # Format _002
+                f"{clean_ref[:3]}_{clean_ref[3:]}_001" if len(clean_ref) >= 3 else f"{clean_ref}_001",  # Format _001
+                f"002_{clean_ref}_002",  # Format 002_xxx_002
+            ])
+        
+        # Generar variants de client universals
+        client_variants = [
+            client,  # Original
+            client.upper(),  # Majúscules
+            client.lower(),  # Minúscules
+            client.replace(' ', ''),  # Sense espais
+            client.replace('-', ''),  # Sense guions
+            client.replace('_', ''),  # Sense guions baixos
+        ]
+        
+        # Construir estratègies de cerca
+        strategies = []
+        
+        # 1. Cerca exacta amb variants principals
+        main_ref_variants = ref_variants[:4]  # Les 4 més comunes
+        main_client_variants = client_variants[:3]  # Les 3 més comunes
+        
+        for client_var in main_client_variants:
+            for ref_var in main_ref_variants:
+                strategies.append({
+                    'name': f'Exacta: {client_var[:10]} + {ref_var[:15]}',
+                    'client_condition': 'client = %s',
+                    'ref_condition': 'id_referencia_client = %s',
+                    'params': [client_var, ref_var],
+                    'priority': 1  # Alta prioritat
+                })
+        
+        # 2. Cerca case-insensitive flexible
+        strategies.append({
+            'name': 'Case-insensitive + TRIM',
+            'client_condition': 'UPPER(TRIM(client)) = UPPER(TRIM(%s))',
+            'ref_condition': 'UPPER(TRIM(id_referencia_client)) IN ({})',
+            'params': [client] + [ref.upper() for ref in main_ref_variants],
+            'priority': 2
+        })
+        
+        # 3. Cerca amb LIKE patterns
+        like_patterns = [
+            f"{project_reference}%",  # Comença amb
+            f"%{project_reference}%",  # Conté
+            f"%{project_reference}D",  # Acaba amb D
+        ]
+        
+        for pattern in like_patterns:
+            strategies.append({
+                'name': f'LIKE: ...{pattern[-10:]}',
+                'client_condition': 'UPPER(TRIM(client)) = UPPER(TRIM(%s))',
+                'ref_condition': 'id_referencia_client LIKE %s',
+                'params': [client, pattern],
+                'priority': 3
+            })
+        
+        # 4. Cerca fuzzy de client (menys prioritat)
+        if len(client) > 3:  # Només per clients amb nom llarg
+            client_patterns = [f"%{client}%", f"{client}%"]
+            for pattern in client_patterns:
+                strategies.append({
+                    'name': f'Client fuzzy: {pattern[:15]}',
+                    'client_condition': 'client LIKE %s',
+                    'ref_condition': 'id_referencia_client = %s',
+                    'params': [pattern, project_reference],
+                    'priority': 4
+                })
+        
+        # Ordenar per prioritat (menor número = més prioritat)
+        strategies.sort(key=lambda x: x.get('priority', 5))
+        
+        return strategies
     
     def get_element_measurement_history(self, client: str, project_reference: str, element_id: str, limit: int = 10, batch_lot: str = None) -> List[Dict[str, Any]]:
         """

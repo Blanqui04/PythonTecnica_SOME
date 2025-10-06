@@ -6,13 +6,18 @@ import pandas as pd
 from typing import List, Dict
 from src.models.dimensional.dimensional_result import DimensionalResult, DimensionalStatus
 from .dimensional_table_ui import DimensionalTableUI
+from src.gui.utils.responsive_utils import ResponsiveWidget, ScreenUtils
 from datetime import datetime
 
-class DimensionalTableManager(DimensionalTableUI):
-    """Optimized table manager with improved performance"""
+class DimensionalTableManager(DimensionalTableUI, ResponsiveWidget):
+    """Optimized table manager with improved performance and responsive design"""
 
     def __init__(self, display_columns, column_headers, required_columns, measurement_columns, batch_number):
-        super().__init__(display_columns, column_headers, required_columns, measurement_columns, batch_number)
+        DimensionalTableUI.__init__(self, display_columns, column_headers, required_columns, measurement_columns, batch_number)
+        ResponsiveWidget.__init__(self)
+        
+        # Initialize screen utilities
+        self.screen_utils = ScreenUtils()
         self.results: List[DimensionalResult] = []
         self._original_measurements = {}
         self._last_update_time = datetime.now()
