@@ -18,6 +18,7 @@ from .panels.center_panel import CenterPanel
 from .panels.right_panel import RightPanel
 from .panels.status_bar import StatusBar
 from .utils.styles import global_style
+from .utils.responsive_utils import make_window_responsive, create_responsive_stylesheet, log_screen_info, ResponsiveWidget
 
 # Configure logging
 from src.gui.logging_config import logger
@@ -28,42 +29,38 @@ from src.services.database_update import update_database
 from .windows.dimensional_study_window import DimensionalStudyWindow
 
 
-class MainWindow(QMainWindow):
+class MainWindow(QMainWindow, ResponsiveWidget):
     def __init__(self):
-        super().__init__()
+        QMainWindow.__init__(self)
+        ResponsiveWidget.__init__(self)
         self.setWindowTitle("Gestió de Projectes SOME")
         self.last_analysis_action = None  # Track the last analysis action performed
+        
+        # Log screen information for debugging
+        log_screen_info()
+        
         self.setup_window()
         self.init_ui()
-        self.setStyleSheet(global_style())
+        self.setStyleSheet(create_responsive_stylesheet())
 
     def setup_window(self):
-        """Setup window size and position"""
-        screen = QApplication.primaryScreen().availableGeometry()
-
-        # Set minimum size
-        self.setMinimumSize(1000, 700)
-
-        # Try to maximize window, with fallback
-        try:
-            self.setWindowState(Qt.WindowMaximized)
-            logger.info("Window maximized successfully")
-        except AttributeError as e:
-            logger.warning(f"Failed to maximize window: {e}")
-            # Fallback to 80% of screen size
-            width = int(screen.width() * 0.8)
-            height = int(screen.height() * 0.8)
-            self.resize(width, height)
-            # Center the window
-            self.move((screen.width() - width) // 2, (screen.height() - height) // 2)
-            logger.info(f"Window resized to {width}x{height} and centered")
+        """Setup window size and position using responsive utilities"""
+        # Use responsive utilities to set up window
+        make_window_responsive(self)
+        
+        logger.info(f"Main window set up responsively for {self.screen_utils.current_screen['category']} screen")
 
     def init_ui(self):
-        """Initialize the user interface"""
+        """Initialize the user interface with responsive design"""
         central_widget = QWidget()
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(20)
-        main_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # Get responsive spacing and margins
+        spacing = self.get_responsive_spacing()
+        margins = self.get_responsive_margins()
+        
+        main_layout.setSpacing(spacing['section'])
+        main_layout.setContentsMargins(margins['large'], margins['large'], margins['large'], margins['large'])
 
         # Header
         self.header = HeaderPanel()

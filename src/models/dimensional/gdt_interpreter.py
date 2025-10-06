@@ -41,6 +41,14 @@ class GDTInterpreter:
                 r"(?:angularity|∠)\s*[øΦ]?\s*([\d.,]+)\s*(\([MLS]\))?\s*([A-Z][\s|]*[A-Z]?[\s|]*[A-Z]?)?", 
                 re.IGNORECASE
             ),
+            "profile_line": re.compile(
+                r"(?:profile\s*of\s*line|profile\s*line|⌒)\s*[øΦ]?\s*([\d.,]+)\s*(?:bilateral|bil)?\s*(\([MLS]\))?\s*([A-Z][\s|]*[A-Z]?[\s|]*[A-Z]?)?", 
+                re.IGNORECASE
+            ),
+            "profile_surface": re.compile(
+                r"(?:profile\s*of\s*surface|profile\s*surface|⌓)\s*[øΦ]?\s*([\d.,]+)\s*(?:bilateral|bil)?\s*(\([MLS]\))?\s*([A-Z][\s|]*[A-Z]?[\s|]*[A-Z]?)?", 
+                re.IGNORECASE
+            ),
             "profile": re.compile(
                 r"(?:profile|⌓|⌒)\s*(?:of\s*(?:line|surface))?\s*[øΦ]?\s*([\d.,]+)\s*(?:bilateral|bil)?\s*(\([MLS]\))?\s*([A-Z][\s|]*[A-Z]?[\s|]*[A-Z]?)?", 
                 re.IGNORECASE
@@ -127,8 +135,8 @@ class GDTInterpreter:
                         datums = re.findall(r"[A-Z]", datum_text.upper())
                         gdt_info["datum_references"] = list(set(datums))
 
-                    # Check for bilateral profile
-                    if tolerance_type == "profile" and re.search(r"bilateral|bil", description, re.IGNORECASE):
+                    # Check for bilateral profile (all profile types)
+                    if tolerance_type in ["profile", "profile_line", "profile_surface"] and re.search(r"bilateral|bil", description, re.IGNORECASE):
                         gdt_info["is_bilateral_profile"] = True
 
                     break
@@ -142,31 +150,59 @@ class GDTInterpreter:
         return gdt_info
 
     def convert_gdt_to_tolerance_range(self, gdt_info: Dict, nominal: float) -> Tuple[float, float]:
-        """Optimized GD&T to tolerance conversion"""
+        """Optimized GD&T to tolerance conversion - CORRECTED for proper GD&T behavior"""
         if not gdt_info.get("has_gdt") or not gdt_info.get("tolerance_value"):
             return 0.0, 0.0
 
         tolerance_type = gdt_info.get("tolerance_type")
         tolerance_value = gdt_info.get("tolerance_value")
 
-        # Fast lookup for tolerance conversion
-        if tolerance_type in ["flatness", "circularity", "cylindricity", "straightness"]:
-            return 0.0, tolerance_value
-        elif tolerance_type == "position":
-            return -tolerance_value, tolerance_value if nominal == 0.0 else (-tolerance_value, tolerance_value)
-        elif tolerance_type in ["parallelism", "perpendicularity", "angularity"]:
-            return -tolerance_value, tolerance_value
-        elif tolerance_type in ["profile", "profile_line", "profile_surface"]:
-            if gdt_info.get("is_bilateral_profile"):
-                return -tolerance_value / 2, tolerance_value / 2
+        # CORRECTED: For GD&T with nominal 0.00, tolerances are typically unilateral [0, value]
+        # Most GD&T tolerances are unilateral (0 to tolerance_value) when nominal is 0
+        if abs(nominal) < 0.001:  # nominal is essentially 0.00
+            # Form tolerances are always unilateral
+            if tolerance_type in ["flatness", "circularity", "cylindricity", "straightness"]:
+                return 0.0, tolerance_value
+            # Position tolerance is unilateral when nominal is 0
+            elif tolerance_type == "position":
+                return 0.0, tolerance_value
+            # Orientation tolerances are unilateral when nominal is 0  
+            elif tolerance_type in ["parallelism", "perpendicularity", "angularity"]:
+                return 0.0, tolerance_value
+            # Profile tolerances - check if explicitly bilateral
+            elif tolerance_type in ["profile", "profile_line", "profile_surface"]:
+                if gdt_info.get("is_bilateral_profile"):
+                    return -tolerance_value / 2, tolerance_value / 2
+                else:
+                    return 0.0, tolerance_value  # Unilateral by default
+            # Runout is always unilateral
+            elif tolerance_type in ["runout", "total_runout"]:
+                return 0.0, tolerance_value
+            # Location tolerances are unilateral when nominal is 0
+            elif tolerance_type in ["concentricity", "symmetry"]:
+                return 0.0, tolerance_value
             else:
-                return -tolerance_value / 2, tolerance_value / 2
-        elif tolerance_type in ["runout", "total_runout"]:
-            return 0.0, tolerance_value
-        elif tolerance_type in ["concentricity", "symmetry"]:
-            return -tolerance_value, tolerance_value
+                # Default for GD&T with nominal 0: unilateral
+                return 0.0, tolerance_value
         else:
-            return -tolerance_value, tolerance_value
+            # When nominal is not 0, use traditional bilateral approach
+            if tolerance_type in ["flatness", "circularity", "cylindricity", "straightness"]:
+                return 0.0, tolerance_value
+            elif tolerance_type == "position":
+                return -tolerance_value, tolerance_value
+            elif tolerance_type in ["parallelism", "perpendicularity", "angularity"]:
+                return -tolerance_value, tolerance_value
+            elif tolerance_type in ["profile", "profile_line", "profile_surface"]:
+                if gdt_info.get("is_bilateral_profile"):
+                    return -tolerance_value / 2, tolerance_value / 2
+                else:
+                    return -tolerance_value / 2, tolerance_value / 2
+            elif tolerance_type in ["runout", "total_runout"]:
+                return 0.0, tolerance_value
+            elif tolerance_type in ["concentricity", "symmetry"]:
+                return -tolerance_value, tolerance_value
+            else:
+                return -tolerance_value, tolerance_value
 
     def extract_tolerance_from_gdt(self, description: str, nominal: float = 0.0) -> Tuple[List[float], List[str]]:
         """Optimized tolerance extraction"""
@@ -218,6 +254,10 @@ class GDTInterpreter:
             "straightness": "⏤",
             "circularity": "○",
             "cylindricity": "⌭",
+            "profile of line": "⌒",
+            "profile line": "⌒",
+            "profile of surface": "⌓",
+            "profile surface": "⌓",
             "profile": "⌓",
             "runout": "↗",
             "total runout": "↗↗",
@@ -254,6 +294,8 @@ def create_enhanced_gdt_flags(description: str) -> Dict[str, bool]:
         "parallelism": ["parallelism", "∥"],
         "perpendicularity": ["perpendicularity", "⊥"],
         "angularity": ["angularity", "∠"],
+        "profile_line": ["profile of line", "profile line", "⌒"],
+        "profile_surface": ["profile of surface", "profile surface", "⌓"],
         "profile": ["profile", "⌓", "⌒"],
         "circularity": ["circularity", "roundness", "○"],
         "cylindricity": ["cylindricity", "⌭"],
@@ -283,6 +325,8 @@ def create_enhanced_gdt_flags(description: str) -> Dict[str, bool]:
         "PERPENDICULARITY": False,
         "ANGULARITY": False,
         "PROFILE": False,
+        "PROFILE_LINE": False,
+        "PROFILE_SURFACE": False,
         "FLATNESS": False,
         "CIRCULARITY": False,
         "CYLINDRICITY": False,
