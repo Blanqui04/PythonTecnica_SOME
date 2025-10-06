@@ -208,7 +208,7 @@ class DimensionalService:
             mean=0.0,
             std_dev=0.0,
             out_of_spec_count=0,
-            status=DimensionalStatus.BAD,
+            status=DimensionalStatus.NOK,
             gdt_flags={},
             datum_element_id=record.get("datum_element_id"),
             effective_tolerance_upper=None,
@@ -222,12 +222,12 @@ class DimensionalService:
     def get_processing_summary(self, results: List[DimensionalResult]) -> Dict[str, Any]:
         """Optimized summary generation"""
         if not results:
-            return {"total": 0, "good": 0, "bad": 0, "warning": 0, "success_rate": 0.0,
+            return {"total": 0, "ok": 0, "nok": 0, "warning": 0, "success_rate": 0.0,
                     "gdt_count": 0, "feature_types": {}, "cavity_summary": {}, 
                     "evaluation_types": {}}
         
         total = len(results)
-        status_counts = {"GOOD": 0, "BAD": 0, "WARNING": 0}
+        status_counts = {"OK": 0, "NOK": 0, "WARNING": 0}
         evaluation_types = {}
         feature_types = {}
         cavity_summary = {}
@@ -250,12 +250,12 @@ class DimensionalService:
             # Cavity analysis
             cavity = result.cavity
             if cavity not in cavity_summary:
-                cavity_summary[cavity] = {"total": 0, "good": 0, "bad": 0}
+                cavity_summary[cavity] = {"total": 0, "ok": 0, "nok": 0}
             cavity_summary[cavity]["total"] += 1
-            if status == "GOOD":
-                cavity_summary[cavity]["good"] += 1
-            elif status == "BAD":
-                cavity_summary[cavity]["bad"] += 1
+            if status == "OK":
+                cavity_summary[cavity]["ok"] += 1
+            elif status == "NOK":
+                cavity_summary[cavity]["nok"] += 1
             
             # GD&T count
             if result.gdt_flags.get('HAS_GDT', False):
@@ -263,10 +263,10 @@ class DimensionalService:
         
         return {
             "total": total,
-            "good": status_counts.get("GOOD", 0),
-            "bad": status_counts.get("BAD", 0),
+            "ok": status_counts.get("OK", 0),
+            "nok": status_counts.get("NOK", 0),
             "warning": status_counts.get("WARNING", 0),
-            "success_rate": (status_counts.get("GOOD", 0) / total) * 100 if total > 0 else 0.0,
+            "success_rate": (status_counts.get("OK", 0) / total) * 100 if total > 0 else 0.0,
             "gdt_count": gdt_count,
             "gdt_percentage": (gdt_count / total) * 100 if total > 0 else 0.0,
             "feature_types": feature_types,

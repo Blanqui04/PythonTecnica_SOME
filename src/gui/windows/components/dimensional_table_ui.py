@@ -19,10 +19,11 @@ from PyQt5.QtGui import QColor, QFont
 import sip  # type: ignore
 
 from src.models.dimensional.gdt_interpreter import GDTInterpreter
+from src.gui.utils.responsive_utils import ResponsiveWidget, get_screen_utils
 
 
-class DimensionalTableUI:
-    """Enhanced UI components with FIXED consistent formatting operations"""
+class DimensionalTableUI(ResponsiveWidget):
+    """Enhanced UI components with FIXED consistent formatting operations and responsive design"""
 
     def __init__(
         self,
@@ -32,6 +33,7 @@ class DimensionalTableUI:
         measurement_columns,
         batch_number,
     ):
+        ResponsiveWidget.__init__(self)
         self.parent_window = None
         self.display_columns = display_columns
         self.column_headers = column_headers
@@ -45,8 +47,24 @@ class DimensionalTableUI:
         # Ensure process capability columns are included
         self._ensure_process_capability_columns()
 
-        # UI Options
-        self.class_options = ["", "CC", "SC", "IC"]
+        # UI Options - Class field now supports custom client-specific values
+        self.class_options = [
+            "",           # Empty option
+            "CC",         # Critical Characteristic (standard)
+            "SC",         # Significant Characteristic (standard)  
+            "IC",         # Important Characteristic (standard)
+            "KC",         # Key Characteristic (automotive)
+            "PC",         # Process Characteristic
+            "QC",         # Quality Characteristic
+            "DC",         # Design Critical
+            "FC",         # Functional Critical
+            "AC",         # Aesthetic Critical
+            "RC",         # Regulatory Critical
+            "NC",         # Non-Critical
+            "C1",         # Class 1 (client specific)
+            "C2",         # Class 2 (client specific)
+            "C3"          # Class 3 (client specific)
+        ]
         self.instrument_options = [
             "",
             "3D Scanbox",
@@ -67,15 +85,15 @@ class DimensionalTableUI:
             "Portable CMM",
             "Profile Projector",
         ]
-        self.force_status_options = ["AUTO", "GOOD", "BAD", "T.E.D."]
+        self.force_status_options = ["AUTO", "OK", "NOK", "T.E.D."]
         self.unit_options = ["", "mm", "°", "μm", "cm", "in"]
         self.datum_options = ["", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]
         self.evaluation_options = ["Normal", "Basic", "Informative", "Note", "GD&T"]
 
         # Enhanced UI Colors
         self.colors = {
-            "good": QColor(46, 125, 50),        # Strong green
-            "bad": QColor(183, 28, 28),         # Strong red
+            "ok": QColor(46, 125, 50),        # Strong green
+            "nok": QColor(183, 28, 28),         # Strong red
             "warning": QColor(255, 152, 0),     # Strong orange
             "readonly": QColor(240, 242, 245),  # Light gray for calculated fields
             "header": QColor(44, 62, 80),       # Dark blue-gray
@@ -135,28 +153,33 @@ class DimensionalTableUI:
             lambda pos: self._show_context_menu(table, pos)
         )
         
-        # Enhanced header styling with process capability highlight
+        # Enhanced header styling with process capability highlight - RESPONSIVE
         header = table.horizontalHeader()
         header.setStretchLastSection(True)
-        header.setStyleSheet("""
-            QHeaderView::section {
+        
+        # Get responsive font size and spacing
+        font_size = self.get_responsive_font_size(10)
+        spacing = self.get_responsive_spacing()
+        
+        header.setStyleSheet(f"""
+            QHeaderView::section {{
                 background-color: #2c3e50;
                 color: #ffffff;
-                padding: 12px 8px;
+                padding: {spacing['medium']}px {spacing['small']}px;
                 border: none;
                 border-right: 1px solid #1a252f;
                 font-weight: 600;
-                font-size: 10px;
+                font-size: {font_size}px;
                 text-transform: uppercase;
                 font-family: 'Segoe UI', sans-serif;
-            }
-            QHeaderView::section:hover {
+            }}
+            QHeaderView::section:hover {{
                 background-color: #1a252f;
-            }
+            }}
         """)
 
-        # Enhanced column widths including Pp/Ppk
-        column_widths = {
+        # Responsive column widths including Pp/Ppk
+        base_widths = {
             0: 70,   # element_id
             1: 60,   # batch
             2: 50,   # cavity
@@ -183,13 +206,21 @@ class DimensionalTableUI:
             23: 70,  # status
             24: 80,  # force_status
         }
+        
+        # Scale column widths responsively
+        column_widths = {}
+        for col, base_width in base_widths.items():
+            scaled_width, _ = self.screen_utils.scale_size(base_width, 20)
+            column_widths[col] = scaled_width
 
         for col, width in column_widths.items():
             if col < table.columnCount():
                 table.setColumnWidth(col, width)
 
-        # Set consistent row height
-        table.verticalHeader().setDefaultSectionSize(32)
+        # Set responsive row height
+        base_row_height = 32
+        scaled_row_height, _ = self.screen_utils.scale_size(20, base_row_height)
+        table.verticalHeader().setDefaultSectionSize(scaled_row_height)
         table.setWordWrap(True)
         table.cellChanged.connect(self._on_cell_changed)
         
@@ -285,10 +316,13 @@ class DimensionalTableUI:
         """Add professional dropdown widgets with consistent styling"""
         dropdown_style = self._get_combo_style()
 
-        # Class dropdown (column 3)
+        # Class dropdown (column 3) - NOW EDITABLE for client-specific typologies
         class_combo = QComboBox()
         class_combo.addItems(self.class_options)
         class_combo.setCurrentText("")
+        class_combo.setEditable(True)  # Allow custom values
+        class_combo.setInsertPolicy(QComboBox.NoInsert)  # Prevent automatic insertion
+        class_combo.lineEdit().setPlaceholderText("Select or enter class...")
         class_combo.setStyleSheet(dropdown_style)
         class_combo.setMaximumHeight(30)
         table.setCellWidget(row, 3, class_combo)
@@ -463,7 +497,11 @@ class DimensionalTableUI:
         if col == 3:  # class
             combo = QComboBox()
             combo.addItems(self.class_options)
-            combo.setCurrentText(value if value in self.class_options else "")
+            combo.setEditable(True)
+            combo.setInsertPolicy(QComboBox.NoInsert)
+            combo.lineEdit().setPlaceholderText("Select or enter class...")
+            # Set current text (works for both existing options and custom values)
+            combo.setCurrentText(value)
         elif col == 5:  # measuring_instrument
             combo = QComboBox()
             combo.addItems(self.instrument_options)
@@ -799,8 +837,14 @@ class DimensionalTableUI:
             )
             return
 
+        # Get current description to determine dialog mode
+        current_desc_item = table.item(current_row, 4)  # Description column
+        current_description = current_desc_item.text().strip() if current_desc_item else ""
+        has_existing_description = bool(current_description)
+        
         dialog = QDialog(self.parent_window)
-        dialog.setWindowTitle("🔧 GD&T Helper")
+        dialog_title = "✏️ Edit GD&T Description" if has_existing_description else "🔧 New GD&T Description"
+        dialog.setWindowTitle(dialog_title)
         dialog.setModal(True)
         dialog.resize(450, 350)
         dialog.setStyleSheet("""
@@ -851,7 +895,8 @@ class DimensionalTableUI:
         <tr><td><b>Parallelism:</b></td><td>∥ 0.1 A</td></tr>
         <tr><td><b>Flatness:</b></td><td>⏸ 0.05</td></tr>
         <tr><td><b>Circularity:</b></td><td>○ 0.02</td></tr>
-        <tr><td><b>Profile:</b></td><td>⌓ 0.2 A B</td></tr>
+        <tr><td><b>Profile of Line:</b></td><td>⌒ 0.2 A B</td></tr>
+        <tr><td><b>Profile of Surface:</b></td><td>⌓ 0.15 A</td></tr>
         </table>
         <br>
         <h4 style='color: #2c3e50;'>📏 Material Conditions:</h4>
@@ -864,23 +909,61 @@ class DimensionalTableUI:
         """)
         layout.addWidget(instructions)
 
-        # Enhanced text input
-        layout.addWidget(QLabel("<b>Enter GD&T Description:</b>"))
+        # Show edit mode info if editing existing description
+        if has_existing_description:
+            edit_info = QLabel(f"""
+            <div style='background-color: #e8f4fd; padding: 8px; border-radius: 4px; border: 1px solid #bee5eb; margin: 5px 0;'>
+            <span style='color: #0c5460; font-weight: 500;'>📝 Editing existing description:</span><br>
+            <span style='color: #495057; font-family: monospace; font-size: 11px;'>{current_description}</span>
+            </div>
+            """)
+            layout.addWidget(edit_info)
+
+        # Enhanced text input with current description pre-loaded
+        input_label_text = "Edit GD&T Description:" if has_existing_description else "Enter GD&T Description:"
+        layout.addWidget(QLabel(f"<b>{input_label_text}</b>"))
         text_input = QTextEdit()
         text_input.setMaximumHeight(80)
         text_input.setPlaceholderText("Example: position 0.5(M) A B C")
+        
+        # Pre-load current description if exists
+        if has_existing_description:
+            text_input.setPlainText(current_description)
+            # Select all text for easy editing
+            text_input.selectAll()
+        
         layout.addWidget(text_input)
 
         # Enhanced buttons
         button_layout = QHBoxLayout()
 
-        apply_btn = QPushButton("✅ Apply to Row")
+        apply_btn_text = "💾 Update Description" if has_existing_description else "✅ Apply to Row"
+        apply_btn = QPushButton(apply_btn_text)
         apply_btn.clicked.connect(
             lambda: self._apply_gdt_to_row(
                 table, current_row, text_input.toPlainText(), dialog
             )
         )
         button_layout.addWidget(apply_btn)
+
+        # Add clear button if editing existing description
+        if has_existing_description:
+            clear_btn = QPushButton("🗑️ Clear & Start New")
+            clear_btn.setStyleSheet("""
+                QPushButton {
+                    background-color: #ffc107;
+                    color: #212529;
+                    font-weight: 600;
+                }
+                QPushButton:hover {
+                    background-color: #e0a800;
+                }
+            """)
+            clear_btn.clicked.connect(lambda: (
+                text_input.clear(),
+                text_input.setPlaceholderText("Enter new GD&T description...")
+            ))
+            button_layout.addWidget(clear_btn)
 
         cancel_btn = QPushButton("❌ Cancel")
         cancel_btn.setStyleSheet("""

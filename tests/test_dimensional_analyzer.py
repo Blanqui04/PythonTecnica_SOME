@@ -16,7 +16,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.0, 0.5],
                 "measurements": [0.1, 0.2, 0.3, 0.5],
             },
-            "GOOD",
+            "OK",
             "All measurements within GD&T range [0.0, 0.5]",
         ),
         # ✅ Boundary checks
@@ -30,7 +30,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.0, 0.5],
                 "measurements": [0.0, 0.5],
             },
-            "GOOD",
+            "OK",
             "Measurements at tolerance boundaries",
         ),
         # ❌ One value above upper limit
@@ -44,7 +44,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.0, 0.5],
                 "measurements": [0.6],
             },
-            "BAD",
+            "NOK",
             "Measurement above GD&T upper tolerance",
         ),
         # ❌ GD&T with zero tolerance, non-zero measurement
@@ -58,7 +58,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.0, 0.0],
                 "measurements": [0.001],
             },
-            "BAD",
+            "NOK",
             "Zero tolerance: any non-nominal value is out",
         ),
         # ✅ MMC: bonus extends upper tolerance
@@ -75,7 +75,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "datum_nominal": 10.0,
                 "datum_measurement": 9.4,  # bonus = 0.6 → 0.5 + 0.6 = 1.1 max
             },
-            "GOOD",
+            "OK",
             "Bonus tolerance from MMC extends upper limit",
         ),
         # ❌ MMC: measurement beyond bonus range
@@ -92,7 +92,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "datum_nominal": 10.0,
                 "datum_measurement": 9.5,  # bonus = 0.5 → extended to 1.0
             },
-            "BAD",
+            "NOK",
             "Measurement beyond MMC bonus limit",
         ),
         # ✅ LMC: bonus extends upper limit
@@ -109,7 +109,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "datum_nominal": 10.0,
                 "datum_measurement": 10.7,  # LMC bonus = 0.2 → upper = 0.7
             },
-            "GOOD",
+            "OK",
             "LMC bonus increases upper limit",
         ),
         # ❌ No datum → no bonus → out of spec
@@ -124,7 +124,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "measurements": [0.7],
                 # No datum fields
             },
-            "BAD",
+            "NOK",
             "Bonus tolerance ignored without datum",
         ),
         # ❌ Missing tolerance completely
@@ -138,8 +138,8 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [],
                 "measurements": [0.0],
             },
-            "BAD",
-            "Missing tolerance treated as BAD",
+            "NOK",
+            "Missing tolerance treated as NOK",
         ),
         # ✅ Dimensional feature with symmetric tolerance (1 value)
         (
@@ -152,7 +152,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.2],
                 "measurements": [10.0, 10.1, 10.15],
             },
-            "GOOD",
+            "OK",
             "Symmetric tolerance interpreted for non-GD&T",
         ),
         # ✅ GD&T feature with single value = upper only
@@ -166,7 +166,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.25],
                 "measurements": [0.2, 0.25],
             },
-            "GOOD",
+            "OK",
             "GD&T PROFILE treated with upper tolerance only",
         ),
         # ❌ GD&T single tolerance exceeded
@@ -180,7 +180,7 @@ from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
                 "tolerance": [0.25],
                 "measurements": [0.26],
             },
-            "BAD",
+            "NOK",
             "GD&T single value exceeded",
         ),
     ],
@@ -223,10 +223,10 @@ def test_gdt_mmc_lmc_tolerance_handling(row, expected_status, description):
         out_count = sum(m < lower_limit or m > upper_limit for m in result.measurements)
         assert out_count == result.out_of_spec_count
 
-        if expected_status == "BAD":
+        if expected_status == "NOK":
             assert any(m < lower_limit or m > upper_limit for m in result.measurements)
 
-        if expected_status == "GOOD":
+        if expected_status == "OK":
             assert all(lower_limit <= m <= upper_limit for m in result.measurements)
 
     if result.lower_tolerance == 0.0 and result.upper_tolerance == 0.0:
@@ -234,7 +234,7 @@ def test_gdt_mmc_lmc_tolerance_handling(row, expected_status, description):
             assert m == result.nominal or abs(m - result.nominal) > 0.0
 
     if not row.get("tolerance"):
-        assert expected_status == "BAD"
+        assert expected_status == "NOK"
 
     if len(row.get("tolerance", [])) == 1:
         if any(result.gdt_flags.get(k) for k in ("MMC", "LMC", "PROFILE", "MIN")):

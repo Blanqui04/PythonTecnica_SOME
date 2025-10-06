@@ -5,8 +5,8 @@ from enum import Enum
 
 
 class DimensionalStatus(str, Enum):
-    GOOD = "GOOD"
-    BAD = "BAD"
+    OK = "OK"
+    NOK = "NOK"
     WARNING = "WARNING"
     TED = "T.E.D."
     TO_CHECK = "TO CHECK"  # New status for notes

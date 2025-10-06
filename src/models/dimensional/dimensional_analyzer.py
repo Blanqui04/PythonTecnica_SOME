@@ -213,21 +213,21 @@ class DimensionalAnalyzer:
         
         # Handle Notes first - default to TO_CHECK unless forced
         if evaluation_type == "Note":
-            if force_status == "GOOD":
-                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Forced to GOOD")
-                return DimensionalStatus.GOOD, 0
-            elif force_status == "BAD":
-                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Forced to BAD")
-                return DimensionalStatus.BAD, len(measurements) if measurements else 0
+            if force_status == "OK":
+                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Forced to OK")
+                return DimensionalStatus.OK, 0
+            elif force_status == "NOK":
+                self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Forced to NOK")
+                return DimensionalStatus.NOK, len(measurements) if measurements else 0
             else:
                 self.logger.info(f"Note {record.get('element_id', 'Unknown')}: Default TO_CHECK status")
                 return DimensionalStatus.TO_CHECK, 0    # Default for notes is TO_CHECK
 
         # Handle forced status for non-notes
-        if force_status == "GOOD":
-            return DimensionalStatus.GOOD, 0
-        elif force_status == "BAD":
-            return DimensionalStatus.BAD, len(measurements)
+        if force_status == "OK":
+            return DimensionalStatus.OK, 0
+        elif force_status == "NOK":
+            return DimensionalStatus.NOK, len(measurements)
         elif force_status == "TED":
             return DimensionalStatus.TED, len(measurements)
         elif force_status == "WARNING":
@@ -244,7 +244,7 @@ class DimensionalAnalyzer:
         
         # AUTO evaluation for Normal and GD&T
         if lower_tol == 0.0 and upper_tol == 0.0:
-            return DimensionalStatus.GOOD, 0  # No tolerance to evaluate against
+            return DimensionalStatus.OK, 0  # No tolerance to evaluate against
         
         out_of_spec = []    # Standard tolerance evaluation
         
@@ -258,7 +258,7 @@ class DimensionalAnalyzer:
             upper_limit = nominal + upper_tol
             out_of_spec = [m for m in measurements if not (lower_limit <= m <= upper_limit)]
         
-        status = DimensionalStatus.GOOD if not out_of_spec else DimensionalStatus.BAD
+        status = DimensionalStatus.OK if not out_of_spec else DimensionalStatus.NOK
         return status, len(out_of_spec)
     
     def _determine_feature_type_fast(self, description: str, evaluation_type: str) -> str:
@@ -302,7 +302,7 @@ class DimensionalAnalyzer:
             mean=0.0,
             std_dev=0.0,
             out_of_spec_count=0,
-            status=DimensionalStatus.BAD,
+            status=DimensionalStatus.NOK,
             gdt_flags={},
             datum_element_id=None,
             effective_tolerance_upper=None,

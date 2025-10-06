@@ -29,14 +29,16 @@ from .components.dimensional_summary_widget import SummaryWidget
 from src.models.dimensional.dimensional_result import DimensionalResult
 from ..workers.dimensional_processing_thread import ProcessingThread
 from ..utils.styles import global_style, get_color_palette
+from ..utils.responsive_utils import make_window_responsive, ResponsiveWidget
 from ..widgets.buttons import ModernButton, CompactButton  # , ActionButton
 
 
-class DimensionalStudyWindow(BaseDimensionalWindow):
-    """Enhanced dimensional study window with professional automotive styling"""
+class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
+    """Enhanced dimensional study window with professional automotive styling and responsive design"""
 
     def __init__(self, client: str, ref_project: str, batch_number: str):
-        super().__init__(client, ref_project, batch_number)
+        BaseDimensionalWindow.__init__(self, client, ref_project, batch_number)
+        ResponsiveWidget.__init__(self)
 
         # Initialize enhanced logging
         self._init_logging()
@@ -232,10 +234,18 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
             self._log_message("📊 Optimized summary widget initialized", "INFO")
 
     def _init_ui(self):
-        """Initialize enhanced professional UI"""
+        """Initialize enhanced professional UI with responsive design"""
+        # Make window responsive
+        make_window_responsive(self, 1200, 800)
+        
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(12)
-        main_layout.setContentsMargins(16, 16, 16, 16)
+        
+        # Get responsive spacing and margins
+        spacing = self.get_responsive_spacing()
+        margins = self.get_responsive_margins()
+        
+        main_layout.setSpacing(spacing['section'])
+        main_layout.setContentsMargins(margins['large'], margins['large'], margins['large'], margins['large'])
 
         # Enhanced header section
         header_frame = self._create_header_section()
@@ -260,10 +270,14 @@ class DimensionalStudyWindow(BaseDimensionalWindow):
 
     
     def _create_header_section(self) -> QFrame:
-        """Create professional header section"""
+        """Create professional header section with responsive sizing"""
         header_frame = QFrame()
         header_frame.setFrameStyle(QFrame.StyledPanel | QFrame.Raised)
-        header_frame.setFixedHeight(130)
+        
+        # Responsive header height
+        base_height = 130
+        _, scaled_height = self.screen_utils.scale_size(100, base_height)
+        header_frame.setFixedHeight(scaled_height)
         header_frame.setStyleSheet("background-color: #2c3e50;")  # Dark navy background
 
         layout = QHBoxLayout()
