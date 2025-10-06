@@ -69,20 +69,20 @@ class QualityMeasurementDBAdapter:
             bool: True si la connexió és exitosa
         """
         try:
-            # Utilitzar configuració primary si existeix, sinó configuració directa
-            if 'primary' in self.db_config:
-                config = self.db_config['primary']
-            else:
-                config = self.db_config
+            # La configuració ja ve processada del load_db_config (només 'primary')
+            config = self.db_config
+            
+            logger.info(f"Intentant connectar a {config['host']}:{config['port']} -> {config['database']}")
             
             self.connection = psycopg2.connect(
                 host=config['host'],
-                port=config['port'],
+                port=int(config['port']),  # Assegurar que port sigui enter
                 database=config['database'],
                 user=config['user'],
                 password=config['password'],
                 # Assegurar encoding UTF-8 per suportar Unicode correctament
-                client_encoding='utf8'
+                client_encoding='utf8',
+                connect_timeout=10  # Timeout de connexió
             )
             self.connection.autocommit = True
             
@@ -93,6 +93,12 @@ class QualityMeasurementDBAdapter:
                 
             logger.info(f"Connexió a la base de dades establerta amb UTF-8: {config['host']}:{config['port']}")
             return True
+        except psycopg2.OperationalError as e:
+            logger.error(f"Error operacional de PostgreSQL: {e}")
+            return False
+        except psycopg2.Error as e:
+            logger.error(f"Error de PostgreSQL: {e}")
+            return False
         except Exception as e:
             logger.error(f"Error connectant a la base de dades: {e}")
             return False
@@ -280,6 +286,7 @@ class QualityMeasurementDBAdapter:
         # Columnes noves que cal afegir
         new_columns = {
             'client': 'character varying(100)',
+            'id_referencia_client': 'character varying(100)',
             'data_hora': 'timestamp without time zone',
             'maquina': "character varying(50) DEFAULT 'gompc'",
             'fase': 'character varying(100)',  # Nova columna per clients especials
@@ -819,6 +826,8 @@ class QualityMeasurementDBAdapter:
             if not self.connection:
                 raise Exception("No hi ha connexió activa a la base de dades")
             
+            logger.debug(f"Executant query: {query[:100]}{'...' if len(query) > 100 else ''}")
+            
             with self.connection.cursor() as cursor:
                 if params:
                     cursor.execute(query, params)
@@ -828,15 +837,25 @@ class QualityMeasurementDBAdapter:
                 # Si és una query SELECT o WITH, retornar resultats
                 query_stripped = query.strip().upper()
                 if query_stripped.startswith('SELECT') or query_stripped.startswith('WITH'):
-                    return cursor.fetchall()
+                    results = cursor.fetchall()
+                    logger.debug(f"Query SELECT retorna {len(results)} files")
+                    return results
                 else:
                     # Per queries INSERT/UPDATE/DELETE, confirmar els canvis
-                    self.connection.commit()
-                    return cursor.rowcount
+                    if not self.connection.autocommit:
+                        self.connection.commit()
+                    rowcount = cursor.rowcount
+                    logger.debug(f"Query de modificació afecta {rowcount} files")
+                    return rowcount
                     
+        except psycopg2.Error as e:
+            logger.error(f"Error PostgreSQL executant query: {e}")
+            if self.connection and not self.connection.autocommit:
+                self.connection.rollback()
+            raise e
         except Exception as e:
             logger.error(f"Error executant query: {e}")
-            if self.connection:
+            if self.connection and not self.connection.autocommit:
                 self.connection.rollback()
             raise e
     

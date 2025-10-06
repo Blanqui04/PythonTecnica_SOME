@@ -1,0 +1,975 @@
+{
+  "estructura": [
+    [
+      "Dades necessàries per estructurar una Matriu"
+    ],
+    [
+      "1 - Nº Matriu:",
+      "AL-223880"
+    ],
+    [
+      "2 - SOP projecte",
+      "2025-01-08 00:00:00"
+    ],
+    [
+      "3 - EOP projecte",
+      "2033-01-08 00:00:00"
+    ],
+    [
+      "4 - Tool Lifetime",
+      "10 anys"
+    ],
+    [
+      "5 - Volum Anual:",
+      "1500000"
+    ],
+    [
+      "6 - Volum total Projecte:",
+      "12000000"
+    ],
+    [
+      "7 - Referència/es peça:",
+      "649 4735 00 B"
+    ],
+    [
+      "8 - Cavitats:",
+      "2"
+    ],
+    [
+      "9 - Matricer:",
+      "Talleres AP"
+    ],
+    [
+      "10 - Data entrega matriu:",
+      "W03/23"
+    ],
+    [
+      "11 - Projecte:",
+      "DAIMLER"
+    ],
+    [
+      "12 - Jerarquía:",
+      "Friction Ring"
+    ],
+    [
+      "13 - Nº Expedient:",
+      "024/22"
+    ],
+    [
+      "14 - Responsable Projecte:",
+      "Marc Esteras"
+    ],
+    [
+      "Dades necessàries per estructurar una Matèria prima"
+    ],
+    [
+      "1 - Descripció material:",
+      "HX420 LAD + Z100"
+    ],
+    [
+      "2 - Mides (BANDA x PAS x GRUIX):",
+      "140  x  65  x  1,5"
+    ],
+    [
+      "3 - Proveïdor:",
+      "BAMESA"
+    ],
+    [
+      "4 - Preu actualitzat:",
+      "1.32"
+    ],
+    [
+      "5 - Volum Anual:",
+      "80364.375"
+    ],
+    [
+      "6 - Temps estimat Canvi de Rull:",
+      "20'"
+    ],
+    [
+      "7 - Pes estimat del Rull:",
+      "2000"
+    ],
+    [
+      "Dades necessàries per estructurar un Component / Material Aux."
+    ],
+    [
+      "COMPONENT 1"
+    ],
+    [
+      "1 - Descripció material:"
+    ],
+    [
+      "2 - Mides:"
+    ],
+    [
+      "3 - Proveïdor:"
+    ],
+    [
+      "4 - Preu actualitzat:",
+      "0"
+    ],
+    [
+      "5 - Plànol si cal:"
+    ],
+    [
+      "6 - Volum Anual:"
+    ],
+    [
+      "7 - SOP:",
+      "2025-01-08 00:00:00"
+    ],
+    [
+      "COMPONENT 2"
+    ],
+    [
+      "1 - Descripció material:"
+    ],
+    [
+      "2 - Mides:"
+    ],
+    [
+      "3 - Proveïdor:"
+    ],
+    [
+      "4 - Preu actualitzat:",
+      "0"
+    ],
+    [
+      "5 - Plànol si cal:"
+    ],
+    [
+      "6 - Volum Anual:"
+    ],
+    [
+      "7 - SOP:",
+      "2025-01-08 00:00:00"
+    ],
+    [
+      "COMPONENT 3"
+    ],
+    [
+      "1 - Descripció material:"
+    ],
+    [
+      "2 - Mides:"
+    ],
+    [
+      "3 - Proveïdor:",
+      "0"
+    ],
+    [
+      "4 - Preu actualitzat:",
+      "0"
+    ],
+    [
+      "5 - Plànol si cal:"
+    ],
+    [
+      "6 - Volum Anual:"
+    ],
+    [
+      "7 - SOP:",
+      "2025-01-08 00:00:00"
+    ],
+    [
+      "Dades necessàries per estructurar una peça / conjunt"
+    ],
+    [
+      "1 - Client:",
+      "AUTOLIV"
+    ],
+    [
+      "2 - Tipus:  SQB / KSW / MIXTE:",
+      "SQB"
+    ],
+    [
+      "3 - Tipus Facturació: A / B / C:",
+      "B"
+    ],
+    [
+      "4 - Categoria Peça (Bàscula):",
+      "B"
+    ],
+    [
+      "5 - Quantiat Anual:",
+      "1500000"
+    ],
+    [
+      "6 - Descripció actualitzada:",
+      "SWITCH RING"
+    ],
+    [
+      "7 - Referència client:",
+      "649 4735 00"
+    ],
+    [
+      "8 - Responsables tècnics i de qualitat:",
+      "Marc Esteras / Frederic Gonzalez"
+    ],
+    [
+      "9 - Projecte:",
+      "DAIMLER"
+    ],
+    [
+      "10 - Tractaments:"
+    ],
+    [
+      "* Descripció complerta del tractament 1:",
+      "0"
+    ],
+    [
+      "* proveïdor KSW:",
+      "0"
+    ],
+    [
+      "* preu KSW:",
+      "0"
+    ],
+    [
+      "* Descripció complerta del tractament 2:",
+      "0"
+    ],
+    [
+      "* proveïdor KSW:",
+      "0"
+    ],
+    [
+      "* preu KSW:",
+      "0"
+    ],
+    [
+      "* Descripció complerta del tractament 3:",
+      "0"
+    ],
+    [
+      "* proveïdor KSW:",
+      "0"
+    ],
+    [
+      "* preu KSW:",
+      "0"
+    ],
+    [
+      "11 - Embalatge:"
+    ],
+    [
+      "Es necessàri un nou embalatge?",
+      "NO"
+    ],
+    [
+      "11.1 - EUROPA"
+    ],
+    [
+      "Caixa:",
+      "3412 - Caixa Cartró 385x285x95 + LID (4118)"
+    ],
+    [
+      "Tapa / Altres:",
+      "0"
+    ],
+    [
+      "Pallet:",
+      "855 - Palet Fusta EUR 1200x800"
+    ],
+    [
+      "Peces / Caixa:",
+      "500"
+    ],
+    [
+      "Caixes / Pallet:",
+      "56"
+    ],
+    [
+      "11.2 - OVERSEAS"
+    ],
+    [
+      "Peces / Caixa:",
+      "0"
+    ],
+    [
+      "12 - Pes Brut:",
+      "0.05357625"
+    ],
+    [
+      "13 - Pes Net:",
+      "0.0153"
+    ],
+    [
+      "14 - Ruta:"
+    ],
+    [
+      "* Centre Treball",
+      "C.T.- 1255"
+    ],
+    [
+      "* Descripció CT",
+      "Premsa 125 TN AUTOMATICA"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "60     / OEE:  40,25%"
+    ],
+    [
+      "* Centre Treball",
+      "C.T.- 9510"
+    ],
+    [
+      "* Descripció CT",
+      "Desengreix Vaioc"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "19.000 uni/h  - T.U. 0,0066"
+    ],
+    [
+      "* Centre Treball",
+      "C.T.- 9000"
+    ],
+    [
+      "* Descripció CT",
+      "Segon Operari"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "0"
+    ],
+    [
+      "* Centre Treball"
+    ],
+    [
+      "* Descripció CT",
+      "0"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "0"
+    ],
+    [
+      "* Centre Treball"
+    ],
+    [
+      "* Descripció CT",
+      "0"
+    ],
+    [
+      "* cpm o (peces/hora) per CT",
+      "0"
+    ],
+    [
+      "* Matriu",
+      "AL-223880"
+    ],
+    [
+      "* Cavitats",
+      "2 ( 1 + 1 )"
+    ],
+    [
+      "* Co-producte ( si / no )",
+      "Producte Únic"
+    ],
+    [
+      "* Si hi ha subcontractació ( oferta )"
+    ],
+    [
+      "15 - Plànol actualitzat",
+      "6494735 002"
+    ],
+    [
+      "16 - Cost Peça (Intern SOME)",
+      "0.083674348670575"
+    ],
+    [
+      "17 - Preu Peça (Oferta a Client)",
+      "0.1192"
+    ],
+    [
+      "18 - Planta Producció Client",
+      "ALH"
+    ],
+    [
+      "PD. La resta d'informació que s'entra ja l'aconseguèix la persona que estructura."
+    ]
+  ],
+  "dades_extra": [
+    {
+      "Key": "ENTRADA DADES FORMULARIS",
+      "Value": NaN
+    },
+    {
+      "Key": "UBICACIÓ CARPETA PROJECTES EN CURS",
+      "Value": "\\\\server\\some\\Projectes en curs\\AUTOLIV\\649473500 - SWITCH RING ( ME )"
+    },
+    {
+      "Key": "TIPUS PROJECTE",
+      "Value": "NEW"
+    },
+    {
+      "Key": "DATA KOP",
+      "Value": "2022-07-18T00:00:00"
+    },
+    {
+      "Key": "DATA ENVIAMENT PSA",
+      "Value": "2022-07-15T00:00:00"
+    },
+    {
+      "Key": "RESPONSABLE COMERCIAL",
+      "Value": "David Bernal"
+    },
+    {
+      "Key": "RESPONSABLE DE PROJECTE",
+      "Value": "Marc Esteras"
+    },
+    {
+      "Key": "JERARQUIA",
+      "Value": "Friction Ring"
+    },
+    {
+      "Key": "Nº MATRIU SOME",
+      "Value": "AL-223880"
+    },
+    {
+      "Key": "Nº ASSET de CLIENT  (EN LA COMANDA)",
+      "Value": NaN
+    },
+    {
+      "Key": "Nº COMANDA CLIENT ",
+      "Value": NaN
+    },
+    {
+      "Key": "PRESSUPOST MATRICER",
+      "Value": "22019 Rev.01"
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING MATRIU",
+      "Value": "W29/22"
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT MATRIU",
+      "Value": "W31/22"
+    },
+    {
+      "Key": "DATA FOTs MATRICER",
+      "Value": "W49/22"
+    },
+    {
+      "Key": "DATA PROBA A SOME MATRICER (PPAP)",
+      "Value": "W03/23"
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A MATRICER",
+      "Value": "30%-35%-25%-10%"
+    },
+    {
+      "Key": "INCOTERMS MATRIU",
+      "Value": "EXW"
+    },
+    {
+      "Key": "TOOL LIFETIME",
+      "Value": "10 anys"
+    },
+    {
+      "Key": "PREU FACTURACIÓ TOTAL A CLIENT",
+      "Value": 75850
+    },
+    {
+      "Key": "CONDICIONS DE PAGAMENT DE CLIENT",
+      "Value": "30% PO -30% PPAP -40% PPAP approval"
+    },
+    {
+      "Key": "PLANTA/ES DESTÍ",
+      "Value": "ALH"
+    },
+    {
+      "Key": "CONDICIONS ENVIAMENT A CLIENT",
+      "Value": "FCA"
+    },
+    {
+      "Key": "LOT PRODUCCIÓ INFORMAT A CLIENT",
+      "Value": 100000
+    },
+    {
+      "Key": "TIPUS DE PREMSA",
+      "Value": "125 Tn"
+    },
+    {
+      "Key": "PRESSUPOST Proveïdor Màquina",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA PLANNING Màquina",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA ENTREGA LAYOUT Màquina",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA FOTs",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PROBA A SOME (PPAP)",
+      "Value": NaN
+    },
+    {
+      "Key": "CONDICIONS PAGAMENT A Proveïdor",
+      "Value": NaN
+    },
+    {
+      "Key": "INCOTERMS",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 1",
+      "Value": NaN
+    },
+    {
+      "Key": "INDEX REFERÈNCIA SOME 2",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT COMPRA ",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 1",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 2",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "COMPONENT 3",
+      "Value": NaN
+    },
+    {
+      "Key": "MIDES (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "REF. SOME (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "LOT MÍNIM",
+      "Value": NaN
+    },
+    {
+      "Key": "PLÀNOL (SI APLICA)",
+      "Value": NaN
+    },
+    {
+      "Key": "DATA PRIMERES MOSTRES  F.O.T A CLIENT",
+      "Value": "W02/23"
+    },
+    {
+      "Key": "QUANTITAT PECES F.O.T. A CLIENT",
+      "Value": 300
+    },
+    {
+      "Key": "DATA ENTREGA PECES PPAP A CLIENT",
+      "Value": "W08/23"
+    },
+    {
+      "Key": "QUANTITAT PECES PPAP A CLIENT",
+      "Value": 1000
+    },
+    {
+      "Key": "S.O.P. CLIENT",
+      "Value": "2025-01-08T00:00:00"
+    },
+    {
+      "Key": "E.O.P. CLIENT",
+      "Value": "2033-01-08T00:00:00"
+    },
+    {
+      "Key": "LOT ÒPTIM INFORMAT A CLIENT",
+      "Value": 100000
+    },
+    {
+      "Key": "TEMPS ESTIMAT CANVI DE RULL",
+      "Value": "20'"
+    },
+    {
+      "Key": "PES ESTIMAT DE RULL",
+      "Value": 2000
+    },
+    {
+      "Key": "RESPONSABLE PROJECTE - SOMEKSW",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT - SOME SA",
+      "Value": "Frederic Gonzalez"
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT - SOMEKSW",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE DE PROCESSOS - SOME SA",
+      "Value": "Guillem Senmartí"
+    },
+    {
+      "Key": "RESPONSABLE DE PROCESSOS - SOMEKSW",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE DE MATRICERIA - SOME SA",
+      "Value": "Marc Anglada"
+    },
+    {
+      "Key": "RESPONSABLE DE MATRICERIA - SOMEKSW",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE PRODUCCIÓ SOME - SOME SA",
+      "Value": "Eva Bertran "
+    },
+    {
+      "Key": "RESPONSABLE PRODUCCIÓ - SOMEKSW",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE COMPRES CLIENT",
+      "Value": "Stefan Wengler"
+    },
+    {
+      "Key": "RESPONSABLE DISSENY CLIENT",
+      "Value": "I. Marku"
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT CLIENT (SQA)",
+      "Value": NaN
+    },
+    {
+      "Key": "RESPONSABLE QUALITAT CLIENT (SDE)",
+      "Value": NaN
+    },
+    {
+      "Key": "FACTIBLITAT SIGNADA AMB CLIENT",
+      "Value": "YES"
+    },
+    {
+      "Key": "NORMES I ESTÀNDARDS UPDATED",
+      "Value": "YES"
+    },
+    {
+      "Key": "ESPECIFICACIONS PRODUCTE DISPONIBLES",
+      "Value": "YES"
+    },
+    {
+      "Key": "CONTRACT REVIEW (Si aplica)",
+      "Value": NaN
+    },
+    {
+      "Key": "Es necessàri un nou embalatge?",
+      "Value": "NO"
+    },
+    {
+      "Key": "PROCESSOS",
+      "Value": NaN
+    },
+    {
+      "Key": "CT 2",
+      "Value": NaN
+    },
+    {
+      "Key": "C.P.M.  /  TEMPS",
+      "Value": "19.000 uni/h  - T.U. 0,0066"
+    },
+    {
+      "Key": "CT 3",
+      "Value": NaN
+    },
+    {
+      "Key": "C.P.M.  /  TEMPS",
+      "Value": NaN
+    },
+    {
+      "Key": "CT 4",
+      "Value": NaN
+    },
+    {
+      "Key": "C.P.M.  /  TEMPS",
+      "Value": NaN
+    },
+    {
+      "Key": "CT 5",
+      "Value": NaN
+    },
+    {
+      "Key": "C.P.M.  /  TEMPS",
+      "Value": NaN
+    },
+    {
+      "Key": "CT 6",
+      "Value": NaN
+    },
+    {
+      "Key": "C.P.M.  /  TEMPS",
+      "Value": NaN
+    }
+  ],
+  "datasheet": [
+    {
+      "0": NaN,
+      "1": NaN,
+      "2": NaN,
+      "3": NaN,
+      "4": NaN,
+      "5": NaN,
+      "6": NaN,
+      "7": NaN,
+      "8": NaN,
+      "9": NaN,
+      "10": NaN,
+      "11": NaN,
+      "12": NaN,
+      "13": NaN,
+      "14": NaN,
+      "15": NaN,
+      "16": NaN,
+      "17": NaN,
+      "18": NaN,
+      "19": NaN,
+      "20": NaN,
+      "21": NaN,
+      "22": NaN,
+      "23": NaN,
+      "24": NaN,
+      "25": NaN,
+      "26": NaN,
+      "27": NaN,
+      "28": NaN,
+      "29": NaN,
+      "30": NaN,
+      "31": NaN,
+      "32": NaN,
+      "33": NaN,
+      "34": NaN,
+      "35": NaN,
+      "36": NaN,
+      "37": NaN,
+      "38": NaN,
+      "39": NaN,
+      "40": NaN,
+      "41": NaN,
+      "42": NaN,
+      "43": NaN,
+      "44": NaN,
+      "45": NaN,
+      "46": NaN,
+      "47": NaN,
+      "48": NaN,
+      "49": NaN,
+      "50": NaN,
+      "51": NaN,
+      "52": NaN,
+      "53": NaN,
+      "54": NaN,
+      "55": NaN,
+      "56": NaN,
+      "57": NaN,
+      "58": NaN,
+      "59": NaN,
+      "60": NaN,
+      "61": NaN,
+      "62": NaN,
+      "63": NaN,
+      "64": NaN,
+      "65": NaN,
+      "66": NaN,
+      "67": NaN,
+      "68": NaN,
+      "69": NaN,
+      "70": NaN,
+      "71": NaN,
+      "72": NaN,
+      "73": NaN,
+      "74": NaN,
+      "75": NaN,
+      "76": NaN,
+      "77": NaN,
+      "78": NaN,
+      "79": NaN,
+      "80": NaN,
+      "81": NaN,
+      "82": NaN,
+      "83": NaN,
+      "84": NaN,
+      "85": NaN,
+      "86": NaN,
+      "87": NaN,
+      "88": NaN,
+      "89": NaN,
+      "90": "* Centre Treball",
+      "91": "* Descripció CT",
+      "92": "* cpm o (peces/hora) per CT",
+      "93": "* Centre Treball",
+      "94": "* Descripció CT",
+      "95": "* cpm o (peces/hora) per CT",
+      "96": "* Matriu",
+      "97": "* Cavitats",
+      "98": "* Co-producte ( si / no )",
+      "99": "* Si hi ha subcontractació ( oferta )",
+      "100": "15 - Plànol actualitzat",
+      "101": "16 - Cost Peça (Intern SOME)",
+      "102": "17 - Preu Peça (Oferta a Client)",
+      "103": "18 - Planta Producció Client",
+      "104": "PD. La resta d'informació que s'entra ja l'aconseguèix la persona que estructura."
+    },
+    {
+      "0": NaN,
+      "1": NaN,
+      "2": NaN,
+      "3": NaN,
+      "4": NaN,
+      "5": NaN,
+      "6": NaN,
+      "7": NaN,
+      "8": NaN,
+      "9": NaN,
+      "10": NaN,
+      "11": NaN,
+      "12": NaN,
+      "13": NaN,
+      "14": NaN,
+      "15": NaN,
+      "16": NaN,
+      "17": NaN,
+      "18": NaN,
+      "19": NaN,
+      "20": NaN,
+      "21": NaN,
+      "22": NaN,
+      "23": NaN,
+      "24": NaN,
+      "25": NaN,
+      "26": NaN,
+      "27": NaN,
+      "28": NaN,
+      "29": NaN,
+      "30": NaN,
+      "31": NaN,
+      "32": NaN,
+      "33": NaN,
+      "34": NaN,
+      "35": NaN,
+      "36": NaN,
+      "37": NaN,
+      "38": NaN,
+      "39": NaN,
+      "40": NaN,
+      "41": NaN,
+      "42": NaN,
+      "43": NaN,
+      "44": NaN,
+      "45": NaN,
+      "46": NaN,
+      "47": NaN,
+      "48": NaN,
+      "49": NaN,
+      "50": NaN,
+      "51": NaN,
+      "52": NaN,
+      "53": NaN,
+      "54": NaN,
+      "55": NaN,
+      "56": NaN,
+      "57": NaN,
+      "58": NaN,
+      "59": NaN,
+      "60": NaN,
+      "61": NaN,
+      "62": NaN,
+      "63": NaN,
+      "64": NaN,
+      "65": NaN,
+      "66": NaN,
+      "67": NaN,
+      "68": NaN,
+      "69": NaN,
+      "70": NaN,
+      "71": NaN,
+      "72": NaN,
+      "73": NaN,
+      "74": NaN,
+      "75": NaN,
+      "76": NaN,
+      "77": NaN,
+      "78": NaN,
+      "79": NaN,
+      "80": NaN,
+      "81": NaN,
+      "82": NaN,
+      "83": NaN,
+      "84": NaN,
+      "85": NaN,
+      "86": NaN,
+      "87": NaN,
+      "88": NaN,
+      "89": NaN,
+      "90": null,
+      "91": "0",
+      "92": "0",
+      "93": null,
+      "94": "0",
+      "95": "0",
+      "96": "AL-223880",
+      "97": "2 ( 1 + 1 )",
+      "98": "Producte Únic",
+      "99": null,
+      "100": "6494735 002",
+      "101": "0.083674348670575",
+      "102": "0.1192",
+      "103": "ALH",
+      "104": null
+    }
+  ],
+  "client": "AUTOLIV",
+  "ref_project": "649473500",
+  "processed_at": "2025-10-03T11:27:15.659561"
+}

@@ -205,25 +205,36 @@ class DatabaseEditor(QDialog):
             from src.database.quality_measurement_adapter import QualityMeasurementDBAdapter
             from src.services.network_scanner import NetworkScanner
             
+            self.info_text.append("🔄 Iniciant connexió a la base de dades...")
+            
             # Carregar configuració de la base de dades
             scanner = NetworkScanner()
             db_config = scanner.load_db_config()
             
             if not db_config:
-                raise Exception("No s'ha pogut carregar la configuració de la base de dades")
+                raise Exception("No s'ha pogut carregar la configuració de la base de dades. Verifica que existeixi el fitxer config/database/db_config.json")
+            
+            self.info_text.append(f"📋 Configuració carregada: {db_config['host']}:{db_config['port']} -> {db_config['database']}")
             
             # Crear adaptador
             self.db_adapter = QualityMeasurementDBAdapter(db_config)
             
+            self.info_text.append("🔌 Intentant connectar...")
             if not self.db_adapter.connect():
-                raise Exception("No s'ha pogut connectar a la base de dades")
+                raise Exception(f"No s'ha pogut connectar a la base de dades {db_config['host']}:{db_config['port']}. Verifica la connectivitat de xarxa i credencials.")
             
             # Carregar llista de taules
+            self.info_text.append("📂 Carregant llista de taules...")
             self.load_tables_list()
             
-            self.info_text.append(f"✅ Connectat a la base de dades: {db_config['host']}:{db_config['port']}")
+            self.info_text.append(f"✅ Connectat a la base de dades: {db_config['host']}:{db_config['port']} ({db_config['database']})")
             logger.info("Connexió a la base de dades establerta correctament")
             
+        except ImportError as e:
+            error_msg = f"Error d'importació de mòduls: {str(e)}"
+            self.info_text.append(f"❌ {error_msg}")
+            logger.error(error_msg)
+            QMessageBox.critical(self, "Error de Mòduls", error_msg)
         except Exception as e:
             error_msg = f"Error connectant a la base de dades: {str(e)}"
             self.info_text.append(f"❌ {error_msg}")

@@ -593,8 +593,10 @@ class NetworkScanner:
     
     def extract_lot_and_datetime_from_filename(self, filename: str) -> Tuple[Optional[str], Optional[str]]:
         """
-        Extreu el LOT i DATA_HORA del nom del fitxer
-        Format esperat: LOT_ANY_MES_DIA_HORA_MINUT_SEGON.csv
+        Funció millorada per extreure LOT i DATA_HORA del nom del fitxer GOMPC
+        
+        Format esperat: LOT_YYYY_MM_DD_HH_MM_SS.csv
+        On LOT és un codi alfanumèric de 4-12 caràcters
         
         Args:
             filename: Nom del fitxer (ex: "1200135A_2023_01_31_22_01_56.csv")
@@ -606,30 +608,40 @@ class NetworkScanner:
             # Eliminar l'extensió
             name_without_ext = os.path.splitext(filename)[0]
             
-            # Patró regex per extreure LOT i components de data/hora
-            # Busca: LOT_ANY_MES_DIA_HORA_MINUT_SEGON
-            pattern = r'^(.+?)_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
+            # Patró regex millorat per LOT_YYYY_MM_DD_HH_MM_SS
+            # LOT: 4-12 caràcters alfanumèrics
+            pattern = r'^([A-Za-z0-9]{4,12})_(\d{4})_(\d{2})_(\d{2})_(\d{2})_(\d{2})_(\d{2})$'
             match = re.match(pattern, name_without_ext)
             
             if match:
-                lot = match.group(1)
+                lot = match.group(1).upper()  # Normalitzar a majúscules
                 year = match.group(2)
-                month = match.group(3)
+                month = match.group(3) 
                 day = match.group(4)
                 hour = match.group(5)
                 minute = match.group(6)
                 second = match.group(7)
                 
-                # Construir DATA_HORA en format ISO
-                data_hora = f"{year}-{month}-{day} {hour}:{minute}:{second}"
-                
-                return lot, data_hora
+                # Validar que la data és vàlida
+                try:
+                    from datetime import datetime
+                    data_hora_obj = datetime(int(year), int(month), int(day),
+                                           int(hour), int(minute), int(second))
+                    # Construir DATA_HORA en format ISO
+                    data_hora = f"{year}-{month}-{day} {hour}:{minute}:{second}"
+                    
+                    logger.info(f"LOT extret correctament: '{lot}' del fitxer '{filename}'")
+                    return lot, data_hora
+                    
+                except ValueError as e:
+                    logger.warning(f"Data invàlida en fitxer {filename}: {e}")
+                    return None, None
             else:
-                logger.warning(f"No es pot extreure LOT i DATA_HORA de: {filename}")
+                logger.warning(f"Format de fitxer no reconegut: {filename}")
                 return None, None
                 
         except Exception as e:
-            logger.error(f"Error processant nom de fitxer {filename}: {e}")
+            logger.error(f"Error extraient LOT de {filename}: {e}")
             return None, None
     
     def read_csv_file(self, file_path: str, client: str, referencia: str, lot: str, data_hora: str) -> Optional[pd.DataFrame]:
@@ -965,13 +977,23 @@ class NetworkScanner:
     def load_db_config(self) -> Dict:
         """Carrega la configuració de la base de dades"""
         try:
-            db_config_path = r"C:\Github\PythonTecnica_SOME\config\database\db_config.json"
-            with open(db_config_path, 'r') as f:
+            # Determinar la ruta correcta del fitxer de configuració
+            current_dir = Path(__file__).parent.parent.parent
+            db_config_path = current_dir / "config" / "database" / "db_config.json"
+            
+            logger.info(f"Intentant carregar configuració de BBDD des de: {db_config_path}")
+            
+            if not db_config_path.exists():
+                logger.error(f"Fitxer de configuració no trobat: {db_config_path}")
+                return None
+                
+            with open(db_config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
             
             # Retornar la configuració 'primary' directament
             if 'primary' in config:
                 logger.info("Configuració de BBDD 'primary' carregada correctament")
+                logger.debug(f"Configuració carregada: host={config['primary']['host']}, port={config['primary']['port']}, db={config['primary']['database']}")
                 return config['primary']
             else:
                 logger.error("No es troba la configuració 'primary' a db_config.json")
