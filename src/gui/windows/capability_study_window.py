@@ -25,6 +25,7 @@ from src.services.capacity_study_service import perform_capability_study
 from src.services.capability_session_service import CapabilitySessionService
 from ..widgets.buttons import ModernButton, ActionButton, CompactButton
 from ..widgets.inputs import ModernComboBox, ModernTextEdit
+from ..utils.responsive_utils import ResponsiveWidget, ScreenUtils
 
 
 class StudyWorker(QThread):
@@ -81,9 +82,10 @@ class StudyWorker(QThread):
             logger.error(f"Study worker error: {e}", exc_info=True)
             self.error.emit(str(e))
 
-class CapabilityStudyWindow(QDialog):
+class CapabilityStudyWindow(QDialog, ResponsiveWidget):
     def __init__(self, client, ref_project, batch_number, parent=None):
-        super().__init__(parent)
+        QDialog.__init__(self, parent)
+        ResponsiveWidget.__init__(self)
         self.client = client
         self.ref_project = ref_project
         self.batch_number = batch_number
@@ -102,8 +104,13 @@ class CapabilityStudyWindow(QDialog):
         self.session_manager = CapabilitySessionManager()
         self.session_service = CapabilitySessionService()
         
+        # Initialize screen utilities
+        self.screen_utils = ScreenUtils()
+        logger.info(f"Capability Study window initialized for {self.screen_utils.current_screen['category']} screen")
+        
         self._init_ui()
         self._apply_styles()
+        self._apply_responsive_scaling()
     
     def _init_ui(self):
         main_layout = QVBoxLayout(self)
@@ -1009,3 +1016,51 @@ class CapabilityStudyWindow(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "Export Error", f"Failed to export results:\n{e}")
             logger.error(f"Error exporting results: {e}", exc_info=True)
+    
+    def _apply_responsive_scaling(self):
+        """Apply responsive scaling to all elements"""
+        try:
+            scale_factor = self.screen_utils.scale_factor
+            margins = self.screen_utils.get_adaptive_margins()
+            spacing = self.screen_utils.get_adaptive_spacing()
+            
+            # Scale window minimum size
+            base_width, base_height = 1600, 900
+            scaled_width = int(base_width * scale_factor)
+            scaled_height = int(base_height * scale_factor)
+            self.setMinimumSize(scaled_width, scaled_height)
+            
+            # Apply responsive scaling to main element input widget
+            if hasattr(self, 'element_input_widget'):
+                self.element_input_widget.apply_responsive_scaling()
+            
+            # Scale fonts for labels and buttons
+            self._apply_responsive_fonts(scale_factor)
+            
+            logger.info(f"Capability Study responsive scaling applied: {scale_factor}x")
+            
+        except Exception as e:
+            logger.warning(f"Could not apply responsive scaling to Capability Study: {e}")
+    
+    def _apply_responsive_fonts(self, scale_factor):
+        """Apply responsive font scaling"""
+        try:
+            # Scale header fonts
+            if hasattr(self, 'findChild'):
+                for label in self.findChildren(QLabel):
+                    font = label.font()
+                    if font.pointSize() > 0:
+                        new_size = max(8, int(font.pointSize() * scale_factor))
+                        font.setPointSize(new_size)
+                        label.setFont(font)
+                
+                # Scale button fonts
+                for button in self.findChildren(QPushButton):
+                    font = button.font()
+                    if font.pointSize() > 0:
+                        new_size = max(8, int(font.pointSize() * scale_factor))
+                        font.setPointSize(new_size)
+                        button.setFont(font)
+                        
+        except Exception as e:
+            logger.warning(f"Could not apply font scaling: {e}")

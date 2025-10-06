@@ -5,6 +5,7 @@ from PyQt5.QtWidgets import (
     QScrollArea, QPushButton)
 from PyQt5.QtCore import pyqtSignal, Qt, QTimer
 from PyQt5.QtGui import QFont, QColor
+from src.gui.utils.responsive_utils import ResponsiveWidget, ScreenUtils
 from datetime import datetime
 import pandas as pd
 from typing import List, Optional
@@ -14,13 +15,14 @@ from src.gui.windows.components.helpers.summary_metric_card import CompactMetric
 from src.gui.windows.components.helpers.summary_pie_chart import StatusPieChart
 
 
-class SummaryWidget(QWidget):
+class SummaryWidget(QWidget, ResponsiveWidget):
     """Enhanced summary widget with sophisticated layout and comprehensive analysis"""
     
     update_complete = pyqtSignal()
     
     def __init__(self, parent=None):
-        super().__init__(parent)
+        QWidget.__init__(self, parent)
+        ResponsiveWidget.__init__(self)
         self.parent_window = parent
         self._reset_metrics()
         self._last_update = datetime.now()
@@ -32,8 +34,12 @@ class SummaryWidget(QWidget):
         self.session_loaded = False
         self.results = []  # Store results for detailed analysis
         
+        # Initialize screen utilities
+        self.screen_utils = ScreenUtils()
+        
         # Initialize UI
         self._init_ui()
+        self._apply_responsive_scaling()
         
         # Auto-refresh timer
         self.refresh_timer = QTimer()
@@ -2640,3 +2646,29 @@ class SummaryWidget(QWidget):
         
         # Combine and display
         self.session_info_text.setPlainText("\n".join(info_parts))
+    
+    def _apply_responsive_scaling(self):
+        """Apply responsive scaling to summary widget elements"""
+        try:
+            scale_factor = self.screen_utils.scale_factor
+            
+            # Scale fonts for all labels
+            for label in self.findChildren(QLabel):
+                font = label.font()
+                if font.pointSize() > 0:
+                    new_size = max(8, int(font.pointSize() * scale_factor))
+                    font.setPointSize(new_size)
+                    label.setFont(font)
+            
+            # Scale buttons
+            for button in self.findChildren(QPushButton):
+                font = button.font()
+                if font.pointSize() > 0:
+                    new_size = max(8, int(font.pointSize() * scale_factor))
+                    font.setPointSize(new_size)
+                    button.setFont(font)
+            
+        except Exception as e:
+            if hasattr(self, 'parent_window') and self.parent_window:
+                if hasattr(self.parent_window, '_log_message'):
+                    self.parent_window._log_message(f"Warning: SummaryWidget responsive scaling: {e}", "WARNING")

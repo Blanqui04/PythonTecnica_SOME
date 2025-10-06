@@ -59,6 +59,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
         self.setMinimumSize(1600, 1000)
         self._init_ui()
         self._apply_professional_styling()
+        self._apply_responsive_scaling()
 
         # Load last session
         QTimer.singleShot(100, self.session_manager._load_last_session)
@@ -1495,7 +1496,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
                 raise Exception("Could not load database configuration")
             
             # Create database adapter - db_config is already the primary config
-            db_adapter = QualityMeasurementDBAdapter({'primary': db_config})
+            db_adapter = QualityMeasurementDBAdapter(db_config)
             
             if not db_adapter.connect():
                 raise Exception("Could not connect to database")
@@ -1994,3 +1995,134 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
                 
         except Exception as e:
             self._log_message(f"Error in auto-load check: {str(e)}", "ERROR")
+    
+    def _apply_responsive_scaling(self):
+        """Apply responsive scaling to all elements in dimensional study"""
+        try:
+            # Import ScreenUtils here to avoid circular imports
+            from ..utils.responsive_utils import ScreenUtils
+            
+            screen_utils = ScreenUtils()
+            scale_factor = screen_utils.scale_factor
+            margins = screen_utils.get_adaptive_margins()
+            spacing = screen_utils.get_adaptive_spacing()
+            
+            self._log_message(f"📱 Applying responsive scaling: {scale_factor}x for {screen_utils.current_screen['category']} screen", "INFO")
+            
+            # Scale window minimum size
+            base_width, base_height = 1600, 1000
+            scaled_width = int(base_width * scale_factor)
+            scaled_height = int(base_height * scale_factor)
+            self.setMinimumSize(scaled_width, scaled_height)
+            
+            # Apply responsive scaling to table manager
+            if hasattr(self, 'table_manager') and hasattr(self.table_manager, 'table_widget'):
+                self._scale_table_elements(scale_factor, margins, spacing)
+            
+            # Apply to summary widget
+            if hasattr(self, 'summary_widget'):
+                self._scale_summary_widget(scale_factor)
+            
+            # Scale fonts for all UI elements
+            self._apply_responsive_fonts(scale_factor)
+            
+            # Scale layouts and margins
+            self._scale_layouts(margins, spacing)
+            
+            self._log_message("✅ Responsive scaling applied successfully to Dimensional Study", "INFO")
+            
+        except Exception as e:
+            self._log_message(f"⚠️ Could not apply responsive scaling to Dimensional Study: {e}", "WARNING")
+    
+    def _scale_table_elements(self, scale_factor, margins, spacing):
+        """Scale table-specific elements"""
+        try:
+            table = self.table_manager.table_widget
+            
+            # Scale row height
+            base_row_height = 30
+            scaled_height = max(25, int(base_row_height * scale_factor))
+            
+            # Apply to all rows
+            for row in range(table.rowCount()):
+                table.setRowHeight(row, scaled_height)
+            
+            # Set default row height for new rows
+            table.verticalHeader().setDefaultSectionSize(scaled_height)
+            
+            # Scale header font
+            header_font = table.horizontalHeader().font()
+            if header_font.pointSize() > 0:
+                new_size = max(8, int(header_font.pointSize() * scale_factor))
+                header_font.setPointSize(new_size)
+                table.horizontalHeader().setFont(header_font)
+                table.verticalHeader().setFont(header_font)
+                
+        except Exception as e:
+            self._log_message(f"Error scaling table elements: {e}", "WARNING")
+    
+    def _scale_summary_widget(self, scale_factor):
+        """Scale summary widget elements"""
+        try:
+            # Scale fonts in summary widget
+            for label in self.summary_widget.findChildren(QLabel):
+                font = label.font()
+                if font.pointSize() > 0:
+                    new_size = max(8, int(font.pointSize() * scale_factor))
+                    font.setPointSize(new_size)
+                    label.setFont(font)
+                    
+        except Exception as e:
+            self._log_message(f"Error scaling summary widget: {e}", "WARNING")
+    
+    def _apply_responsive_fonts(self, scale_factor):
+        """Apply responsive font scaling to all text elements"""
+        try:
+            # Scale all labels
+            for label in self.findChildren(QLabel):
+                font = label.font()
+                if font.pointSize() > 0:
+                    new_size = max(8, int(font.pointSize() * scale_factor))
+                    font.setPointSize(new_size)
+                    label.setFont(font)
+            
+            # Scale all buttons
+            for button in self.findChildren(ModernButton):
+                font = button.font()
+                if font.pointSize() > 0:
+                    new_size = max(8, int(font.pointSize() * scale_factor))
+                    font.setPointSize(new_size)
+                    button.setFont(font)
+            
+            # Scale compact buttons
+            for button in self.findChildren(CompactButton):
+                font = button.font()
+                if font.pointSize() > 0:
+                    new_size = max(8, int(font.pointSize() * scale_factor))
+                    font.setPointSize(new_size)
+                    button.setFont(font)
+                    
+        except Exception as e:
+            self._log_message(f"Error applying responsive fonts: {e}", "WARNING")
+    
+    def _scale_layouts(self, margins, spacing):
+        """Scale layout margins and spacing"""
+        try:
+            # Apply adaptive margins to main layout
+            main_layout = self.layout()
+            if main_layout:
+                margin = margins.get('medium', 10)
+                main_layout.setContentsMargins(margin, margin, margin, margin)
+                
+                space = spacing.get('medium', 6)
+                main_layout.setSpacing(space)
+            
+            # Scale tab widget if exists
+            for tab_widget in self.findChildren(QTabWidget):
+                tab_layout = tab_widget.layout()
+                if tab_layout:
+                    space = spacing.get('small', 4)
+                    tab_layout.setSpacing(space)
+                    
+        except Exception as e:
+            self._log_message(f"Error scaling layouts: {e}", "WARNING")
