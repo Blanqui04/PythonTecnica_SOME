@@ -1,0 +1,99 @@
+# .dockerignore per PythonTecnica_SOME
+# Excloure fitxers i directoris innecessaris de la imatge Docker
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.pytest_cache/
+htmlcov/
+
+# IDEs i editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Logs i temporals
+logs/*.log
+*.log
+temp_build/
+temp/
+.tmp/
+
+# Dades locals (aquestes es muntaran com a volums)
+data/local_database.db
+data/users.db
+data/cache/
+sessions/
+compliance/audit_trail.db
+
+# Configuració local
+.env
+.env.local
+config.ini
+
+# Documentació de desenvolupament
+docs/
+README.md
+*.md
+!DOCKER_README.md
+
+# Scripts de deployment locals
+deployment/build.bat
+deployment/deploy*.bat
+deployment/install_*.bat
+deployment/fix_*.bat
+deployment/simple_fix.bat
+
+# Backups
+data/backup/
+*.backup
+*.bak
+
+# Fitxers de construcció
+build/
+dist/
+*.egg-info/
+.build/
+
+# Tests (opcional, descomenta si no vols incloure tests)
+# tests/
+# test_*.py
+# *_test.py
+# pytest.ini
+
+# Arxius específics del desenvolupament
+analyze_ui_responsiveness.py
+responsive_implementation_summary.py
+test_responsive_modules.py
+
+# Arxius de sistema Windows
+*.exe
+*.msi
+*.spec
+
+# Directoris de cache
+.cache/
+node_modules/
+
+# Fitxers temporals de PyInstaller
+build/
+dist/

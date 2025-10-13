@@ -1,0 +1,48 @@
+{
+  "client": "",
+  "ref_project": "",
+  "batch_number": "",
+  "timestamp": "2025-10-13T08:42:24.887029",
+  "study_id": "_",
+  "detailed_results": [
+    {
+      "element_name": "A",
+      "cavity": "",
+      "instrument": "3D Scanner",
+      "class": "",
+      "sigma": "6σ",
+      "nominal": 0.0,
+      "tolerance": [
+        -1.0,
+        1.0
+      ],
+      "original_values": [
+        0.02,
+        1.0,
+        0.05,
+        1.04,
+        0.03,
+        0.05,
+        1.0,
+        0.02
+      ],
+      "statistics": {
+        "mean": 0.40125,
+        "std_short": 0.7446808510638299,
+        "std_long": 0.5071330481948781,
+        "sample_size": 8,
+        "ad_value": 1.4604713567600132,
+        "p_value": 0.0009078261964537728
+      },
+      "capability": {
+        "cp": 0.4476190476190476,
+        "cpk": 0.26801190476190473,
+        "pp": 0.657289708331613,
+        "ppk": 0.39355221286355335,
+        "ppm_short": 240628.01012660083,
+        "ppm_long": 121732.49923101638
+      }
+    }
+  ],
+  "extrapolation_results": []
+}
