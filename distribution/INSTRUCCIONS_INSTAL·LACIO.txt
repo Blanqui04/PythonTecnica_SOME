@@ -1,0 +1,69 @@
+# INSTRUCCIONS D'INSTAL·LACIÓ - PythonTecnica_SOME
+# Versió: 1.0
+
+## 🎯 QUÈ ÉS AQUEST PAQUET?
+
+Aquest paquet conté l'aplicació PythonTecnica_SOME configurada per executar-se amb Docker.
+Això significa que funciona en qualsevol PC sense problemes de dependències o configuració.
+
+## 📋 EL QUE NECESSITES ABANS D'INSTAL·LAR
+
+### Windows:
+1. Docker Desktop per Windows
+   - Descarrega des de: https://www.docker.com/products/docker-desktop/
+   - Instal·la i reinicia el PC
+   - Assegura't que Docker estigui executant-se
+
+### Linux (Ubuntu/Debian):
+```bash
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+sudo usermod -aG docker $USER
+```
+
+### macOS:
+1. Docker Desktop per Mac
+   - Descarrega des de: https://www.docker.com/products/docker-desktop/
+
+## 🚀 INSTAL·LACIÓ SÚPER FÀCIL
+
+### Windows:
+1. Extreu tots els fitxers d'aquest ZIP a una carpeta
+2. Fes doble clic a: `docker-install-windows.bat`
+3. Espera 5-10 minuts (primera vegada)
+4. L'aplicació s'obrirà automàticament!
+
+### Linux/macOS:
+1. Extreu tots els fitxers d'aquest ZIP a una carpeta
+2. Obre terminal a la carpeta
+3. Executa: `chmod +x docker-install-linux.sh && ./docker-install-linux.sh`
+4. L'aplicació s'obrirà automàticament!
+
+## 🛠️ GESTIÓ DESPRÉS D'INSTAL·LAR
+
+### Windows:
+- **Iniciar**: Doble clic a `docker-manager-windows.bat`
+- **O manualment**: `docker-compose up -d`
+
+### Linux/macOS:
+- **Gestor**: `./docker-manager.sh start`
+- **O manualment**: `docker-compose up -d`
+
+## 🆘 SI TENS PROBLEMES
+
+1. **L'aplicació no inicia**: 
+   - Verifica que Docker estigui funcionant
+   - Executa: `docker-compose logs -f`
+
+2. **Error de permisos (Linux)**:
+   - Executa: `sudo chmod +x *.sh`
+
+3. **Port ocupat**:
+   - Edita `docker-compose.yml` i canvia els ports
+
+## 📞 SUPORT
+
+Per a més ajuda, consulta el fitxer `DOCKER_README.md`
+
+---
+✅ **Amb Docker, aquesta aplicació funciona igual en tots els PC's!**

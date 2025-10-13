@@ -1,0 +1,105 @@
+Dades necessàries per estructurar una Matriu,
+1 - Nº Matriu:,AL-223880
+2 - SOP projecte,2025-01-08 00:00:00
+3 - EOP projecte,2033-01-08 00:00:00
+4 - Tool Lifetime,10 anys
+5 - Volum Anual:,1500000
+6 - Volum total Projecte:,12000000
+7 - Referència/es peça:,649 4735 00 B
+8 - Cavitats:,2
+9 - Matricer:,Talleres AP
+10 - Data entrega matriu:,W03/23
+11 - Projecte:,DAIMLER
+12 - Jerarquía:,Friction Ring
+13 - Nº Expedient:,024/22
+14 - Responsable Projecte:,Marc Esteras
+Dades necessàries per estructurar una Matèria prima,
+1 - Descripció material:,HX420 LAD + Z100
+2 - Mides (BANDA x PAS x GRUIX):,"140  x  65  x  1,5"
+3 - Proveïdor:,BAMESA
+4 - Preu actualitzat:,1.32
+5 - Volum Anual:,80364.375
+6 - Temps estimat Canvi de Rull:,20'
+7 - Pes estimat del Rull:,2000
+Dades necessàries per estructurar un Component / Material Aux.,
+COMPONENT 1,
+1 - Descripció material:,
+2 - Mides:,
+3 - Proveïdor:,
+4 - Preu actualitzat:,0
+5 - Plànol si cal:,
+6 - Volum Anual:,
+7 - SOP:,2025-01-08 00:00:00
+COMPONENT 2,
+1 - Descripció material:,
+2 - Mides:,
+3 - Proveïdor:,
+4 - Preu actualitzat:,0
+5 - Plànol si cal:,
+6 - Volum Anual:,
+7 - SOP:,2025-01-08 00:00:00
+COMPONENT 3,
+1 - Descripció material:,
+2 - Mides:,
+3 - Proveïdor:,0
+4 - Preu actualitzat:,0
+5 - Plànol si cal:,
+6 - Volum Anual:,
+7 - SOP:,2025-01-08 00:00:00
+Dades necessàries per estructurar una peça / conjunt,
+1 - Client:,AUTOLIV
+2 - Tipus:  SQB / KSW / MIXTE:,SQB
+3 - Tipus Facturació: A / B / C:,B
+4 - Categoria Peça (Bàscula):,B
+5 - Quantiat Anual:,1500000
+6 - Descripció actualitzada:,SWITCH RING
+7 - Referència client:,649 4735 00
+8 - Responsables tècnics i de qualitat:,Marc Esteras / Frederic Gonzalez
+9 - Projecte:,DAIMLER
+10 - Tractaments:,
+* Descripció complerta del tractament 1:,0
+* proveïdor KSW:,0
+* preu KSW:,0
+* Descripció complerta del tractament 2:,0
+* proveïdor KSW:,0
+* preu KSW:,0
+* Descripció complerta del tractament 3:,0
+* proveïdor KSW:,0
+* preu KSW:,0
+11 - Embalatge:,
+Es necessàri un nou embalatge?,NO
+11.1 - EUROPA,
+Caixa:,3412 - Caixa Cartró 385x285x95 + LID (4118)
+Tapa / Altres:,0
+Pallet:,855 - Palet Fusta EUR 1200x800
+Peces / Caixa:,500
+Caixes / Pallet:,56
+11.2 - OVERSEAS,
+Peces / Caixa:,0
+12 - Pes Brut:,0.05357625
+13 - Pes Net:,0.0153
+14 - Ruta:,
+* Centre Treball,C.T.- 1255
+* Descripció CT,Premsa 125 TN AUTOMATICA
+* cpm o (peces/hora) per CT,"60     / OEE:  40,25%"
+* Centre Treball,C.T.- 9510
+* Descripció CT,Desengreix Vaioc
+* cpm o (peces/hora) per CT,"19.000 uni/h  - T.U. 0,0066"
+* Centre Treball,C.T.- 9000
+* Descripció CT,Segon Operari
+* cpm o (peces/hora) per CT,0
+* Centre Treball,
+* Descripció CT,0
+* cpm o (peces/hora) per CT,0
+* Centre Treball,
+* Descripció CT,0
+* cpm o (peces/hora) per CT,0
+* Matriu,AL-223880
+* Cavitats,2 ( 1 + 1 )
+* Co-producte ( si / no ),Producte Únic
+* Si hi ha subcontractació ( oferta ),
+15 - Plànol actualitzat,6494735 002
+16 - Cost Peça (Intern SOME),0.083674348670575
+17 - Preu Peça (Oferta a Client),0.1192
+18 - Planta Producció Client,ALH
+PD. La resta d'informació que s'entra ja l'aconseguèix la persona que estructura.,
