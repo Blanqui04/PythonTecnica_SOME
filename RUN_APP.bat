@@ -7,7 +7,13 @@ echo.
 REM Comprovar si l'entorn virtual existeix
 if not exist "venv\Scripts\activate.bat" (
     echo [ERROR] Entorn virtual no trobat!
-    echo Executeu primer SETUP.bat per configurar l'aplicació
+    echo.
+    echo Executeu primer:
+    echo - SETUP.bat (instal·lació automàtica amb detecció d'errors)
+    echo.
+    echo O si teniu problemes amb C++ Build Tools:
+    echo - instalacio\INSTALL_CPP_TOOLS.bat (guia Build Tools)
+    echo.
     pause
     exit /b 1
 )
@@ -22,6 +28,10 @@ REM Mantenir la finestra oberta si hi ha errors
 if errorlevel 1 (
     echo.
     echo [ERROR] L'aplicació ha finalitzat amb errors
+    echo.
+    echo Per diagnosticar problemes:
+    echo - instalacio\VERIFY_SYSTEM.bat
+    echo.
     pause
 )
 
