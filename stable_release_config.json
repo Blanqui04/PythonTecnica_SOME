@@ -1,0 +1,62 @@
+{
+    "name": "PythonTecnica-SOME-Stable",
+    "version": "1.0.0-stable",
+    "description": "Versió estable d'instal·lació de PythonTecnica SOME",
+    "type": "stable-release",
+    "target_audience": "end-users",
+    "platform": "windows",
+    "python_version": ">=3.8",
+    "release_date": "2025-10-14",
+    "maintainer": "Blanqui04",
+    "repository": {
+        "main": "https://github.com/Blanqui04/PythonTecnica_SOME",
+        "stable": "https://github.com/Blanqui04/PythonTecnica-SOME-Stable"
+    },
+    "installation": {
+        "method": "automatic",
+        "scripts": {
+            "setup": "SETUP.bat",
+            "run": "RUN_APP.bat",
+            "verify": "VERIFY_SYSTEM.bat",
+            "clean": "CLEAN.bat"
+        },
+        "requirements_file": "requirements.txt",
+        "virtual_environment": true
+    },
+    "features": {
+        "core": [
+            "SPC Analysis",
+            "Capability Studies",
+            "Interactive Charts",
+            "Database Management",
+            "Excel Processing",
+            "PyQt5 GUI"
+        ],
+        "stability": [
+            "Tested dependencies",
+            "Fixed versions",
+            "Auto-installation",
+            "Error handling",
+            "Production ready"
+        ]
+    },
+    "system_requirements": {
+        "os": "Windows 10/11",
+        "ram": "2GB minimum, 4GB recommended",
+        "disk_space": "500MB",
+        "python": "3.8-3.12",
+        "internet": "Required for initial setup"
+    },
+    "excluded_files": [
+        "__pycache__/",
+        "*.pyc",
+        "build/",
+        "temp_build/",
+        "venv/",
+        "venv_build/",
+        ".git/",
+        "tests/test_*",
+        "development/",
+        "debug_*"
+    ]
+}

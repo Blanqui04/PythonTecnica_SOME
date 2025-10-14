@@ -1,5 +1,5 @@
-# .gitignore for PythonTecnica SOME
-# Entorns virtuals
+# .gitignore for PythonTecnica SOME - Versió Estable
+# Entorns virtuals (es creen localment per cada usuari)
 venv/
 env/
 ENV/
