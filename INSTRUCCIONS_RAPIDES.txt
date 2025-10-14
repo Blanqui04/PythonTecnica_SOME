@@ -1,0 +1,60 @@
+===============================================
+   INSTRUCCIONS RÀPIDES - PythonTecnica SOME
+===============================================
+
+🎯 NOMÉS 4 PASSOS:
+
+1. DESCARREGAR PYTHON
+   - Anar a: python.org/downloads
+   - Descarregar i instal·lar
+   - IMPORTANT: Marcar "Add Python to PATH"
+   - Reiniciar PC
+
+2. DESCARREGAR APLICACIÓ
+   - Anar a: github.com/Blanqui04/PythonTecnica_SOME
+   - Canviar a branca "PythonTecnica-SOME-Stable"
+   - Clic "Code" → "Download ZIP"
+   - Extreure a una carpeta
+
+3. CONFIGURAR (només una vegada)
+   - Doble clic a: SETUP.bat
+   - Esperar 5-10 minuts
+   - Quan acabi, ja està llest!
+
+4. EXECUTAR (cada vegada)
+   - Doble clic a: RUN_APP.bat
+   - L'aplicació s'obre automàticament
+
+===============================================
+   RESOLUCIÓ DE PROBLEMES:
+===============================================
+
+❌ "Python no detectat"
+   → Reinstal·lar Python amb "Add to PATH" marcat
+
+❌ "Error durant configuració"
+   → Executar SETUP.bat com a administrador
+
+❌ "Aplicació no s'obre"
+   → Executar VERIFY_SYSTEM.bat per veure l'error
+
+❌ "Vull reinstal·lar tot"
+   → Executar CLEAN.bat i després SETUP.bat
+
+===============================================
+   FITXERS IMPORTANTS:
+===============================================
+
+SETUP.bat        → Configuració inicial
+RUN_APP.bat      → Executar aplicació
+VERIFY_SYSTEM.bat → Diagnosticar problemes
+CLEAN.bat        → Netejar i reinstal·lar
+
+===============================================
+
+✅ RECORDA: 
+   - SETUP.bat només una vegada per PC
+   - RUN_APP.bat cada vegada que vulguis usar l'aplicació
+   - Si hi ha problemes: VERIFY_SYSTEM.bat
+
+===============================================
