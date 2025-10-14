@@ -1,6 +1,6 @@
 @echo off
 echo ===============================================
-echo    CONFIGURACIO PYTHONTECNICA SOME
+echo    SETUP PythonTecnica SOME
 echo ===============================================
 echo.
 
@@ -32,6 +32,24 @@ python -m pip install --upgrade pip
 echo.
 echo Instal·lant dependències...
 pip install -r requirements.txt
+
+if errorlevel 1 (
+    echo.
+    echo [ERROR] Hi ha hagut un problema durant la instal·lació!
+    echo.
+    echo POSSIBLES SOLUCIONS:
+    echo.
+    echo 1. Si l'error és sobre "Microsoft Visual C++ 14.0":
+    echo    - Executar: INSTALL_CPP_TOOLS.bat
+    echo    - O usar: SETUP_ENHANCED.bat (versió compatible)
+    echo.
+    echo 2. Si són altres errors:
+    echo    - Comprovar connexió a internet
+    echo    - Executar com a administrador
+    echo.
+    pause
+    exit /b 1
+)
 
 echo.
 echo ===============================================
