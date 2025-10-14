@@ -21,6 +21,8 @@ PyPDF2>=3.0.0
 reportlab>=3.6.0
 
 # Statistical analysis
+# Nota: statsmodels requereix Microsoft C++ Build Tools
+# Si hi ha problemes, usar SETUP_ENHANCED.bat o instal·lar Build Tools
 statsmodels>=0.13.0
 scikit-learn>=1.1.0
 
