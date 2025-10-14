@@ -4,6 +4,22 @@
 
 PythonTecnica_SOME is a modular Python application for technical and business data processing, statistical analysis (SPC/capability), and database/reporting workflows. It features a modern PyQt5 GUI, advanced charting, and robust session management.
 
+## 🚀 Instal·lació Ràpida
+
+### Per usuaris finals:
+1. Assegureu-vos que teniu **Python 3.8+** instal·lat
+2. Cloneu/descarregueu el repositori
+3. Executeu `SETUP.bat` per configurar l'entorn
+4. Executeu `RUN_APP.bat` per iniciar l'aplicació
+
+### Scripts disponibles:
+- `SETUP.bat` - Configuració inicial i instal·lació de dependències
+- `RUN_APP.bat` - Executar l'aplicació
+- `VERIFY_SYSTEM.bat` - Verificar que tot està correctament configurat
+- `CLEAN.bat` - Netejar entorn virtual (si cal reinstal·lar)
+
+📖 **Guia detallada**: Veure `INSTALL_README.md`
+
 ---
 
 ## Project Structure
