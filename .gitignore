@@ -1,11 +1,78 @@
-# .gitignore for Python projects
+# .gitignore for PythonTecnica SOME
+# Entorns virtuals
+venv/
+env/
+ENV/
+.venv/
+.env/
+
+# Cache Python
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+*.so
+
+# Distribució / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Fitxers de dades temporals
+*.log
+*.tmp
+*.temp
+temp/
+cache/
+sessions/
+logs/
+
+# Fitxers de configuració locals
+config/local_*
+*.local
+
+# Fitxers de backup
+*.bak
+*.backup
+backup/
+
+# Fitxers del sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Fitxers sensibles
+*.key
+*.pem
+*.env
+secrets/
+
+# Dades de desenvolupament
+test_data/
+dev_data/
+
+# Base de dades
 *.db
 *.sqlite3
-*.log
 *.pot
 *.mo
 *.swp
