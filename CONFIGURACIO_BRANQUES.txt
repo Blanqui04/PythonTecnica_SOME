@@ -1,0 +1,69 @@
+===============================================
+   CONFIGURACIÓ FINAL DEL REPOSITORI
+===============================================
+
+✅ BRANQUES NETEJADES I ORGANITZADES:
+
+1. 🔧 Report-estudi-capacitat (BRANCA PRINCIPAL DE DESENVOLUPAMENT)
+   - Tots els desenvolupaments nous
+   - Funcionalitats en proves
+   - Canvis experimentals
+   - Branch actual per treballar
+
+2. 🚀 PythonTecnica-SOME-Stable (BRANCA ESTABLE PER DISTRIBUCIÓ)
+   - Versions testejades i estables
+   - Scripts d'instal·lació automàtica
+   - Documentació per usuaris finals
+   - Ready per distribució
+
+===============================================
+   PASSOS FINALS A FER A GITHUB:
+===============================================
+
+1. CONFIGURAR BRANCA PRINCIPAL:
+   - Anar a: Settings → General → Default branch
+   - Canviar de "main" a "Report-estudi-capacitat"
+   - Confirmar el canvi
+
+2. PROTEGIR BRANCA ESTABLE:
+   - Anar a: Settings → Branches
+   - Add rule per "PythonTecnica-SOME-Stable"
+   - Marcar "Require pull request reviews"
+   - Només permetre merge des de Report-estudi-capacitat
+
+3. ELIMINAR BRANQUES REMOTES INNECESSÀRIES:
+   - Dimensional-w-UI
+   - Dimensional-study
+   - Export-Dimensional
+   - Export-dimenisonal
+   - main (opcional)
+
+===============================================
+   WORKFLOW RECOMANAT:
+===============================================
+
+DESENVOLUPAMENT:
+1. Treballar a "Report-estudi-capacitat"
+2. Fer commits i push normalment
+3. Testejar funcionalitats
+
+DISTRIBUCIÓ:
+1. Quan hi hagi versió estable:
+   - git checkout PythonTecnica-SOME-Stable
+   - git merge Report-estudi-capacitat
+   - git push origin PythonTecnica-SOME-Stable
+2. Crear release des d'aquesta branca
+3. Els usuaris descarreguen aquesta branca
+
+===============================================
+   AVANTATGES D'AQUESTA CONFIGURACIÓ:
+===============================================
+
+✅ Separació clara desenvolupament/producció
+✅ Branca estable sempre funcional
+✅ Facilita distribució automàtica
+✅ Manteniment senzill
+✅ Usuaris finals sempre tenen versió estable
+✅ Tu pots desenvolupar lliurement
+
+===============================================
