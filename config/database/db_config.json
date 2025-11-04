@@ -1,9 +1,9 @@
 {
     "primary": {
-        "host": "172.26.5.159",
-        "port": "5433",
+        "host": "172.26.11.201",
+        "port": "5432",
         "database": "documentacio_tecnica",
-        "user": "administrador",
+        "user": "tecnica",
         "password": "Some2025.!$%"
     },
     "secondary": {

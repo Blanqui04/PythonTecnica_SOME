@@ -3,10 +3,10 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QMessageBox,
     QGroupBox, QFrame, QGridLayout, QScrollArea, QPushButton, 
     QCheckBox, QSpinBox, QDoubleSpinBox, QRadioButton, QButtonGroup,
-    QSplitter, QTabWidget, QTableWidgetItem, QComboBox
+    QSplitter, QTabWidget, QTableWidgetItem, QComboBox, QTableWidget, QApplication
 )
 from PyQt5.QtCore import pyqtSignal, Qt, QThread, QObject, pyqtSlot
-from PyQt5.QtGui import QFont, QPalette, QColor
+from PyQt5.QtGui import QFont, QPalette, QColor, QKeySequence
 from src.gui.utils.element_input_styles import get_element_input_styles
 from ..utils.responsive_utils import ResponsiveWidget, ScreenUtils
 from .buttons import ModernButton, CompactButton
@@ -17,6 +17,84 @@ import math
 from scipy import stats
 
 logger = logging.getLogger(__name__)
+
+
+class PasteableTableWidget(QTableWidget):
+    """Custom QTableWidget that supports Ctrl+V paste from clipboard"""
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        
+    def keyPressEvent(self, event):
+        """Handle key press events, especially Ctrl+V"""
+        if event.matches(QKeySequence.Paste):
+            self._paste_from_clipboard()
+        else:
+            super().keyPressEvent(event)
+    
+    def _paste_from_clipboard(self):
+        """Paste data from clipboard into table"""
+        clipboard = QApplication.clipboard()
+        text = clipboard.text()
+        
+        if not text:
+            return
+        
+        # Split by newlines and tabs/commas
+        lines = text.strip().split('\n')
+        
+        # Get current selection or start from row 0
+        selected = self.selectedIndexes()
+        if selected:
+            start_row = selected[0].row()
+        else:
+            start_row = 0
+        
+        # Clear existing values from start_row onwards
+        for row in range(start_row, self.rowCount()):
+            item = self.item(row, 0)
+            if item:
+                item.setText("")
+        
+        # Paste values
+        row_idx = start_row
+        pasted_count = 0
+        
+        for line in lines:
+            if row_idx >= self.rowCount():
+                # Add more rows if needed
+                self.setRowCount(row_idx + 10)
+                for new_row in range(self.rowCount() - 10, self.rowCount()):
+                    new_item = QTableWidgetItem("")
+                    new_item.setTextAlignment(Qt.AlignCenter)
+                    self.setItem(new_row, 0, new_item)
+            
+            # Split by tab or comma (Excel can use either)
+            values = line.replace(',', '\t').split('\t')
+            
+            # Take first value (in case of multiple columns)
+            value = values[0].strip()
+            
+            if value:  # Only paste non-empty values
+                try:
+                    # Validate it's a number
+                    float(value)
+                    item = self.item(row_idx, 0)
+                    if item:
+                        item.setText(value)
+                        pasted_count += 1
+                    row_idx += 1
+                except ValueError:
+                    # Skip non-numeric values
+                    pass
+        
+        if pasted_count > 0:
+            logger.info(f"Pasted {pasted_count} values from clipboard")
+            QMessageBox.information(
+                self, 
+                "Values Pasted", 
+                f"Successfully pasted {pasted_count} numeric values"
+            )
 
 
 class ElementInputWidget(QWidget, ResponsiveWidget):
@@ -76,6 +154,24 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
     
     def _create_input_form(self, main_layout):
         """Create enhanced input form"""
+        # Create scroll area for the form
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        scroll_area.setStyleSheet("""
+            QScrollArea {
+                border: none;
+                background-color: transparent;
+            }
+        """)
+        
+        # Container widget for scroll area
+        scroll_widget = QWidget()
+        scroll_layout = QVBoxLayout(scroll_widget)
+        scroll_layout.setContentsMargins(0, 0, 0, 0)
+        scroll_layout.setSpacing(10)
+        
         form_group = QGroupBox("📝 Add Element")
         form_group.setFont(QFont("Segoe UI", 12, QFont.Bold))
         form_group.setStyleSheet("""
@@ -132,8 +228,8 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         layout.addWidget(mode_frame)
         
         # Element information section
-        info_frame = QFrame()
-        info_frame.setStyleSheet("""
+        self.info_frame = QFrame()
+        self.info_frame.setStyleSheet("""
             QFrame {
                 background-color: white;
                 border: 1px solid #dee2e6;
@@ -141,7 +237,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
                 padding: 15px;
             }
         """)
-        info_layout = QGridLayout(info_frame)
+        info_layout = QGridLayout(self.info_frame)
         info_layout.setSpacing(10)
         
         # Row 1: Element name/selector
@@ -168,7 +264,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.sigma_combo.setCurrentIndex(1)  # Default to 6σ
         info_layout.addWidget(self.sigma_combo, 2, 2)
 
-        # Row 4: NEW - Measuring Instrument
+        # Row 4: Measuring Instrument
         info_layout.addWidget(QLabel("Instrument:"), 3, 0)
         self.instrument_combo = ModernComboBox()
         self.instrument_combo.addItems([
@@ -185,20 +281,82 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.instrument_combo.setCurrentIndex(0)  # Default to 3D Scanner
         info_layout.addWidget(self.instrument_combo, 3, 1, 1, 2)
         
-        # Row 4: Nominal and tolerances
+        # Row 5: Nominal
         info_layout.addWidget(QLabel("Nominal:"), 4, 0)
         self.nominal_input = ModernLineEdit("0.0000")
         info_layout.addWidget(self.nominal_input, 4, 1, 1, 2)
 
-        info_layout.addWidget(QLabel("Tolerance -:"), 5, 0)
+        # Row 6: Tolerance - (with checkbox)
+        tol_minus_layout = QHBoxLayout()
+        self.tol_minus_check = QCheckBox("Tolerance -:")
+        self.tol_minus_check.setChecked(True)  # Active by default
+        self.tol_minus_check.setStyleSheet("""
+            QCheckBox {
+                color: #2c3e50;
+                font-weight: normal;
+                spacing: 5px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #28a745;
+                border: 2px solid #28a745;
+            }
+            QCheckBox::indicator:unchecked {
+                background-color: #e9ecef;
+                border: 2px solid #ced4da;
+            }
+            QCheckBox::indicator:checked:hover {
+                background-color: #218838;
+                border: 2px solid #218838;
+            }
+        """)
+        self.tol_minus_check.stateChanged.connect(self._toggle_tol_minus)
+        tol_minus_layout.addWidget(self.tol_minus_check)
+        info_layout.addLayout(tol_minus_layout, 5, 0)
+        
         self.tol_minus_input = ModernLineEdit("-0.0000")
         info_layout.addWidget(self.tol_minus_input, 5, 1, 1, 2)
 
-        info_layout.addWidget(QLabel("Tolerance +:"), 6, 0)
+        # Row 7: Tolerance + (with checkbox)
+        tol_plus_layout = QHBoxLayout()
+        self.tol_plus_check = QCheckBox("Tolerance +:")
+        self.tol_plus_check.setChecked(True)  # Active by default
+        self.tol_plus_check.setStyleSheet("""
+            QCheckBox {
+                color: #2c3e50;
+                font-weight: normal;
+                spacing: 5px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #28a745;
+                border: 2px solid #28a745;
+            }
+            QCheckBox::indicator:unchecked {
+                background-color: #e9ecef;
+                border: 2px solid #ced4da;
+            }
+            QCheckBox::indicator:checked:hover {
+                background-color: #218838;
+                border: 2px solid #218838;
+            }
+        """)
+        self.tol_plus_check.stateChanged.connect(self._toggle_tol_plus)
+        tol_plus_layout.addWidget(self.tol_plus_check)
+        info_layout.addLayout(tol_plus_layout, 6, 0)
+        
         self.tol_plus_input = ModernLineEdit("+0.0000")
         info_layout.addWidget(self.tol_plus_input, 6, 1, 1, 2)
 
-        layout.addWidget(info_frame)
+        layout.addWidget(self.info_frame)
         
         # Database buttons
         self.db_buttons_frame = QFrame()
@@ -307,10 +465,10 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         
         self.values_layout.addLayout(values_header)
         
-        # TABLE FOR VALUES - MAXIMIZED HEIGHT
-        from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem, QHeaderView
+        # TABLE FOR VALUES - MAXIMIZED HEIGHT with Paste Support
+        from PyQt5.QtWidgets import QTableWidgetItem, QHeaderView
         
-        self.values_table = QTableWidget()
+        self.values_table = PasteableTableWidget()
         self.values_table.setColumnCount(1)
         self.values_table.setHorizontalHeaderLabels(["Value"])
         self.values_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
@@ -362,7 +520,13 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         add_element_btn.clicked.connect(self.add_element)
         layout.addWidget(add_element_btn)
         
-        main_layout.addWidget(form_group)
+        # Add form_group to scroll layout
+        scroll_layout.addWidget(form_group)
+        scroll_layout.addStretch()
+        
+        # Set scroll widget and add to main layout
+        scroll_area.setWidget(scroll_widget)
+        main_layout.addWidget(scroll_area)
 
     def _add_value_rows(self, count):
         """Add more rows to value table"""
@@ -599,6 +763,74 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         # Enable/disable database buttons
         if not is_manual and self.client and self.project_reference:
             self.load_elements_button.setEnabled(True)
+        
+        # Force layout update to prevent overlapping/cut-off elements
+        self.info_frame.layout().activate()
+        self.info_frame.updateGeometry()
+        self.updateGeometry()
+        if self.parent():
+            self.parent().updateGeometry()
+        self.update()
+    
+    def _toggle_tol_minus(self, state):
+        """Enable/disable lower tolerance field"""
+        is_checked = (state == 2)  # Qt.Checked = 2
+        self.tol_minus_input.setEnabled(is_checked)
+        
+        # Visual feedback - change checkbox color and style
+        if is_checked:
+            self.tol_minus_check.setStyleSheet("""
+                QCheckBox {
+                    color: #2c3e50;
+                    font-weight: normal;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #28a745;
+                    border: 2px solid #28a745;
+                }
+            """)
+        else:
+            self.tol_minus_input.setText("0.0000")
+            self.tol_minus_check.setStyleSheet("""
+                QCheckBox {
+                    color: #6c757d;
+                    font-weight: normal;
+                }
+                QCheckBox::indicator:unchecked {
+                    background-color: #e9ecef;
+                    border: 2px solid #ced4da;
+                }
+            """)
+    
+    def _toggle_tol_plus(self, state):
+        """Enable/disable upper tolerance field"""
+        is_checked = (state == 2)  # Qt.Checked = 2
+        self.tol_plus_input.setEnabled(is_checked)
+        
+        # Visual feedback - change checkbox color and style
+        if is_checked:
+            self.tol_plus_check.setStyleSheet("""
+                QCheckBox {
+                    color: #2c3e50;
+                    font-weight: normal;
+                }
+                QCheckBox::indicator:checked {
+                    background-color: #28a745;
+                    border: 2px solid #28a745;
+                }
+            """)
+        else:
+            self.tol_plus_input.setText("0.0000")
+            self.tol_plus_check.setStyleSheet("""
+                QCheckBox {
+                    color: #6c757d;
+                    font-weight: normal;
+                }
+                QCheckBox::indicator:unchecked {
+                    background-color: #e9ecef;
+                    border: 2px solid #ced4da;
+                }
+            """)
     
     def _toggle_extrapolation_settings(self, checked):
         """Enable/disable extrapolation settings"""
@@ -625,13 +857,23 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
             sigma = self.sigma_combo.currentText()
             instrument = self.instrument_combo.currentText()
 
-            # Validate tolerances
+            # Validate tolerances based on selection
             try:
                 nominal = float(self.nominal_input.text())
-                tol_minus = float(self.tol_minus_input.text())
-                tol_plus = float(self.tol_plus_input.text())
+                
+                # Get tolerance values based on checkbox state
+                if self.tol_minus_check.isChecked():
+                    tol_minus = float(self.tol_minus_input.text())
+                else:
+                    tol_minus = 0.0  # Lower tolerance not used
+                
+                if self.tol_plus_check.isChecked():
+                    tol_plus = float(self.tol_plus_input.text())
+                else:
+                    tol_plus = 0.0  # Upper tolerance not used
+                    
             except ValueError:
-                QMessageBox.warning(self, "Invalid Data", "Nominal and tolerances must be numbers")
+                QMessageBox.warning(self, "Invalid Data", "Nominal and active tolerances must be numbers")
                 return
             
             # Get measured values
@@ -657,16 +899,33 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
                     )
                     return
             
+            # Get tolerance type based on checkboxes
+            tol_minus_active = self.tol_minus_check.isChecked()
+            tol_plus_active = self.tol_plus_check.isChecked()
+            
+            if tol_minus_active and tol_plus_active:
+                tolerance_type = 'both'
+            elif tol_minus_active:
+                tolerance_type = 'lower'
+            elif tol_plus_active:
+                tolerance_type = 'upper'
+            else:
+                QMessageBox.warning(self, "Invalid Data", "At least one tolerance must be active")
+                return
+            
             # Create element data with proper structure
             element_data = {
                 'element_id': element_id,
                 'cavity': cavity,
                 'class': class_name,
                 'sigma': sigma,
-                'instrument': instrument,  # NEW
+                'instrument': instrument,
                 'nominal': nominal,
                 'tol_minus': tol_minus,
                 'tol_plus': tol_plus,
+                'tolerance_type': tolerance_type,
+                'tol_minus_active': tol_minus_active,
+                'tol_plus_active': tol_plus_active,
                 'values': values.copy(),
                 'original_values': values.copy(),
                 'has_extrapolation': False,
@@ -875,6 +1134,10 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.nominal_input.clear()
         self.tol_minus_input.clear()
         self.tol_plus_input.clear()
+        
+        # Reset tolerance checkboxes to both active
+        self.tol_minus_check.setChecked(True)
+        self.tol_plus_check.setChecked(True)
         
         # Clear values table instead of values_inputs
         if hasattr(self, 'values_table'):
