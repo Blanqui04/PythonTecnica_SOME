@@ -25,18 +25,23 @@ logger = logging.getLogger(__name__)
 class QualityMeasurementDBAdapter:
     """Gestiona l'adaptació de l'esquema de BBDD per les mesures de qualitat"""
     
-    def __init__(self, db_config: Dict[str, str]):
+    def __init__(self, db_config: Dict[str, str], table_name: str = 'mesuresqualitat'):
         """
         Inicialitza l'adaptador
         
         Args:
             db_config: Configuració de la base de dades
+            table_name: Nom de la taula (per defecte 'mesuresqualitat')
+                Opcions vàlides: 'mesuresqualitat', 'mesures_gompcnou', 
+                'mesures_gompc_projecets', 'mesureshoytom', 'mesurestoriso'
         """
         self.connection = None
+        self.table_name = table_name
         
         # Debug logging per verificar la configuració rebuda
         logger.debug(f"QualityMeasurementDBAdapter inicialitzat amb configuració: {db_config}")
         logger.debug(f"Tipus de db_config: {type(db_config)}")
+        logger.debug(f"Taula destí: {table_name}")
         
         # Si la configuració ve amb clau 'primary', l'extraiem
         if isinstance(db_config, dict) and 'primary' in db_config:

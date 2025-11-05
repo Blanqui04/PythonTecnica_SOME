@@ -1002,13 +1002,29 @@ class NetworkScanner:
             logger.error(f"Error carregant configuració BBDD: {e}")
             return None
     
-    def insert_dataset_to_database(self) -> Dict:
+    def insert_dataset_to_database(self, target_table: str = 'mesures_gompcnou') -> Dict:
         """
-        Insereix el dataset global a la base de dades a la taula 'mesuresqualitat'
+        Insereix el dataset global a la base de dades a una taula específica
+        
+        Args:
+            target_table: Nom de la taula destí. Opcions:
+                - 'mesures_gompcnou' (per defecte)
+                - 'mesures_gompc_projecets'
+                - 'mesureshoytom'
+                - 'mesurestoriso'
         
         Returns:
             dict: Resum de la inserció
         """
+        valid_tables = ['mesures_gompcnou', 'mesures_gompc_projecets', 'mesureshoytom', 'mesurestoriso']
+        if target_table not in valid_tables:
+            logger.error(f"Taula destí '{target_table}' no vàlida. Opcions: {valid_tables}")
+            return {
+                'success': False,
+                'error': f"Taula '{target_table}' no vàlida",
+                'records_inserted': 0
+            }
+        
         if self.global_dataset is None or self.global_dataset.empty:
             logger.error("No hi ha dataset global per inserir a la BBDD")
             return {
@@ -1030,8 +1046,8 @@ class NetworkScanner:
             # Importar i utilitzar l'adapter de BBDD
             from src.database.quality_measurement_adapter import QualityMeasurementDBAdapter
             
-            # Crear adapter amb configuració
-            adapter = QualityMeasurementDBAdapter(db_config)
+            # Crear adapter amb configuració i taula específica
+            adapter = QualityMeasurementDBAdapter(db_config, table_name=target_table)
             
             # Connectar a la BBDD
             if not adapter.connect():
@@ -1041,10 +1057,10 @@ class NetworkScanner:
                     'records_inserted': 0
                 }
             
-            logger.info("Connexió a BBDD establerta correctament")
+            logger.info(f"Connexió a BBDD establerta correctament (taula: {target_table})")
             
             # Actualitzar esquema de la taula si cal
-            logger.info("Actualitzant esquema de la taula mesuresqualitat...")
+            logger.info(f"Actualitzant esquema de la taula {target_table}...")
             schema_result = adapter.update_table_schema()
             
             if schema_result['success']:
@@ -1066,7 +1082,7 @@ class NetworkScanner:
             logger.info(f"Dataset preparat: {len(prepared_data)} registres")
             
             # Inserir a la BBDD
-            logger.info("Iniciant inserció a la taula mesuresqualitat...")
+            logger.info(f"Iniciant inserció a la taula {target_table}...")
             insert_result = adapter.insert_dataset(prepared_data)
             
             # Tancar connexió
@@ -1076,10 +1092,11 @@ class NetworkScanner:
                 logger.info(f"Inserció completada: {insert_result['records_inserted']} registres")
                 return {
                     'success': True,
-                    'message': 'Dades inserides correctament a mesuresqualitat',
+                    'message': f'Dades inserides correctament a {target_table}',
                     'records_inserted': insert_result['records_inserted'],
                     'records_total': len(self.global_dataset),
                     'skipped_records': insert_result.get('skipped_records', 0),
+                    'target_table': target_table,
                     'errors': insert_result.get('errors', [])
                 }
             else:
@@ -1179,12 +1196,26 @@ class NetworkScanner:
     
     def copy_data_between_databases(self) -> Dict:
         """
-        Copia les dades de la taula mesuresqualitat de la BBDD origen (airflow_db/config_2) 
-        cap a la BBDD destí (documentacio_tecnica/config_1)
+        [DEPRECATED] Aquest mètode ja no és necessari.
+        
+        Anteriorment copiava dades entre airflow_db i documentacio_tecnica.
+        Ara totes les dades estan a documentacio_tecnica amb taules separades:
+        - mesures_gompcnou
+        - mesures_gompc_projecets  
+        - mesureshoytom
+        - mesurestoriso
+        
+        La còpia de dades es fa externament cada nit a les 24h.
         
         Returns:
-            dict: Resum de la còpia de dades
+            dict: Missatge de deprecació
         """
+        logger.warning("copy_data_between_databases() està deprecated - les dades ja són a documentacio_tecnica")
+        return {
+            'success': True,
+            'message': 'Mètode deprecated - dades ja disponibles a documentacio_tecnica',
+            'records_copied': 0
+        }
         try:
             logger.info("=== INICIANT CÒPIA DE DADES ENTRE BBDD ===")
             

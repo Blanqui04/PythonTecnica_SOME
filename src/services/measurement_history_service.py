@@ -8,12 +8,21 @@ from src.database.database_connection import PostgresConn
 
 logger = logging.getLogger(__name__)
 
+# Constants per les noves taules de mesures
+MEASUREMENT_TABLES = [
+    'mesures_gompcnou',
+    'mesures_gompc_projecets', 
+    'mesureshoytom',
+    'mesurestoriso'
+]
+
 class MeasurementHistoryService:
     """Servei per obtenir l'historial de mesures de la base de dades"""
     
     def __init__(self):
         """Inicialitza el servei amb la configuració de la base de dades"""
         self.db_connection = None
+        self.measurement_tables = MEASUREMENT_TABLES
         self._load_db_config()
     
     def _load_db_config(self):
@@ -44,6 +53,68 @@ class MeasurementHistoryService:
             logger.error(f"Error carregant configuració de base de dades: {e}")
             raise
     
+    def _convert_query_to_union(self, query_template: str, params: tuple) -> tuple:
+        """
+        Converteix un query amb 'FROM mesuresqualitat' a UNION ALL de totes les taules
+        
+        Args:
+            query_template: Query original amb 'FROM mesuresqualitat'
+            params: Paràmetres del query
+            
+        Returns:
+            Tuple (query_modificat, params_multiplicats)
+        """
+        # Dividir el query en parts (abans i després de FROM mesuresqualitat)
+        if 'FROM mesuresqualitat' not in query_template:
+            # Si no té mesuresqualitat, retornar sense canvis
+            return (query_template, params)
+        
+        # Reemplaçar mesuresqualitat per una taula genèrica __TABLE__
+        query_template = query_template.replace('FROM mesuresqualitat', 'FROM __TABLE__')
+        
+        # Construir UNION ALL
+        union_parts = []
+        for table in self.measurement_tables:
+            table_query = query_template.replace('__TABLE__', table)
+            union_parts.append(f"({table_query})")
+        
+        final_query = " UNION ALL ".join(union_parts)
+        
+        # Multiplicar paràmetres per cada taula
+        final_params = params * len(self.measurement_tables)
+        
+        return (final_query, final_params)
+    
+    def _build_union_query(self, select_clause: str, where_clause: str, order_clause: str = "", limit_clause: str = "") -> str:
+        """
+        Construeix un query amb UNION ALL per totes les taules de mesures
+        
+        Args:
+            select_clause: Columnes a seleccionar (sense SELECT)
+            where_clause: Condicions WHERE (sense WHERE)
+            order_clause: Ordre (opcional, sense ORDER BY)
+            limit_clause: Límit (opcional, sense LIMIT)
+            
+        Returns:
+            Query complet amb UNION ALL
+        """
+        union_parts = []
+        for table in self.measurement_tables:
+            query_part = f"SELECT {select_clause} FROM {table}"
+            if where_clause:
+                query_part += f" WHERE {where_clause}"
+            union_parts.append(f"({query_part})")
+        
+        full_query = " UNION ALL ".join(union_parts)
+        
+        if order_clause:
+            full_query = f"SELECT * FROM ({full_query}) AS combined ORDER BY {order_clause}"
+        
+        if limit_clause:
+            full_query += f" LIMIT {limit_clause}"
+            
+        return full_query
+    
     def get_measurement_history(self, client: str, project_reference: str, limit: int = 10, batch_lot: str = None) -> List[Dict[str, Any]]:
         """
         Obté l'historial de mesures per un client i projecte
@@ -58,24 +129,28 @@ class MeasurementHistoryService:
             Llista de diccionaris amb les mesures
         """
         try:
+            select_clause = "DISTINCT element, pieza, datum, property"
+            
             if batch_lot:
-                query = """
-                    SELECT DISTINCT element, pieza, datum, property
-                    FROM mesuresqualitat 
-                    WHERE client = %s AND id_referencia_client = %s AND id_lot = %s
-                    ORDER BY element, pieza, datum, property
-                    LIMIT %s
-                """
-                results = self.db_connection.fetchall(query, (client, project_reference, batch_lot, limit))
+                where_clause = "client = %s AND id_referencia_client = %s AND id_lot = %s"
+                params = (client, project_reference, batch_lot)
             else:
-                query = """
-                    SELECT DISTINCT element, pieza, datum, property
-                    FROM mesuresqualitat 
-                    WHERE client = %s AND id_referencia_client = %s
-                    ORDER BY element, pieza, datum, property
-                    LIMIT %s
-                """
-                results = self.db_connection.fetchall(query, (client, project_reference, limit))
+                where_clause = "client = %s AND id_referencia_client = %s"
+                params = (client, project_reference)
+            
+            order_clause = "element, pieza, datum, property"
+            
+            # Construir query amb UNION ALL de totes les taules
+            query = self._build_union_query(
+                select_clause=select_clause,
+                where_clause=where_clause,
+                order_clause=order_clause,
+                limit_clause="%s"
+            )
+            
+            # Repetir paràmetres per cada taula en el UNION
+            all_params = params * len(self.measurement_tables) + (limit,)
+            results = self.db_connection.fetchall(query, all_params)
             
             measurements = []
             for row in results:
@@ -145,22 +220,32 @@ class MeasurementHistoryService:
                         conditions.append("id_lot = %s")
                         params.append(batch_lot)
                     
-                    # Build final query
+                    # Build final WHERE clause
                     where_clause = " AND ".join(conditions)
-                    params.append(limit)
                     
-                    query = f"""
-                        SELECT 
-                            id_referencia_client, element, pieza, datum, property, 
-                            actual, nominal, tolerancia_negativa, tolerancia_positiva, 
-                            desviacio, data_hora, id_lot, cavitat
-                        FROM mesuresqualitat 
-                        WHERE {where_clause}
-                        ORDER BY data_hora DESC
-                        LIMIT %s
+                    # Construir query amb UNION ALL de totes les taules
+                    select_clause = """
+                        id_referencia_client, element, pieza, datum, property, 
+                        actual, nominal, tolerancia_negativa, tolerancia_positiva, 
+                        desviacio, data_hora, id_lot, cavitat
                     """
                     
-                    results = self.db_connection.fetchall(query, params)
+                    union_parts = []
+                    for table in self.measurement_tables:
+                        table_query = f"""
+                            SELECT {select_clause}
+                            FROM {table}
+                            WHERE {where_clause}
+                        """
+                        union_parts.append(f"({table_query})")
+                    
+                    query = " UNION ALL ".join(union_parts)
+                    query = f"SELECT * FROM ({query}) AS combined ORDER BY data_hora DESC LIMIT %s"
+                    
+                    # Repetir paràmetres per cada taula
+                    all_params = params * len(self.measurement_tables) + [limit]
+                    
+                    results = self.db_connection.fetchall(query, all_params)
                     
                     if results:
                         logger.info(f"✅ Estratègia '{strategy['name']}' trobada: {len(results)} mesures per {element_name}")
@@ -229,7 +314,7 @@ class MeasurementHistoryService:
                         ref_condition = strategy['ref_condition']
                     
                     if batch_lot:
-                        query = f"""
+                        query_template = f"""
                             SELECT DISTINCT 
                                 COALESCE(element, 'N/A') as element,
                                 COALESCE(pieza, 'N/A') as pieza, 
@@ -242,11 +327,12 @@ class MeasurementHistoryService:
                             AND {ref_condition} 
                             AND id_lot = %s
                             GROUP BY element, pieza, datum, property, id_referencia_client
-                            ORDER BY element, pieza, datum, property
                         """
                         params = strategy['params'] + [batch_lot]
+                        query, final_params = self._convert_query_to_union(query_template, tuple(params))
+                        query = f"SELECT * FROM ({query}) AS combined ORDER BY element, pieza, datum, property"
                     else:
-                        query = f"""
+                        query_template = f"""
                             SELECT DISTINCT 
                                 COALESCE(element, 'N/A') as element,
                                 COALESCE(pieza, 'N/A') as pieza, 
@@ -258,11 +344,12 @@ class MeasurementHistoryService:
                             WHERE {strategy['client_condition']} 
                             AND {ref_condition}
                             GROUP BY element, pieza, datum, property, id_referencia_client
-                            ORDER BY element, pieza, datum, property
                         """
                         params = strategy['params']
+                        query, final_params = self._convert_query_to_union(query_template, tuple(params))
+                        query = f"SELECT * FROM ({query}) AS combined ORDER BY element, pieza, datum, property"
                     
-                    results = self.db_connection.fetchall(query, params)
+                    results = self.db_connection.fetchall(query, final_params)
                     
                     if results:
                         logger.info(f"✅ Estratègia '{strategy['name']}' trobada: {len(results)} elements")
@@ -455,17 +542,19 @@ class MeasurementHistoryService:
                 params.append(property_name)
             
             all_conditions = base_conditions + " AND " + " AND ".join(element_conditions)
-            params.append(limit)
             
-            query = f"""
+            query_template = f"""
                 SELECT actual, data_hora, id_lot, cavitat, nominal, tolerancia_negativa, tolerancia_positiva
                 FROM mesuresqualitat 
                 WHERE {all_conditions}
-                ORDER BY data_hora DESC
-                LIMIT %s
             """
             
-            results = self.db_connection.fetchall(query, tuple(params))
+            # Convertir a UNION de totes les taules
+            query, final_params = self._convert_query_to_union(query_template, tuple(params))
+            query = f"SELECT * FROM ({query}) AS combined ORDER BY data_hora DESC LIMIT %s"
+            final_params = final_params + (limit,)
+            
+            results = self.db_connection.fetchall(query, final_params)
             
             measurements = []
             for row in results:
@@ -503,17 +592,20 @@ class MeasurementHistoryService:
             Llista de diccionaris amb els lots disponibles
         """
         try:
-            query = """
+            query_template = """
                 SELECT DISTINCT id_lot, COUNT(*) as count, 
                        MIN(data_hora) as first_measurement, 
                        MAX(data_hora) as last_measurement
                 FROM mesuresqualitat 
                 WHERE client = %s AND id_referencia_client = %s AND id_lot IS NOT NULL
                 GROUP BY id_lot
-                ORDER BY last_measurement DESC
             """
             
-            results = self.db_connection.fetchall(query, (client, project_reference))
+            params = (client, project_reference)
+            query, final_params = self._convert_query_to_union(query_template, params)
+            query = f"SELECT * FROM ({query}) AS combined ORDER BY last_measurement DESC"
+            
+            results = self.db_connection.fetchall(query, final_params)
             
             lots = []
             for row in results:

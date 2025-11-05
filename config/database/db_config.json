@@ -7,7 +7,7 @@
         "password": "Some2025.!$%"
     },
     "secondary": {
-        "host": "172.26.5.159",
+        "host": "172.26.11.201",
         "port": "5432",
         "database": "airflow_db",
         "user": "airflow_user",
