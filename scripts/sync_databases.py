@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 # Configuració de les taules a copiar
 TABLES_TO_SYNC = [
     'mesures_gompcnou',
-    'mesures_gompc_projecets',
+    'mesures_gompc_projectes',  # Nota: "projectes" amb c
     'mesureshoytom',
-    'mesurestoriso'
+    'mesurestorsio'  # Nota: "torsio" no "toriso"
 ]
 
 class DatabaseSync:

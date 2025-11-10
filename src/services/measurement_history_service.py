@@ -9,12 +9,20 @@ from src.database.database_connection import PostgresConn
 logger = logging.getLogger(__name__)
 
 # Constants per les noves taules de mesures
+# Només les taules compatibles amb estudis de capacitat (amb element, pieza, datum, property)
+# NOTA: Utilitzem schema 'qualitat' que s'alimenta automàticament des d'Airflow
+# Si no existeix, fem fallback a 'public'
+MEASUREMENT_SCHEMA = 'qualitat'
+FALLBACK_SCHEMA = 'public'
+
 MEASUREMENT_TABLES = [
     'mesures_gompcnou',
-    'mesures_gompc_projecets', 
-    'mesureshoytom',
-    'mesurestoriso'
+    'mesures_gompc_projectes',  # Nota: "projectes" amb c
 ]
+
+# Taules amb altres estructures (no compatibles amb estudis de capacitat)
+# - mesureshoytom: Assaigs de tracció (no té element/pieza/datum/property)
+# - mesurestorsio: Assaigs de torsió (no té element/pieza/datum/property)
 
 class MeasurementHistoryService:
     """Servei per obtenir l'historial de mesures de la base de dades"""
@@ -23,7 +31,9 @@ class MeasurementHistoryService:
         """Inicialitza el servei amb la configuració de la base de dades"""
         self.db_connection = None
         self.measurement_tables = MEASUREMENT_TABLES
+        self.schema = None  # Es detectarà automàticament
         self._load_db_config()
+        self._detect_schema()
     
     def _load_db_config(self):
         """Carrega la configuració de la base de dades"""
@@ -53,6 +63,35 @@ class MeasurementHistoryService:
             logger.error(f"Error carregant configuració de base de dades: {e}")
             raise
     
+    def _detect_schema(self):
+        """Detecta automàticament quin schema utilitzar (qualitat o public)"""
+        try:
+            conn = self.db_connection.connect()
+            cursor = conn.cursor()
+            
+            # Verificar si existeix el schema 'qualitat' amb taules
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = %s 
+                AND table_name = ANY(%s)
+            """, (MEASUREMENT_SCHEMA, MEASUREMENT_TABLES))
+            
+            count_qualitat = cursor.fetchone()[0]
+            
+            if count_qualitat > 0:
+                self.schema = MEASUREMENT_SCHEMA
+                logger.info(f"[OK] Utilitzant schema '{MEASUREMENT_SCHEMA}' (alimentat per Airflow ETL)")
+            else:
+                self.schema = FALLBACK_SCHEMA
+                logger.info(f"[INFO] Schema '{MEASUREMENT_SCHEMA}' no disponible, utilitzant '{FALLBACK_SCHEMA}' (legacy)")
+            
+            cursor.close()
+            
+        except Exception as e:
+            logger.warning(f"Error detectant schema, utilitzant fallback: {e}")
+            self.schema = FALLBACK_SCHEMA
+    
     def _convert_query_to_union(self, query_template: str, params: tuple) -> tuple:
         """
         Converteix un query amb 'FROM mesuresqualitat' a UNION ALL de totes les taules
@@ -69,13 +108,15 @@ class MeasurementHistoryService:
             # Si no té mesuresqualitat, retornar sense canvis
             return (query_template, params)
         
-        # Reemplaçar mesuresqualitat per una taula genèrica __TABLE__
-        query_template = query_template.replace('FROM mesuresqualitat', 'FROM __TABLE__')
+        # Reemplaçar mesuresqualitat per una taula genèrica amb àlies __TABLE__ t
+        query_template = query_template.replace('FROM mesuresqualitat', 'FROM __TABLE__ t')
         
-        # Construir UNION ALL
+        # Construir UNION ALL amb schema detectat
         union_parts = []
         for table in self.measurement_tables:
-            table_query = query_template.replace('__TABLE__', table)
+            # Utilitzar schema.table
+            full_table_name = f"{self.schema}.{table}"
+            table_query = query_template.replace('__TABLE__', full_table_name)
             union_parts.append(f"({table_query})")
         
         final_query = " UNION ALL ".join(union_parts)
@@ -508,37 +549,37 @@ class MeasurementHistoryService:
             element, pieza, datum, property_name = parts
             
             # Construir la consulta tenint en compte els valors NULL
-            base_conditions = "client = %s AND id_referencia_client = %s"
+            base_conditions = "t.client = %s AND t.id_referencia_client = %s"
             element_conditions = []
             params = [client, project_reference]
             
             if batch_lot:
-                base_conditions += " AND id_lot = %s"
+                base_conditions += " AND t.id_lot = %s"
                 params.append(batch_lot)
             
             # Afegir condicions per element, pieza, datum, property considerant NULL
             if element is None or element == 'None':
-                element_conditions.append("element IS NULL")
+                element_conditions.append("t.element IS NULL")
             else:
-                element_conditions.append("element = %s")
+                element_conditions.append("t.element = %s")
                 params.append(element)
                 
             if pieza is None or pieza == 'None':
-                element_conditions.append("pieza IS NULL")
+                element_conditions.append("t.pieza IS NULL")
             else:
-                element_conditions.append("pieza = %s")
+                element_conditions.append("t.pieza = %s")
                 params.append(pieza)
                 
             if datum is None or datum == 'None':
-                element_conditions.append("datum IS NULL")
+                element_conditions.append("t.datum IS NULL")
             else:
-                element_conditions.append("datum = %s")
+                element_conditions.append("t.datum = %s")
                 params.append(datum)
                 
             if property_name is None or property_name == 'None':
-                element_conditions.append("property IS NULL")
+                element_conditions.append("t.property IS NULL")
             else:
-                element_conditions.append("property = %s")
+                element_conditions.append("t.property = %s")
                 params.append(property_name)
             
             all_conditions = base_conditions + " AND " + " AND ".join(element_conditions)

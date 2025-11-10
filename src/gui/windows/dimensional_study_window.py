@@ -1463,7 +1463,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
             self._log_message(f"❌ Error updating summary: {str(e)}", "ERROR")
 
     def _load_data_from_database(self):
-        """Load measurement data from mesures_gompc_projecets table"""
+        """Load measurement data from mesures_gompc_projectes table"""
         try:
             # Ask user how many records to load
             from PyQt5.QtWidgets import QInputDialog
@@ -1505,7 +1505,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
             
             # Query to get measurements grouped by id_referencia_client, id_lot, and element
             # This will give us multiple measurements for the same element/project/lot combination
-            # NOTE: Now using mesures_gompc_projecets table instead of maquina filter
+            # NOTE: Now using mesures_gompc_projectes table instead of maquina filter
             query = f"""
             WITH grouped_measurements AS (
                 SELECT 
@@ -1529,7 +1529,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
                         PARTITION BY id_referencia_client, id_lot, element 
                         ORDER BY data_hora DESC
                     ) as measurement_rank
-                FROM mesures_gompc_projecets 
+                FROM mesures_gompc_projectes 
                 WHERE element IS NOT NULL 
                     AND id_referencia_client IS NOT NULL 
                     AND id_lot IS NOT NULL
@@ -1562,12 +1562,12 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
             df = db_adapter.execute_query_to_dataframe(query)
             
             if df.empty:
-                self._log_message("⚠️ No grouped measurement data found in mesures_gompc_projecets table", "WARNING")
+                self._log_message("⚠️ No grouped measurement data found in mesures_gompc_projectes table", "WARNING")
                 QMessageBox.information(
                     self, 
                     "No Data Found", 
-                    "No measurement data found in mesures_gompc_projecets table\n\n"
-                    "Make sure the table 'mesures_gompc_projecets' contains records with:\n"
+                    "No measurement data found in mesures_gompc_projectes table\n\n"
+                    "Make sure the table 'mesures_gompc_projectes' contains records with:\n"
                     "• Valid element, id_referencia_client, and id_lot values"
                 )
                 return
