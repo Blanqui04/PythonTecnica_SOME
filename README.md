@@ -1,4 +1,4 @@
-# PythonTecnica_SOME
+# PythonTecnica_SOME v2.0.0
 
 ## Overview
 
@@ -6,19 +6,46 @@ PythonTecnica_SOME is a modular Python application for technical and business da
 
 ## 🚀 Instal·lació Ràpida
 
-### Per usuaris finals:
-1. Assegureu-vos que teniu **Python 3.8+** instal·lat
-2. Cloneu/descarregueu el repositori
-3. Executeu `SETUP.bat` per configurar l'entorn
-4. Executeu `RUN_APP.bat` per iniciar l'aplicació
+### Requisits
+- **Windows 10/11** (64-bit)
+- **Python 3.9+** ([Descarregar](https://www.python.org/downloads/))
+  - ⚠️ **IMPORTANT:** Marca "Add Python to PATH" durant la instal·lació
 
-### Scripts disponibles:
-- `SETUP.bat` - Configuració inicial i instal·lació de dependències
-- `RUN_APP.bat` - Executar l'aplicació
-- `VERIFY_SYSTEM.bat` - Verificar que tot està correctament configurat
-- `CLEAN.bat` - Netejar entorn virtual (si cal reinstal·lar)
+### Instal·lació pas a pas
 
-📖 **Guia detallada**: Veure `INSTALL_README.md`
+1. **Descarrega** el codi font:
+   - Desde [GitHub Releases](https://github.com/Blanqui04/PythonTecnica_SOME/releases) → `Source code (zip)`
+   - O clonar: `git clone https://github.com/Blanqui04/PythonTecnica_SOME.git`
+
+2. **Verifica prerequisits** (opcional):
+   ```cmd
+   check_prerequisites.bat
+   ```
+
+3. **Configura l'entorn** (només primera vegada):
+   ```cmd
+   setup.bat
+   ```
+   - Crea l'entorn virtual
+   - Instal·la totes les dependències
+   - 2-5 minuts d'espera
+
+4. **Executa l'aplicació**:
+   ```cmd
+   run_app.bat
+   ```
+
+### Scripts disponibles
+- `check_prerequisites.bat` - Verifica Python i connectivitat
+- `setup.bat` - Configuració inicial (només 1 vegada)
+- `run_app.bat` - Executar l'aplicació (sense consola, mode professional)
+- `run_app_debug.bat` - Executar amb consola visible (per debugging)
+- `create_desktop_shortcut.bat` - Crear accés directe a l'escriptori
+- `verify_setup.py` - Verificar base de dades i configuració
+
+📖 **Guia completa d'instal·lació**: Veure [INSTALL.md](INSTALL.md)
+
+📖 **Notes de versió**: Veure [RELEASE_NOTES_v2.0.0.md](RELEASE_NOTES_v2.0.0.md)
 
 ---
 
