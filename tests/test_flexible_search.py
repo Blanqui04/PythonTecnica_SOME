@@ -25,22 +25,22 @@ def test_flexible_reference_search():
     # Inicialitzar servei (carrega configuració automàticament)
     service = MeasurementHistoryService()
     
-    # Test cases amb referències que poden variar
+    # Test cases amb referències reals que existeixen
     test_cases = [
         {
             'client': 'AUTOLIV',
+            'reference': '663962200',
+            'description': 'Referència 663962200 (hauria de trobar 663962200A)'
+        },
+        {
+            'client': 'AUTOLIV',
             'reference': '665220400',
-            'description': 'Referència numèrica simple'
+            'description': 'Referència 665220400 (format 002_6652204_002)'
         },
         {
-            'client': 'BROSE',
-            'reference': 'E00104',
-            'description': 'Referència alfanumèrica amb possible variació'
-        },
-        {
-            'client': 'ZF',
-            'reference': 'A027Y915',
-            'description': 'Referència amb lletres i números'
+            'client': 'AUTOLIV',
+            'reference': '665220500',
+            'description': 'Referència 665220500 (format 002_6652205_002)'
         }
     ]
     
@@ -56,14 +56,14 @@ def test_flexible_reference_search():
             )
             
             if elements:
-                print(f"✅ Trobats {len(elements)} elements")
+                print(f"[OK] Trobats {len(elements)} elements")
                 print(f"   Primer element: {elements[0]['element']}")
-                print(f"   Referència trobada: {elements[0].get('ref_client', 'N/A')}")
+                print(f"   Referencia trobada: {elements[0].get('ref_client', 'N/A')}")
             else:
-                print(f"⚠️  Cap element trobat")
+                print(f"[WARN] Cap element trobat")
                 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"[ERROR] Error: {e}")
     
     service.close()
 
@@ -82,15 +82,21 @@ def test_flexible_lot_search():
     test_cases = [
         {
             'client': 'AUTOLIV',
-            'reference': '665220400',
-            'lot_partial': '2024',  # Buscar lots que continguin "2024"
-            'description': 'Cerca per any en el lot'
+            'reference': '663962200',
+            'lot_partial': None,  # Sense filtrar per lot
+            'description': 'Tots els lots disponibles per 663962200'
         },
         {
-            'client': 'BROSE',
-            'reference': 'E00104',
-            'lot_partial': 'LOT',  # Buscar lots que continguin "LOT"
-            'description': 'Cerca per prefix LOT'
+            'client': 'AUTOLIV',
+            'reference': '663962200',
+            'lot_partial': '2024',  # Buscar lots que continguin "2024"
+            'description': 'Cerca per any 2024 en el lot'
+        },
+        {
+            'client': 'AUTOLIV',
+            'reference': '663962200B',
+            'lot_partial': None,
+            'description': 'Tots els lots per 663962200B'
         }
     ]
     
@@ -110,20 +116,21 @@ def test_flexible_lot_search():
                 for i, lot in enumerate(all_lots[:5], 1):  # Mostrar només els 5 primers
                     print(f"   {i}. {lot['id_lot']} - {lot['count']} mesures - Última: {lot['last_measurement']}")
             
-            # Ara buscar amb el lot parcial
-            elements = service.get_available_elements(
-                client=test['client'],
-                project_reference=test['reference'],
-                batch_lot=test['lot_partial']
-            )
-            
-            if elements:
-                print(f"✅ Amb LOT '{test['lot_partial']}': Trobats {len(elements)} elements")
-            else:
-                print(f"⚠️  Cap element trobat amb LOT '{test['lot_partial']}'")
+            # Ara buscar amb el lot parcial (si està definit)
+            if test['lot_partial']:
+                elements = service.get_available_elements(
+                    client=test['client'],
+                    project_reference=test['reference'],
+                    batch_lot=test['lot_partial']
+                )
                 
+                if elements:
+                    print(f"[OK] Amb LOT '{test['lot_partial']}': Trobats {len(elements)} elements")
+                else:
+                    print(f"[WARN] Cap element trobat amb LOT '{test['lot_partial']}'")
+                    
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"[ERROR] Error: {e}")
     
     service.close()
 
@@ -140,9 +147,9 @@ def test_element_measurements():
     
     test_case = {
         'client': 'AUTOLIV',
-        'reference': '665220400',
-        'element': 'Element_1',  # Aquest element pot no existir exactament així
-        'lot_partial': '2024'
+        'reference': '663962200',
+        'element': None,  # Agafarem el primer element disponible
+        'lot_partial': None  # Sense filtrar per lot primer
     }
     
     print(f"Client: {test_case['client']}")
@@ -159,7 +166,7 @@ def test_element_measurements():
         )
         
         if elements:
-            print(f"\n✅ Elements disponibles: {len(elements)}")
+            print(f"\n[OK] Elements disponibles: {len(elements)}")
             
             # Agafar el primer element
             first_element = elements[0]
@@ -180,16 +187,16 @@ def test_element_measurements():
             )
             
             if measurements:
-                print(f"\n✅ Mesures trobades: {len(measurements)}")
+                print(f"\n[OK] Mesures trobades: {len(measurements)}")
                 for i, m in enumerate(measurements[:3], 1):
                     print(f"   {i}. Actual: {m.get('actual', 'N/A')}, LOT: {m.get('id_lot', 'N/A')}")
             else:
-                print(f"⚠️  Cap mesura trobada")
+                print(f"[WARN] Cap mesura trobada")
         else:
-            print(f"⚠️  Cap element disponible")
+            print(f"[WARN] Cap element disponible")
             
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"[ERROR] Error: {e}")
         import traceback
         traceback.print_exc()
     

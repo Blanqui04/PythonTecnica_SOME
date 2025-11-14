@@ -521,6 +521,18 @@ class MeasurementHistoryService:
                     'priority': 4
                 })
         
+        # 5. Cerca a id_referencia_some (PRIORITAT ALTA - moltes dades aquí)
+        # NOTA: id_referencia_some pot ser TEXT o INTEGER segons la taula, per això fem CAST
+        for client_var in main_client_variants:
+            for ref_var in main_ref_variants:
+                strategies.append({
+                    'name': f'id_referencia_some: {client_var[:10]} + {ref_var[:15]}',
+                    'client_condition': 'UPPER(client) = UPPER(%s)',
+                    'ref_condition': 'UPPER(CAST(id_referencia_some AS TEXT)) LIKE UPPER(%s)',
+                    'params': [client_var, f'%{ref_var}%'],
+                    'priority': 1  # Alta prioritat (mateix nivell que id_referencia_client)
+                })
+        
         # Ordenar per prioritat (menor número = més prioritat)
         strategies.sort(key=lambda x: x.get('priority', 5))
         
