@@ -53,58 +53,84 @@ class KOPExcelReader(ExcelReaderBase):
             print(f"Also searching with normalized reference: {ref_project_normalized}")
             
             # Search for project folder containing the reference
+            matching_folders = []
+            
             for root, dirs, files in os.walk(client_folder, topdown=True):
                 print(f"Scanning directory: {root}")
                 print(f"Found directories: {dirs}")
                 
                 for dir_name in dirs:
-                    # Normalize the directory name for comparison
-                    dir_parts = dir_name.split('_')
-                    dir_parts_normalized = [part.lstrip('0') for part in dir_parts]
+                    # Normalize both the reference and directory name for flexible matching
+                    dir_name_upper = dir_name.upper()
+                    ref_project_upper = ref_project.upper()
+                    ref_project_normalized_upper = ref_project_normalized.upper() if ref_project_normalized else ""
                     
                     found_match = False
                     match_reason = ""
                     
-                    # Original reference check
-                    if ref_project in dir_name:
+                    # Check if directory name contains the reference (case-insensitive)
+                    if ref_project_upper in dir_name_upper:
                         found_match = True
-                        match_reason = f"Direct match of {ref_project} in {dir_name}"
+                        match_reason = f"Contains reference {ref_project} in {dir_name}"
                     
-                    # Check normalized reference against normalized directory parts
-                    if not found_match and ref_project_normalized:
-                        for part in dir_parts_normalized:
-                            if ref_project_normalized == part:
+                    # Check with normalized reference
+                    elif ref_project_normalized_upper and ref_project_normalized_upper in dir_name_upper:
+                        found_match = True
+                        match_reason = f"Contains normalized reference {ref_project_normalized} in {dir_name}"
+                    
+                    # Check individual parts (split by _ or -)
+                    elif not found_match:
+                        dir_parts = dir_name.upper().replace('-', '_').split('_')
+                        for part in dir_parts:
+                            part_clean = part.strip()
+                            if (ref_project_upper in part_clean or 
+                                part_clean in ref_project_upper or
+                                (ref_project_normalized_upper and ref_project_normalized_upper in part_clean)):
                                 found_match = True
-                                match_reason = f"Normalized match: {ref_project_normalized} in {dir_name} parts"
+                                match_reason = f"Partial match in directory parts: {ref_project} ~ {dir_name}"
                                 break
                     
                     if found_match:
-                        print(f"Found matching directory: {dir_name}. Reason: {match_reason}")
+                        print(f"✓ Found matching directory: {dir_name}. Reason: {match_reason}")
+                        matching_folders.append((root, dir_name, match_reason))
+            
+            # If multiple matches found, use the first one
+            if matching_folders:
+                print(f"\n{'='*60}")
+                print(f"Found {len(matching_folders)} matching folder(s):")
+                for i, (root, dir_name, reason) in enumerate(matching_folders, 1):
+                    print(f"  {i}. {dir_name} - {reason}")
+                
+                # Use the first match
+                root, dir_name, match_reason = matching_folders[0]
+                print(f"\n✓ Using first match: {dir_name}")
+                print(f"{'='*60}\n")
+                
+                # Try multiple possible KOP folder paths
+                kop_paths = [
+                    os.path.join(root, dir_name, self.address_kop),
+                    os.path.join(root, dir_name, "5-FOLLOW-UP", "KOP"),
+                    os.path.join(root, dir_name, "FOLLOW-UP", "KOP"),
+                    os.path.join(root, dir_name, "FOLLOW UP", "KOP"),
+                    os.path.join(root, dir_name, "FOLLOW-UP"),
+                    os.path.join(root, dir_name, "KOP")
+                ]
+                
+                for kop_path in kop_paths:
+                    print(f"Checking KOP path: {kop_path}")
+                    
+                    if not os.path.exists(kop_path):
+                        continue
                         
-                        # Try multiple possible KOP folder paths
-                        kop_paths = [
-                            os.path.join(root, dir_name, self.address_kop),
-                            os.path.join(root, dir_name, "5-FOLLOW-UP", "KOP"),
-                            os.path.join(root, dir_name, "FOLLOW-UP", "KOP"),
-                            os.path.join(root, dir_name, "FOLLOW UP", "KOP"),
-                            os.path.join(root, dir_name, "FOLLOW-UP"),
-                            os.path.join(root, dir_name, "KOP")
-                        ]
+                    # Search for Excel file
+                    for sub_root, sub_dirs, sub_files in os.walk(kop_path):
+                        print(f"Checking for Excel files in: {sub_root}")
+                        print(f"Files: {sub_files}")
                         
-                        for kop_path in kop_paths:
-                            print(f"Checking KOP path: {kop_path}")
-                            
-                            if not os.path.exists(kop_path):
-                                continue
-                                
-                            # Search for Excel file
-                            for sub_root, sub_dirs, sub_files in os.walk(kop_path):
-                                print(f"Checking for Excel files in: {sub_root}")
-                                print(f"Files: {sub_files}")
-                                
-                                for file in sub_files:
-                                    if file.endswith(('.xlsx', '.xls', '.xlsm')):
-                                        return os.path.join(sub_root, file)
+                        for file in sub_files:
+                            if file.endswith(('.xlsx', '.xls', '.xlsm')):
+                                print(f"✓ Found Excel file: {file}")
+                                return os.path.join(sub_root, file)
             
             print(f"File not found. Completed searching in '{client_folder}' for project '{ref_project}'")
             raise FileNotFoundError(f"No Excel file found for client '{client}' and project '{ref_project}'")
