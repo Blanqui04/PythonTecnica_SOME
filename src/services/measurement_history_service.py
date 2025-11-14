@@ -15,10 +15,27 @@ logger = logging.getLogger(__name__)
 MEASUREMENT_SCHEMA = 'qualitat'
 FALLBACK_SCHEMA = 'public'
 
-MEASUREMENT_TABLES = [
-    'mesures_gompcnou',
-    'mesures_gompc_projectes',  # Nota: "projectes" amb c
-]
+# Definició de màquines i les seves taules
+MACHINE_TABLES = {
+    'gompc_projectes': {
+        'name': 'GOMPC Projectes',
+        'tables': ['mesures_gompc_projectes'],
+        'description': 'Mesures dimensionals de projectes (GOMPC)'
+    },
+    'gompc_nou': {
+        'name': 'GOMPC Nou',
+        'tables': ['mesures_gompcnou'],
+        'description': 'Mesures dimensionals noves (GOMPCNOU)'
+    },
+    'all': {
+        'name': 'Totes les màquines',
+        'tables': ['mesures_gompc_projectes', 'mesures_gompcnou'],
+        'description': 'Totes les màquines compatibles amb estudis de capacitat'
+    }
+}
+
+# Taules per defecte (per compatibilitat amb codi existent)
+MEASUREMENT_TABLES = MACHINE_TABLES['all']['tables']
 
 # Taules amb altres estructures (no compatibles amb estudis de capacitat)
 # - mesureshoytom: Assaigs de tracció (no té element/pieza/datum/property)
@@ -27,10 +44,30 @@ MEASUREMENT_TABLES = [
 class MeasurementHistoryService:
     """Servei per obtenir l'historial de mesures de la base de dades"""
     
-    def __init__(self):
-        """Inicialitza el servei amb la configuració de la base de dades"""
+    def __init__(self, machine: str = 'all'):
+        """
+        Inicialitza el servei amb la configuració de la base de dades
+        
+        Args:
+            machine: Tipus de màquina/taula a utilitzar. Opcions:
+                    - 'gompc_projectes': Només GOMPC Projectes
+                    - 'gompc_nou': Només GOMPC Nou
+                    - 'all': Totes les màquines (per defecte)
+        """
         self.db_connection = None
-        self.measurement_tables = MEASUREMENT_TABLES
+        self.machine = machine
+        
+        # Obtenir taules per la màquina seleccionada
+        if machine in MACHINE_TABLES:
+            self.measurement_tables = MACHINE_TABLES[machine]['tables']
+            self.machine_name = MACHINE_TABLES[machine]['name']
+            logger.info(f"Màquina seleccionada: {self.machine_name}")
+        else:
+            # Fallback a totes les taules
+            self.measurement_tables = MEASUREMENT_TABLES
+            self.machine_name = 'Totes les màquines'
+            logger.warning(f"Màquina '{machine}' no reconeguda, usant totes les taules")
+        
         self.schema = None  # Es detectarà automàticament
         self._load_db_config()
         self._detect_schema()
@@ -675,6 +712,20 @@ class MeasurementHistoryService:
         except Exception as e:
             logger.error(f"Error obtenint lots disponibles: {e}")
             raise
+    
+    @staticmethod
+    def get_available_machines() -> Dict[str, Dict[str, str]]:
+        """
+        Retorna les màquines disponibles per estudis de capacitat
+        
+        Returns:
+            Dict amb informació de cada màquina disponible
+        """
+        return MACHINE_TABLES
+    
+    def get_current_machine(self) -> str:
+        """Retorna el nom de la màquina actual"""
+        return self.machine_name
     
     def close(self):
         """Tanca la connexió amb la base de dades"""

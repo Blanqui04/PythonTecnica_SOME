@@ -101,7 +101,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
     study_requested = pyqtSignal(list, dict)
     metrics_updated = pyqtSignal(dict)
     
-    def __init__(self, parent=None, client=None, project_reference=None, batch_lot=None):
+    def __init__(self, parent=None, client=None, project_reference=None, batch_lot=None, machine='all'):
         QWidget.__init__(self, parent)
         ResponsiveWidget.__init__(self)
         self.elements = []
@@ -109,6 +109,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.client = client
         self.project_reference = project_reference
         self.batch_lot = batch_lot
+        self.machine = machine  # Selected machine for measurements
         
         # Initialize input collections
         self.values_inputs = []  # For compatibility with existing code
@@ -226,6 +227,37 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         
         mode_layout.addLayout(mode_btn_layout)
         layout.addWidget(mode_frame)
+        
+        # Machine selection
+        machine_frame = QFrame()
+        machine_frame.setStyleSheet("""
+            QFrame {
+                background-color: white;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        machine_layout = QVBoxLayout(machine_frame)
+        
+        machine_label = QLabel("🔧 Màquina / Machine:")
+        machine_label.setFont(QFont("Segoe UI", 10, QFont.Bold))
+        machine_layout.addWidget(machine_label)
+        
+        self.machine_combo = ModernComboBox()
+        # Get available machines from service
+        from src.services.measurement_history_service import MeasurementHistoryService
+        available_machines = MeasurementHistoryService.get_available_machines()
+        for key, info in available_machines.items():
+            self.machine_combo.addItem(info['name'], key)
+        # Set default to 'all'
+        default_index = self.machine_combo.findData('all')
+        if default_index >= 0:
+            self.machine_combo.setCurrentIndex(default_index)
+        self.machine_combo.currentIndexChanged.connect(self._on_machine_changed)
+        machine_layout.addWidget(self.machine_combo)
+        
+        layout.addWidget(machine_frame)
         
         # Element information section
         self.info_frame = QFrame()
@@ -772,6 +804,22 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
             self.parent().updateGeometry()
         self.update()
     
+    def _on_machine_changed(self):
+        """Handle machine selection change"""
+        # Get selected machine key from combo data
+        selected_machine = self.machine_combo.currentData()
+        if selected_machine:
+            self.machine = selected_machine
+            logger.info(f"Machine changed to: {self.machine_combo.currentText()} ({selected_machine})")
+            
+            # If in database mode, reload elements with new machine
+            if self.database_radio.isChecked():
+                # Clear current elements
+                self.element_selector.clear()
+                self.element_selector.addItem("Select an element...")
+                # Notify user to reload
+                logger.info("Machine changed. Please reload elements from database.")
+    
     def _toggle_tol_minus(self, state):
         """Enable/disable lower tolerance field"""
         is_checked = (state == 2)  # Qt.Checked = 2
@@ -1151,7 +1199,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
             return
         
         try:
-            service = MeasurementHistoryService()
+            service = MeasurementHistoryService(machine=self.machine)
             elements = service.get_available_elements(
                 self.client, self.project_reference, batch_lot=self.batch_lot
             )
@@ -1217,7 +1265,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
                 logger.info(f"Loading data for element: {element_name}, property: {property_name}")
                 
                 # Use the new specific element method
-                service = MeasurementHistoryService()
+                service = MeasurementHistoryService(machine=self.machine)
                 # Set limit based on selection (None for "All" means no limit)
                 limit = self.measurement_limit if self.measurement_limit is not None else 10000
                 filtered_measurements = service.get_element_measurements(
