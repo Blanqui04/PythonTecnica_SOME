@@ -173,8 +173,8 @@ class MeasurementHistoryService:
             select_clause = "DISTINCT element, pieza, datum, property"
             
             if batch_lot:
-                where_clause = "client = %s AND id_referencia_client = %s AND id_lot = %s"
-                params = (client, project_reference, batch_lot)
+                where_clause = "client = %s AND id_referencia_client = %s AND UPPER(id_lot) LIKE UPPER(%s)"
+                params = (client, project_reference, f'%{batch_lot}%')
             else:
                 where_clause = "client = %s AND id_referencia_client = %s"
                 params = (client, project_reference)
@@ -256,10 +256,10 @@ class MeasurementHistoryService:
                         conditions.append("property = %s")
                         params.append(property_name)
                     
-                    # Add batch lot condition if specified
+                    # Add batch lot condition if specified (CONTAINS matching)
                     if batch_lot:
-                        conditions.append("id_lot = %s")
-                        params.append(batch_lot)
+                        conditions.append("UPPER(id_lot) LIKE UPPER(%s)")
+                        params.append(f'%{batch_lot}%')
                     
                     # Build final WHERE clause
                     where_clause = " AND ".join(conditions)
@@ -366,10 +366,10 @@ class MeasurementHistoryService:
                             FROM mesuresqualitat 
                             WHERE {strategy['client_condition']} 
                             AND {ref_condition} 
-                            AND id_lot = %s
+                            AND UPPER(id_lot) LIKE UPPER(%s)
                             GROUP BY element, pieza, datum, property, id_referencia_client
                         """
-                        params = strategy['params'] + [batch_lot]
+                        params = strategy['params'] + [f'%{batch_lot}%']
                         query, final_params = self._convert_query_to_union(query_template, tuple(params))
                         query = f"SELECT * FROM ({query}) AS combined ORDER BY element, pieza, datum, property"
                     else:
@@ -470,17 +470,17 @@ class MeasurementHistoryService:
         # Construir estratègies de cerca
         strategies = []
         
-        # 1. Cerca exacta amb variants principals
+        # 1. Cerca CONTAINS (flexible) amb variants principals
         main_ref_variants = ref_variants[:4]  # Les 4 més comunes
         main_client_variants = client_variants[:3]  # Les 3 més comunes
         
         for client_var in main_client_variants:
             for ref_var in main_ref_variants:
                 strategies.append({
-                    'name': f'Exacta: {client_var[:10]} + {ref_var[:15]}',
-                    'client_condition': 'client = %s',
-                    'ref_condition': 'id_referencia_client = %s',
-                    'params': [client_var, ref_var],
+                    'name': f'Contains: {client_var[:10]} + {ref_var[:15]}',
+                    'client_condition': 'UPPER(client) = UPPER(%s)',
+                    'ref_condition': 'UPPER(id_referencia_client) LIKE UPPER(%s)',
+                    'params': [client_var, f'%{ref_var}%'],  # CONTAINS matching
                     'priority': 1  # Alta prioritat
                 })
         
@@ -554,8 +554,8 @@ class MeasurementHistoryService:
             params = [client, project_reference]
             
             if batch_lot:
-                base_conditions += " AND t.id_lot = %s"
-                params.append(batch_lot)
+                base_conditions += " AND UPPER(t.id_lot) LIKE UPPER(%s)"
+                params.append(f'%{batch_lot}%')
             
             # Afegir condicions per element, pieza, datum, property considerant NULL
             if element is None or element == 'None':
