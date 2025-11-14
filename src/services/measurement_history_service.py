@@ -20,26 +20,44 @@ MACHINE_TABLES = {
     'gompc_projectes': {
         'name': 'GOMPC Projectes',
         'tables': ['mesures_gompc_projectes'],
-        'description': 'Mesures dimensionals de projectes (GOMPC)'
+        'description': 'Mesures dimensionals de projectes (GOMPC)',
+        'type': 'dimensional'
     },
     'gompc_nou': {
         'name': 'GOMPC Nou',
         'tables': ['mesures_gompcnou'],
-        'description': 'Mesures dimensionals noves (GOMPCNOU)'
+        'description': 'Mesures dimensionals noves (GOMPCNOU)',
+        'type': 'dimensional'
+    },
+    'hoytom': {
+        'name': 'Hoytom',
+        'tables': ['mesureshoytom'],
+        'description': 'Assaigs de tracció (Hoytom)',
+        'type': 'tensile',
+        'schema': 'public'  # Només a public
+    },
+    'torsio': {
+        'name': 'Torsió',
+        'tables': ['mesures_torsio'],
+        'description': 'Assaigs de torsió',
+        'type': 'torsion',
+        'schema': 'public'  # Només a public
     },
     'all': {
         'name': 'Totes les màquines',
-        'tables': ['mesures_gompc_projectes', 'mesures_gompcnou'],
-        'description': 'Totes les màquines compatibles amb estudis de capacitat'
+        'tables': ['mesures_gompc_projectes', 'mesures_gompcnou', 'mesureshoytom'],
+        'description': 'Totes les màquines amb mesures (dimensional + tracció)',
+        'type': 'mixed'
     }
 }
 
 # Taules per defecte (per compatibilitat amb codi existent)
 MEASUREMENT_TABLES = MACHINE_TABLES['all']['tables']
 
-# Taules amb altres estructures (no compatibles amb estudis de capacitat)
-# - mesureshoytom: Assaigs de tracció (no té element/pieza/datum/property)
-# - mesurestorsio: Assaigs de torsió (no té element/pieza/datum/property)
+# NOTA: Hoytom i Torsió tenen estructures diferents (assaigs de tracció/torsió)
+# - No tenen columnes: element, pieza, datum, property
+# - Tenen: ref_some, ref_client, operacion_lot_fabric_n, tipo_ensayo
+# - Cerca per referències funciona, però estructura diferent per estudis
 
 class MeasurementHistoryService:
     """Servei per obtenir l'historial de mesures de la base de dades"""
