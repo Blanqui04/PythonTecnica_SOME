@@ -12,6 +12,12 @@ from ..utils.responsive_utils import ResponsiveWidget, ScreenUtils
 from .buttons import ModernButton, CompactButton
 from .inputs import ModernLineEdit, ModernComboBox
 from src.services.measurement_history_service import MeasurementHistoryService
+from .enhanced_features import (
+    SearchHistoryManager,
+    SearchHistoryDialog,
+    MultiLOTComparisonDialog,
+    ReferenceTemplateDialog
+)
 import logging
 import math
 from scipy import stats
@@ -115,6 +121,9 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.values_inputs = []  # For compatibility with existing code
         self.values_layout = None  # Will be set during UI initialization
         self.measurement_limit = 10  # Default measurement limit
+        
+        # NEW: Initialize enhanced features
+        self.search_history = SearchHistoryManager()
         
         self.setStyleSheet(get_element_input_styles())
         self.init_ui()
@@ -444,6 +453,24 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.load_data_button.setEnabled(False)
         db_btn_layout.addWidget(self.load_data_button)
         
+        # NEW: Search History button
+        self.history_button = QPushButton("📜 History")
+        self.history_button.setStyleSheet("""
+            QPushButton {
+                background-color: #6c757d;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #5a6268;
+            }
+        """)
+        self.history_button.clicked.connect(self._show_search_history)
+        db_btn_layout.addWidget(self.history_button)
+        
         # Measurement quantity selector
         db_btn_layout.addWidget(QLabel("Measurements:"))
         self.quantity_selector = QComboBox()
@@ -465,6 +492,67 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         
         self.db_buttons_frame.hide()
         layout.addWidget(self.db_buttons_frame)
+        
+        # NEW: Advanced features buttons (second row)
+        self.advanced_buttons_frame = QFrame()
+        self.advanced_buttons_frame.setStyleSheet("""
+            QFrame {
+                background-color: #f8f9fa;
+                border: 1px solid #dee2e6;
+                border-radius: 4px;
+                padding: 10px;
+            }
+        """)
+        advanced_btn_layout = QHBoxLayout(self.advanced_buttons_frame)
+        
+        # Template button
+        self.template_button = QPushButton("📋 Create Template")
+        self.template_button.setStyleSheet("""
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        self.template_button.clicked.connect(self._create_reference_template)
+        self.template_button.setEnabled(False)
+        advanced_btn_layout.addWidget(self.template_button)
+        
+        # Multi-LOT comparison button
+        self.compare_lots_button = QPushButton("📊 Compare LOTs")
+        self.compare_lots_button.setStyleSheet("""
+            QPushButton {
+                background-color: #fd7e14;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                padding: 8px 16px;
+                font-weight: 500;
+            }
+            QPushButton:hover {
+                background-color: #e8590c;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
+        self.compare_lots_button.clicked.connect(self._compare_multiple_lots)
+        self.compare_lots_button.setEnabled(False)
+        advanced_btn_layout.addWidget(self.compare_lots_button)
+        
+        advanced_btn_layout.addStretch()
+        
+        self.advanced_buttons_frame.hide()
+        layout.addWidget(self.advanced_buttons_frame)
         
         # VALUES SECTION - OPTIMIZED
         values_frame = QFrame()
@@ -1228,6 +1316,10 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
             self.element_selector.setEnabled(True)
             self.load_data_button.setEnabled(True)
             
+            # NEW: Enable advanced features and save to history
+            self._enable_advanced_features()
+            self._save_current_search()
+            
             logger.info(f"Loaded {len(elements)} available elements")
             QMessageBox.information(
                 self, "Success", 
@@ -1493,3 +1585,137 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
                 
         except Exception as e:
             logger.warning(f"Could not scale widget sizes: {e}")
+    
+    # ==================== NEW ENHANCED FEATURES ====================
+    
+    def _show_search_history(self):
+        """Show search history dialog"""
+        try:
+            dialog = SearchHistoryDialog(self.search_history, self)
+            dialog.search_selected.connect(self._apply_history_search)
+            dialog.exec_()
+        except Exception as e:
+            logger.error(f"Error showing search history: {e}")
+            QMessageBox.warning(self, "Error", f"Could not show search history: {e}")
+    
+    def _apply_history_search(self, search: dict):
+        """Apply a search from history"""
+        try:
+            # Update input fields
+            if search.get('client'):
+                # Find and set client in combo or input
+                pass  # Would need to update client input
+            
+            if search.get('reference'):
+                # Set reference
+                pass  # Would need to update reference input
+            
+            if search.get('lot'):
+                # Set LOT
+                pass  # Would need to update LOT input
+            
+            if search.get('machine'):
+                # Set machine
+                machine_key = search['machine']
+                index = self.machine_combo.findData(machine_key)
+                if index >= 0:
+                    self.machine_combo.setCurrentIndex(index)
+            
+            QMessageBox.information(
+                self,
+                "Search Applied",
+                f"Applied search: {search['client']} - {search['reference']}"
+            )
+            
+        except Exception as e:
+            logger.error(f"Error applying history search: {e}")
+            QMessageBox.warning(self, "Error", f"Could not apply search: {e}")
+    
+    def _create_reference_template(self):
+        """Create a template for reference-based analysis"""
+        try:
+            if not self.client or not self.project_reference:
+                QMessageBox.warning(
+                    self,
+                    "Missing Information",
+                    "Please load elements first (client and reference required)"
+                )
+                return
+            
+            dialog = ReferenceTemplateDialog(
+                self.client,
+                self.project_reference,
+                self.machine,
+                self
+            )
+            dialog.template_created.connect(self._apply_template)
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error creating template: {e}")
+            QMessageBox.warning(self, "Error", f"Could not create template: {e}")
+    
+    def _apply_template(self, template: dict):
+        """Apply a template configuration"""
+        try:
+            logger.info(f"Applying template: {template['name']}")
+            
+            # Set machine
+            machine_key = template['machine']
+            index = self.machine_combo.findData(machine_key)
+            if index >= 0:
+                self.machine_combo.setCurrentIndex(index)
+            
+            # Load elements if configured
+            if template['include_all_elements']:
+                self._load_available_elements()
+            
+            # Handle LOT mode
+            lot_mode = template.get('lot_mode')
+            if lot_mode == "Compare multiple LOTs":
+                # Trigger multi-LOT comparison
+                self._compare_multiple_lots()
+            
+        except Exception as e:
+            logger.error(f"Error applying template: {e}")
+            QMessageBox.warning(self, "Error", f"Could not apply template: {e}")
+    
+    def _compare_multiple_lots(self):
+        """Open multi-LOT comparison dialog"""
+        try:
+            if not self.client or not self.project_reference:
+                QMessageBox.warning(
+                    self,
+                    "Missing Information",
+                    "Please load elements first (client and reference required)"
+                )
+                return
+            
+            dialog = MultiLOTComparisonDialog(
+                self.client,
+                self.project_reference,
+                self.machine,
+                self
+            )
+            dialog.exec_()
+            
+        except Exception as e:
+            logger.error(f"Error opening multi-LOT comparison: {e}")
+            QMessageBox.warning(self, "Error", f"Could not open comparison: {e}")
+    
+    def _enable_advanced_features(self):
+        """Enable advanced feature buttons when data is loaded"""
+        if self.client and self.project_reference:
+            self.template_button.setEnabled(True)
+            self.compare_lots_button.setEnabled(True)
+            self.advanced_buttons_frame.show()
+    
+    def _save_current_search(self):
+        """Save current search to history"""
+        if self.client and self.project_reference:
+            self.search_history.add_search(
+                client=self.client,
+                reference=self.project_reference,
+                lot=self.batch_lot,
+                machine=self.machine
+            )

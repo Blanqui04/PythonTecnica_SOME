@@ -479,6 +479,66 @@ class MeasurementHistoryService:
             logger.error(f"Error obtenint elements disponibles: {e}")
             raise
     
+    def get_distinct_lots(self, client: str, project_reference: str) -> List[str]:
+        """
+        Get distinct LOT codes for a client and project reference
+        
+        Args:
+            client: Client name
+            project_reference: Project reference
+            
+        Returns:
+            List of distinct LOT codes
+        """
+        try:
+            logger.info(f"🔍 Getting distinct LOTs for {client}/{project_reference}")
+            
+            # Build search strategies
+            search_strategies = self._build_universal_search_conditions(client, project_reference)
+            
+            lots = set()
+            
+            for strategy in search_strategies:
+                try:
+                    # Handle special case for IN clauses
+                    if 'IN ({})' in strategy['ref_condition']:
+                        ref_params = strategy['params'][1:]  # Skip client param
+                        placeholders = ','.join(['%s'] * len(ref_params))
+                        ref_condition = strategy['ref_condition'].replace('{}', placeholders)
+                    else:
+                        ref_condition = strategy['ref_condition']
+                    
+                    query_template = f"""
+                        SELECT DISTINCT COALESCE(id_lot, 'Unknown') as lot
+                        FROM mesuresqualitat 
+                        WHERE {strategy['client_condition']} 
+                        AND {ref_condition}
+                        AND id_lot IS NOT NULL
+                        AND id_lot != ''
+                    """
+                    
+                    query, final_params = self._convert_query_to_union(query_template, tuple(strategy['params']))
+                    results = self.db_connection.fetchall(query, final_params)
+                    
+                    if results:
+                        for row in results:
+                            if row[0] and row[0] != 'Unknown':
+                                lots.add(row[0])
+                        logger.debug(f"✅ Strategy '{strategy['name']}': found {len(results)} LOTs")
+                        break
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️ Error in strategy '{strategy['name']}': {e}")
+                    continue
+            
+            lot_list = sorted(list(lots))
+            logger.info(f"✅ Found {len(lot_list)} distinct LOTs")
+            return lot_list
+            
+        except Exception as e:
+            logger.error(f"Error getting distinct LOTs: {e}")
+            return []
+    
     def _build_universal_search_conditions(self, client: str, project_reference: str):
         """
         Construeix condicions de cerca universals per qualsevol client i referència
