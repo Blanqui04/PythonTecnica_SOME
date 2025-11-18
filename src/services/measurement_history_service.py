@@ -8,87 +8,206 @@ from src.database.database_connection import PostgresConn
 
 logger = logging.getLogger(__name__)
 
-# Constants per les noves taules de mesures
-# Només les taules compatibles amb estudis de capacitat (amb element, pieza, datum, property)
-# NOTA: Utilitzem schema 'qualitat' que s'alimenta automàticament des d'Airflow
-# Si no existeix, fem fallback a 'public'
-MEASUREMENT_SCHEMA = 'qualitat'
-FALLBACK_SCHEMA = 'public'
+# Constants per les noves taules de mesures al schema 1000_SQB_qualitat
+# Cada màquina té la seva pròpia taula amb estructura específica
+# IMPORTANT: El schema comença amb número, per tant necessita cometes dobles
+MEASUREMENT_SCHEMA = '"1000_SQB_qualitat"'
 
-# Definició de màquines i les seves taules
+# Mapatge de columnes per cada taula (normalització a estructura comuna)
+# Format: 'columna_estandar': 'columna_real_a_taula'
+TABLE_COLUMN_MAPPING = {
+    'mesures_gompc_projectes': {
+        'table': 'mesures_gompc_projectes',
+        'schema': '1000_SQB_qualitat',
+        'machine_name': 'GOMPC Projectes (Escanner Projectes)',
+        'type': 'dimensional',
+        'columns': {
+            'id_referencia_client': 'id_referencia_some',  # Referència (NOTA: id_referencia_some!)
+            'id_lot': 'id_lot',  # LOT
+            'element': 'id_element',  # Element/característica
+            'pieza': 'element',  # Nom element (backup)
+            'datum': 'element',  # Datum (mateix que element)
+            'property': 'element',  # Property (mateix que element)
+            'actual': 'actual',  # Valor mesurat
+            'nominal': 'nominal',  # Valor nominal
+            'tolerancia_positiva': 'tolerancia_positiva',  # Tolerància +
+            'tolerancia_negativa': 'tolerancia_negativa',  # Tolerància -
+            'desviacio': 'desviacio',  # Desviació
+            'data_hora': 'data_hora',  # Timestamp
+            'cavitat': 'cavitat'  # Cavitat (si existeix)
+        }
+    },
+    'mesures_gompc_produccio': {
+        'table': 'mesures_gompc_produccio',
+        'schema': '1000_SQB_qualitat',
+        'machine_name': 'GOMPC Producció (Escanner Producció)',
+        'type': 'dimensional',
+        'columns': {
+            'id_referencia_client': 'id_referencia_some',  # Referència
+            'id_lot': 'id_lot',
+            'element': 'id_element',
+            'pieza': 'element',
+            'datum': 'element',
+            'property': 'element',
+            'actual': 'actual',
+            'nominal': 'nominal',
+            'tolerancia_positiva': 'tolerancia_positiva',
+            'tolerancia_negativa': 'tolerancia_negativa',
+            'desviacio': 'desviacio',
+            'data_hora': 'data_hora',
+            'cavitat': 'cavitat'
+        }
+    },
+    'mesureshoytom': {
+        'table': 'mesureshoytom',
+        'schema': '1000_SQB_qualitat',
+        'machine_name': 'Hoytom',
+        'type': 'tensile',
+        'columns': {
+            'id_referencia_client': 'ref_some',  # Columna real: ref_some
+            'id_lot': 'operacion_lot_fabric_n',  # LOT real: operacion_lot_fabric_n
+            'element': 'tipo_ensayo',  # Usar tipo_ensayo com a element
+            'pieza': 'tipo_probeta',  # Tipus de proveta
+            'datum': 'denom_probeta',  # Denominació proveta
+            'property': 'modo_rotura',  # Mode de rotura
+            'actual': 'resist_max_rm',  # Resistència màxima (valor principal)
+            'nominal': None,  # No té nominal fix
+            'tolerancia_positiva': None,  # No té toleràncies definides
+            'tolerancia_negativa': None,
+            'desviacio': None,  # No té desviació
+            'data_hora': 'fecha_ensayo',  # Data de l'assaig
+            'cavitat': None  # No té cavitat
+        }
+    },
+    'mesurestorsio': {
+        'table': 'mesurestorsio',
+        'schema': '1000_SQB_qualitat',
+        'machine_name': 'Desoutter (Torsió)',
+        'type': 'torsion',
+        'columns': {
+            'id_referencia_client': 'ref_some',  # Columna real: ref_some
+            'id_lot': 'lot',  # LOT real: lot
+            'element': 'tipassaig',  # Tipus d'assaig com a element
+            'pieza': 'familia',  # Família
+            'datum': 'rosca',  # Rosca
+            'property': 'pset',  # PSet
+            'actual': 'torque',  # Valor de torque (principal)
+            'nominal': None,  # No té nominal fix
+            'tolerancia_positiva': None,  # No té toleràncies
+            'tolerancia_negativa': None,
+            'desviacio': None,  # No té desviació
+            'data_hora': 'DataHoraCorrect',  # Data/hora corregida
+            'cavitat': None
+        }
+    },
+    'mesureszwick': {
+        'table': 'mesureszwick',
+        'schema': '1000_SQB_qualitat',
+        'machine_name': 'Zwick',
+        'type': 'tensile',
+        'columns': {
+            'id_referencia_client': 'reference',  # Columna real: reference
+            'id_lot': 'batch',  # LOT real: batch (també hi ha inspection_lot)
+            'element': 'test_type',  # Tipus de test com a element
+            'pieza': 'part_name',  # Nom de la peça
+            'datum': 'station',  # Estació
+            'property': 'break_type',  # Tipus de trencament
+            'actual': 'max_force',  # Força màxima (valor principal)
+            'nominal': None,  # No té nominal fix
+            'tolerancia_positiva': None,  # No té toleràncies
+            'tolerancia_negativa': None,
+            'desviacio': None,  # No té desviació
+            'data_hora': 'test_datetime',  # Data/hora del test
+            'cavitat': 'cavity'  # SÍ té cavitat!
+        }
+    }
+}
+
+# Definició de màquines disponibles
 MACHINE_TABLES = {
     'gompc_projectes': {
-        'name': 'GOMPC Projectes',
-        'tables': ['mesures_gompc_projectes'],
-        'description': 'Mesures dimensionals de projectes (GOMPC)',
+        'name': 'GOMPC Projectes (Escanner Projectes)',
+        'table_key': 'mesures_gompc_projectes',
+        'description': 'Mesures dimensionals de projectes amb escàner GOMPC',
         'type': 'dimensional'
     },
-    'gompc_nou': {
-        'name': 'GOMPC Nou',
-        'tables': ['mesures_gompcnou'],
-        'description': 'Mesures dimensionals noves (GOMPCNOU)',
+    'gompc_produccio': {
+        'name': 'GOMPC Producció (Escanner Producció)',
+        'table_key': 'mesures_gompc_produccio',
+        'description': 'Mesures dimensionals de producció amb escàner GOMPC',
         'type': 'dimensional'
     },
     'hoytom': {
         'name': 'Hoytom',
-        'tables': ['mesureshoytom'],
-        'description': 'Assaigs de tracció (Hoytom)',
-        'type': 'tensile',
-        'schema': 'public'  # Només a public
+        'table_key': 'mesureshoytom',
+        'description': 'Assaigs de tracció amb màquina Hoytom',
+        'type': 'tensile'
     },
     'torsio': {
-        'name': 'Torsió',
-        'tables': ['mesures_torsio'],
-        'description': 'Assaigs de torsió',
-        'type': 'torsion',
-        'schema': 'public'  # Només a public
+        'name': 'Desoutter (Torsió)',
+        'table_key': 'mesurestorsio',
+        'description': 'Assaigs de torsió amb torquímetre Desoutter',
+        'type': 'torsion'
+    },
+    'zwick': {
+        'name': 'Zwick',
+        'table_key': 'mesureszwick',
+        'description': 'Assaigs de tracció amb màquina Zwick',
+        'type': 'tensile'
     },
     'all': {
         'name': 'Totes les màquines',
-        'tables': ['mesures_gompc_projectes', 'mesures_gompcnou', 'mesureshoytom'],
-        'description': 'Totes les màquines amb mesures (dimensional + tracció)',
+        'table_key': 'all',
+        'description': 'Consulta a totes les taules de mesures disponibles',
         'type': 'mixed'
     }
 }
 
 # Taules per defecte (per compatibilitat amb codi existent)
-MEASUREMENT_TABLES = MACHINE_TABLES['all']['tables']
-
-# NOTA: Hoytom i Torsió tenen estructures diferents (assaigs de tracció/torsió)
-# - No tenen columnes: element, pieza, datum, property
-# - Tenen: ref_some, ref_client, operacion_lot_fabric_n, tipo_ensayo
-# - Cerca per referències funciona, però estructura diferent per estudis
+# PRIORITZEM mesures_gompc_projectes com a taula principal
+DEFAULT_TABLE = 'mesures_gompc_projectes'
+ALL_TABLES = list(TABLE_COLUMN_MAPPING.keys())
 
 class MeasurementHistoryService:
     """Servei per obtenir l'historial de mesures de la base de dades"""
     
-    def __init__(self, machine: str = 'all'):
+    def __init__(self, machine: str = 'gompc_projectes'):
         """
         Inicialitza el servei amb la configuració de la base de dades
         
         Args:
             machine: Tipus de màquina/taula a utilitzar. Opcions:
-                    - 'gompc_projectes': Només GOMPC Projectes
-                    - 'gompc_nou': Només GOMPC Nou
-                    - 'all': Totes les màquines (per defecte)
+                    - 'gompc_projectes': GOMPC Projectes (PER DEFECTE)
+                    - 'gompc_produccio': GOMPC Producció
+                    - 'hoytom': Hoytom
+                    - 'torsio': Desoutter (Torsió)
+                    - 'zwick': Zwick
+                    - 'all': Totes les màquines
         """
         self.db_connection = None
         self.machine = machine
+        self.schema = MEASUREMENT_SCHEMA  # Sempre utilitzem 1000_SQB_qualitat
         
-        # Obtenir taules per la màquina seleccionada
+        # Obtenir configuració de la màquina seleccionada
         if machine in MACHINE_TABLES:
-            self.measurement_tables = MACHINE_TABLES[machine]['tables']
-            self.machine_name = MACHINE_TABLES[machine]['name']
+            machine_config = MACHINE_TABLES[machine]
+            self.machine_name = machine_config['name']
+            
+            # Si és 'all', utilitzar totes les taules
+            if machine == 'all':
+                self.table_keys = ALL_TABLES
+            else:
+                self.table_keys = [machine_config['table_key']]
+            
             logger.info(f"Màquina seleccionada: {self.machine_name}")
+            logger.info(f"Taules: {self.table_keys}")
         else:
-            # Fallback a totes les taules
-            self.measurement_tables = MEASUREMENT_TABLES
-            self.machine_name = 'Totes les màquines'
-            logger.warning(f"Màquina '{machine}' no reconeguda, usant totes les taules")
+            # Fallback a taula per defecte
+            self.table_keys = [DEFAULT_TABLE]
+            self.machine_name = TABLE_COLUMN_MAPPING[DEFAULT_TABLE]['machine_name']
+            logger.warning(f"Màquina '{machine}' no reconeguda, usant taula per defecte: {DEFAULT_TABLE}")
         
-        self.schema = None  # Es detectarà automàticament
         self._load_db_config()
-        self._detect_schema()
     
     def _load_db_config(self):
         """Carrega la configuració de la base de dades"""
@@ -118,98 +237,96 @@ class MeasurementHistoryService:
             logger.error(f"Error carregant configuració de base de dades: {e}")
             raise
     
-    def _detect_schema(self):
-        """Detecta automàticament quin schema utilitzar (qualitat o public)"""
-        try:
-            conn = self.db_connection.connect()
-            cursor = conn.cursor()
-            
-            # Verificar si existeix el schema 'qualitat' amb taules
-            cursor.execute("""
-                SELECT COUNT(*) 
-                FROM information_schema.tables 
-                WHERE table_schema = %s 
-                AND table_name = ANY(%s)
-            """, (MEASUREMENT_SCHEMA, MEASUREMENT_TABLES))
-            
-            count_qualitat = cursor.fetchone()[0]
-            
-            if count_qualitat > 0:
-                self.schema = MEASUREMENT_SCHEMA
-                logger.info(f"[OK] Utilitzant schema '{MEASUREMENT_SCHEMA}' (alimentat per Airflow ETL)")
-            else:
-                self.schema = FALLBACK_SCHEMA
-                logger.info(f"[INFO] Schema '{MEASUREMENT_SCHEMA}' no disponible, utilitzant '{FALLBACK_SCHEMA}' (legacy)")
-            
-            cursor.close()
-            
-        except Exception as e:
-            logger.warning(f"Error detectant schema, utilitzant fallback: {e}")
-            self.schema = FALLBACK_SCHEMA
+    def _get_table_mapping(self, table_key: str) -> Dict[str, Any]:
+        """Obté el mapatge de columnes per una taula específica"""
+        if table_key in TABLE_COLUMN_MAPPING:
+            return TABLE_COLUMN_MAPPING[table_key]
+        else:
+            logger.warning(f"Taula '{table_key}' no trobada al mapatge, usant default")
+            return TABLE_COLUMN_MAPPING[DEFAULT_TABLE]
     
-    def _convert_query_to_union(self, query_template: str, params: tuple) -> tuple:
+    def _build_select_columns(self, table_key: str) -> str:
+        """Construeix la llista de columnes SELECT amb àlies per normalitzar noms"""
+        mapping = self._get_table_mapping(table_key)
+        columns = mapping['columns']
+        
+        select_parts = []
+        for std_col, real_col in columns.items():
+            if real_col is None:
+                # Columna no disponible, usar NULL
+                select_parts.append(f"NULL as {std_col}")
+            else:
+                # Columna disponible
+                if real_col == std_col:
+                    select_parts.append(real_col)
+                else:
+                    select_parts.append(f"{real_col} as {std_col}")
+        
+        return ", ".join(select_parts)
+    
+    def _get_reference_column(self, table_key: str) -> str:
+        """Obté el nom real de la columna de referència per una taula"""
+        mapping = self._get_table_mapping(table_key)
+        return mapping['columns']['id_referencia_client']
+    
+    def _get_lot_column(self, table_key: str) -> str:
+        """Obté el nom real de la columna de LOT per una taula"""
+        mapping = self._get_table_mapping(table_key)
+        return mapping['columns']['id_lot']
+    
+    def _build_union_query_with_mapping(self, where_conditions: Dict[str, str], 
+                                         order_by: str = None, 
+                                         limit: int = None) -> tuple:
         """
-        Converteix un query amb 'FROM mesuresqualitat' a UNION ALL de totes les taules
+        Construeix un query UNION ALL utilitzant el mapatge de columnes
         
         Args:
-            query_template: Query original amb 'FROM mesuresqualitat'
-            params: Paràmetres del query
+            where_conditions: Diccionari amb condicions WHERE per columnes estàndard
+                            Ex: {'id_referencia_client': 'SOME123', 'id_lot': 'LOT001'}
+            order_by: Columna estàndard per ORDER BY (opcional)
+            limit: Límit de resultats (opcional)
             
         Returns:
-            Tuple (query_modificat, params_multiplicats)
+            Tuple (query, params)
         """
-        # Dividir el query en parts (abans i després de FROM mesuresqualitat)
-        if 'FROM mesuresqualitat' not in query_template:
-            # Si no té mesuresqualitat, retornar sense canvis
-            return (query_template, params)
-        
-        # Reemplaçar mesuresqualitat per una taula genèrica amb àlies __TABLE__ t
-        query_template = query_template.replace('FROM mesuresqualitat', 'FROM __TABLE__ t')
-        
-        # Construir UNION ALL amb schema detectat
         union_parts = []
-        for table in self.measurement_tables:
-            # Utilitzar schema.table
-            full_table_name = f"{self.schema}.{table}"
-            table_query = query_template.replace('__TABLE__', full_table_name)
-            union_parts.append(f"({table_query})")
+        all_params = []
         
+        for table_key in self.table_keys:
+            mapping = self._get_table_mapping(table_key)
+            table_name = f"{self.schema}.{mapping['table']}"
+            
+            # Construir SELECT amb columnes normalitzades
+            select_cols = self._build_select_columns(table_key)
+            
+            # Construir WHERE amb columnes reals
+            where_parts = []
+            table_params = []
+            for std_col, value in where_conditions.items():
+                real_col = mapping['columns'].get(std_col)
+                if real_col and real_col != 'NULL':
+                    if value is not None:
+                        where_parts.append(f"{real_col} = %s")
+                        table_params.append(value)
+            
+            # Construir query per aquesta taula
+            query = f"SELECT {select_cols} FROM {table_name}"
+            if where_parts:
+                query += f" WHERE {' AND '.join(where_parts)}"
+            
+            union_parts.append(f"({query})")
+            all_params.extend(table_params)
+        
+        # Unir totes les parts
         final_query = " UNION ALL ".join(union_parts)
         
-        # Multiplicar paràmetres per cada taula
-        final_params = params * len(self.measurement_tables)
+        # Afegir ORDER BY i LIMIT a l'exterior
+        if order_by:
+            final_query = f"SELECT * FROM ({final_query}) AS combined ORDER BY {order_by}"
+        if limit:
+            final_query += f" LIMIT {limit}"
         
-        return (final_query, final_params)
-    
-    def _build_union_query(self, select_clause: str, where_clause: str, order_clause: str = "", limit_clause: str = "") -> str:
-        """
-        Construeix un query amb UNION ALL per totes les taules de mesures
-        
-        Args:
-            select_clause: Columnes a seleccionar (sense SELECT)
-            where_clause: Condicions WHERE (sense WHERE)
-            order_clause: Ordre (opcional, sense ORDER BY)
-            limit_clause: Límit (opcional, sense LIMIT)
-            
-        Returns:
-            Query complet amb UNION ALL
-        """
-        union_parts = []
-        for table in self.measurement_tables:
-            query_part = f"SELECT {select_clause} FROM {table}"
-            if where_clause:
-                query_part += f" WHERE {where_clause}"
-            union_parts.append(f"({query_part})")
-        
-        full_query = " UNION ALL ".join(union_parts)
-        
-        if order_clause:
-            full_query = f"SELECT * FROM ({full_query}) AS combined ORDER BY {order_clause}"
-        
-        if limit_clause:
-            full_query += f" LIMIT {limit_clause}"
-            
-        return full_query
+        return (final_query, tuple(all_params))
     
     def get_measurement_history(self, client: str, project_reference: str, limit: int = 10, batch_lot: str = None) -> List[Dict[str, Any]]:
         """
@@ -265,96 +382,120 @@ class MeasurementHistoryService:
             logger.error(f"Error obtenint historial de mesures: {e}")
             raise
     
-    def get_element_measurements(self, client: str, project_reference: str, element_name: str, property_name: str = None, batch_lot: str = None, limit: int = 100) -> List[Dict[str, Any]]:
+    def get_element_measurements(self, client: str, project_reference: str, element_name: str, property_name: str = None, batch_lot: str = None, lot: str = None, limit: int = 100) -> List[Dict[str, Any]]:
         """
-        Obté mesures específiques per un element i propietat
+        Obté mesures específiques per un element
+        Utilitza el nou sistema de mapatge de columnes
         
         Args:
             client: Nom del client
             project_reference: Referència del projecte  
             element_name: Nom de l'element
-            property_name: Propietat de l'element (opcional)
-            batch_lot: Batch/lot específic (opcional)
+            property_name: Propietat (opcional, per compatibilitat)
+            batch_lot: Batch/lot (opcional, per compatibilitat)
+            lot: LOT específic (opcional)
             limit: Límit de resultats
             
         Returns:
             Llista de mesures per l'element especificat
         """
         try:
-            logger.info(f"🔍 Obtenint mesures per element='{element_name}', property='{property_name}'")
+            logger.info(f"🔍 [NEW SYSTEM] Obtenint mesures per element='{element_name}'")
             
-            # Utilitzar cerca universal flexible
-            search_strategies = self._build_universal_search_conditions(client, project_reference)
+            # Usar batch_lot si lot no està especificat
+            if lot is None and batch_lot:
+                lot = batch_lot
             
-            results = []
+            # Variants de referència
+            ref_variants = [
+                project_reference,
+                f"{project_reference}D",
+                f"{project_reference}_D",
+                project_reference.upper(),
+                project_reference.lower()
+            ]
             
-            for strategy in search_strategies:
+            all_measurements = []
+            
+            for table_key in self.table_keys:
                 try:
-                    # Handle special case for IN clauses  
-                    if 'IN ({})' in strategy['ref_condition']:
-                        ref_params = strategy['params'][1:]
-                        placeholders = ','.join(['%s'] * len(ref_params))
-                        ref_condition = strategy['ref_condition'].replace('{}', placeholders)
-                    else:
-                        ref_condition = strategy['ref_condition']
+                    mapping = self._get_table_mapping(table_key)
+                    table_name = f"{self.schema}.{mapping['table']}"
                     
-                    # Build base conditions
-                    conditions = [
-                        strategy['client_condition'],
-                        ref_condition,
-                        "element = %s"
-                    ]
-                    params = strategy['params'] + [element_name]
+                    # Columnes reals
+                    ref_col = mapping['columns']['id_referencia_client']
+                    lot_col = mapping['columns']['id_lot']
+                    element_col = mapping['columns']['element']
+                    actual_col = mapping['columns']['actual']
+                    nominal_col = mapping['columns']['nominal']
+                    tol_pos_col = mapping['columns']['tolerancia_positiva']
+                    tol_neg_col = mapping['columns']['tolerancia_negativa']
+                    desv_col = mapping['columns']['desviacio']
+                    data_col = mapping['columns']['data_hora']
+                    cavitat_col = mapping['columns']['cavitat'] if mapping['columns']['cavitat'] else 'NULL'
                     
-                    # Add property condition if specified
-                    if property_name and property_name != 'N/A':
-                        conditions.append("property = %s")
-                        params.append(property_name)
-                    
-                    # Add batch lot condition if specified (CONTAINS matching)
-                    if batch_lot:
-                        conditions.append("UPPER(id_lot) LIKE UPPER(%s)")
-                        params.append(f'%{batch_lot}%')
-                    
-                    # Build final WHERE clause
-                    where_clause = " AND ".join(conditions)
-                    
-                    # Construir query amb UNION ALL de totes les taules
-                    select_clause = """
-                        id_referencia_client, element, pieza, datum, property, 
-                        actual, nominal, tolerancia_negativa, tolerancia_positiva, 
-                        desviacio, data_hora, id_lot, cavitat
-                    """
-                    
-                    union_parts = []
-                    for table in self.measurement_tables:
-                        table_query = f"""
-                            SELECT {select_clause}
-                            FROM {table}
-                            WHERE {where_clause}
+                    # Query amb columnes normalitzades
+                    if lot:
+                        query = f"""
+                            SELECT 
+                                {ref_col} as id_referencia_client,
+                                {element_col} as element,
+                                {element_col} as pieza,
+                                {element_col} as datum,
+                                {element_col} as property,
+                                {actual_col} as actual,
+                                {nominal_col} as nominal,
+                                {tol_neg_col} as tolerancia_negativa,
+                                {tol_pos_col} as tolerancia_positiva,
+                                {desv_col} as desviacio,
+                                {data_col} as data_hora,
+                                {lot_col} as id_lot,
+                                {cavitat_col} as cavitat
+                            FROM {table_name}
+                            WHERE {ref_col} IN (%s, %s, %s, %s, %s)
+                            AND {element_col} = %s
+                            AND {lot_col} = %s
+                            ORDER BY {data_col} DESC
+                            LIMIT %s
                         """
-                        union_parts.append(f"({table_query})")
+                        params = tuple(ref_variants + [element_name, lot, limit])
+                    else:
+                        query = f"""
+                            SELECT 
+                                {ref_col} as id_referencia_client,
+                                {element_col} as element,
+                                {element_col} as pieza,
+                                {element_col} as datum,
+                                {element_col} as property,
+                                {actual_col} as actual,
+                                {nominal_col} as nominal,
+                                {tol_neg_col} as tolerancia_negativa,
+                                {tol_pos_col} as tolerancia_positiva,
+                                {desv_col} as desviacio,
+                                {data_col} as data_hora,
+                                {lot_col} as id_lot,
+                                {cavitat_col} as cavitat
+                            FROM {table_name}
+                            WHERE {ref_col} IN (%s, %s, %s, %s, %s)
+                            AND {element_col} = %s
+                            ORDER BY {data_col} DESC
+                            LIMIT %s
+                        """
+                        params = tuple(ref_variants + [element_name, limit])
                     
-                    query = " UNION ALL ".join(union_parts)
-                    query = f"SELECT * FROM ({query}) AS combined ORDER BY data_hora DESC LIMIT %s"
-                    
-                    # Repetir paràmetres per cada taula
-                    all_params = params * len(self.measurement_tables) + [limit]
-                    
-                    results = self.db_connection.fetchall(query, all_params)
+                    results = self.db_connection.fetchall(query, params)
                     
                     if results:
-                        logger.info(f"✅ Estratègia '{strategy['name']}' trobada: {len(results)} mesures per {element_name}")
-                        break
-                    else:
-                        logger.debug(f"❌ Estratègia '{strategy['name']}': cap mesura per {element_name}")
+                        logger.info(f"   ✅ {table_key}: {len(results)} mesures")
+                        all_measurements.extend(results)
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ Error en estratègia '{strategy['name']}': {e}")
+                    logger.warning(f"   ⚠️ Error en {table_key}: {e}")
                     continue
             
+            # Processar resultats
             measurements = []
-            for row in results:
+            for row in all_measurements:
                 measurements.append({
                     'id_referencia_client': row[0],
                     'element': row[1],
@@ -371,172 +512,193 @@ class MeasurementHistoryService:
                     'cavitat': row[12]
                 })
                 
-            logger.info(f"✅ Trobades {len(measurements)} mesures per {element_name}")
+            logger.info(f"✅ Total: {len(measurements)} mesures per {element_name}")
             return measurements
             
         except Exception as e:
             logger.error(f"Error obtenint mesures de l'element: {e}")
             raise
     
-    def get_available_elements(self, client: str, project_reference: str, batch_lot: str = None) -> List[Dict[str, Any]]:
+    def get_available_elements(self, client: str, project_reference: str, batch_lot: str = None, lot: str = None) -> List[Dict[str, Any]]:
         """
-        Obté tots els elements disponibles per un client i projecte amb cerca flexible
+        Obté tots els elements disponibles per un client i projecte
+        Utilitza el nou sistema de mapatge de columnes per schema 1000_SQB_qualitat
         
         Args:
             client: Nom del client
-            project_reference: Referència del projecte
-            batch_lot: Batch/lot específic (opcional)
+            project_reference: Referència del projecte  
+            batch_lot: Batch/lot específic (opcional, per compatibilitat)
+            lot: LOT específic (opcional)
             
         Returns:
             Llista de diccionaris amb els elements disponibles
         """
         try:
-            logger.info(f"🔍 Buscant elements per client='{client}', project_reference='{project_reference}'")
+            logger.info(f"🔍 [NEW SYSTEM] Buscant elements a {self.schema}")
+            logger.info(f"   Client: '{client}', Referència: '{project_reference}'")
+            logger.info(f"   Taules: {self.table_keys}")
             
-            # Utilitzar el mètode universal per generar estratègies de cerca
-            search_strategies = self._build_universal_search_conditions(client, project_reference)
+            # Usar batch_lot si lot no està especificat
+            if lot is None and batch_lot:
+                lot = batch_lot
             
-            results = []
+            all_results = []
             
-            for strategy in search_strategies:
+            for table_key in self.table_keys:
                 try:
-                    # Handle special case for IN clauses
-                    if 'IN ({})' in strategy['ref_condition']:
-                        # Replace {} with correct number of placeholders
-                        ref_params = strategy['params'][1:]  # Skip client param
-                        placeholders = ','.join(['%s'] * len(ref_params))
-                        ref_condition = strategy['ref_condition'].replace('{}', placeholders)
-                    else:
-                        ref_condition = strategy['ref_condition']
+                    mapping = self._get_table_mapping(table_key)
+                    table_name = f"{self.schema}.{mapping['table']}"
                     
-                    if batch_lot:
-                        query_template = f"""
-                            SELECT DISTINCT 
-                                COALESCE(element, 'N/A') as element,
-                                COALESCE(pieza, 'N/A') as pieza, 
-                                COALESCE(datum, 'N/A') as datum,
-                                COALESCE(property, 'N/A') as property,
-                                id_referencia_client,
-                                COUNT(*) as count
-                            FROM mesuresqualitat 
-                            WHERE {strategy['client_condition']} 
-                            AND {ref_condition} 
-                            AND UPPER(id_lot) LIKE UPPER(%s)
-                            GROUP BY element, pieza, datum, property, id_referencia_client
-                        """
-                        params = strategy['params'] + [f'%{batch_lot}%']
-                        query, final_params = self._convert_query_to_union(query_template, tuple(params))
-                        query = f"SELECT * FROM ({query}) AS combined ORDER BY element, pieza, datum, property"
-                    else:
-                        query_template = f"""
-                            SELECT DISTINCT 
-                                COALESCE(element, 'N/A') as element,
-                                COALESCE(pieza, 'N/A') as pieza, 
-                                COALESCE(datum, 'N/A') as datum,
-                                COALESCE(property, 'N/A') as property,
-                                id_referencia_client,
-                                COUNT(*) as count
-                            FROM mesuresqualitat 
-                            WHERE {strategy['client_condition']} 
-                            AND {ref_condition}
-                            GROUP BY element, pieza, datum, property, id_referencia_client
-                        """
-                        params = strategy['params']
-                        query, final_params = self._convert_query_to_union(query_template, tuple(params))
-                        query = f"SELECT * FROM ({query}) AS combined ORDER BY element, pieza, datum, property"
+                    # Columnes reals per aquesta taula
+                    ref_col = mapping['columns']['id_referencia_client']
+                    lot_col = mapping['columns']['id_lot']
+                    element_col = mapping['columns']['element']
                     
-                    results = self.db_connection.fetchall(query, final_params)
+                    logger.info(f"   🔎 Consultant taula: {table_name}")
+                    logger.info(f"      Columna referència: {ref_col}")
+                    
+                    # Construir query amb variants de referència
+                    ref_variants = [
+                        project_reference,
+                        f"{project_reference}D",
+                        f"{project_reference}_D",
+                        project_reference.upper(),
+                        project_reference.lower()
+                    ]
+                    
+                    # Query per obtenir elements distincts
+                    if lot:
+                        query = f"""
+                            SELECT 
+                                COALESCE({element_col}, 'N/A') as element,
+                                COALESCE({element_col}, 'N/A') as pieza, 
+                                COALESCE({element_col}, 'N/A') as datum,
+                                COALESCE({element_col}, 'N/A') as property,
+                                {ref_col} as id_referencia_client,
+                                COUNT(*) as count
+                            FROM {table_name}
+                            WHERE {ref_col} IN (%s, %s, %s, %s, %s)
+                            AND {lot_col} = %s
+                            GROUP BY {element_col}, {ref_col}
+                            ORDER BY element
+                        """
+                        params = tuple(ref_variants + [lot])
+                    else:
+                        query = f"""
+                            SELECT 
+                                COALESCE({element_col}, 'N/A') as element,
+                                COALESCE({element_col}, 'N/A') as pieza, 
+                                COALESCE({element_col}, 'N/A') as datum,
+                                COALESCE({element_col}, 'N/A') as property,
+                                {ref_col} as id_referencia_client,
+                                COUNT(*) as count
+                            FROM {table_name}
+                            WHERE {ref_col} IN (%s, %s, %s, %s, %s)
+                            GROUP BY {element_col}, {ref_col}
+                            ORDER BY element
+                        """
+                        params = tuple(ref_variants)
+                    
+                    results = self.db_connection.fetchall(query, params)
                     
                     if results:
-                        logger.info(f"✅ Estratègia '{strategy['name']}' trobada: {len(results)} elements")
-                        # Show which reference was found
-                        unique_refs = set([row[4] for row in results])
-                        logger.info(f"   📁 Referències trobades: {list(unique_refs)}")
-                        break
+                        logger.info(f"      ✅ Trobats {len(results)} elements")
+                        all_results.extend(results)
                     else:
-                        logger.debug(f"❌ Estratègia '{strategy['name']}': cap resultat")
+                        logger.debug(f"      ❌ Cap element trobat")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ Error en estratègia '{strategy['name']}': {e}")
+                    logger.warning(f"   ⚠️ Error consultant {table_key}: {e}")
                     continue
             
+            # Processar resultats
             elements = []
-            for row in results:
-                elements.append({
-                    'element': row[0],
-                    'pieza': row[1], 
-                    'datum': row[2],
-                    'property': row[3],
-                    'ref_client': row[4],
-                    'count': row[5]
-                })
+            seen = set()  # Evitar duplicats
             
-            batch_info = f" per batch {batch_lot}" if batch_lot else ""
-            logger.info(f"Trobats {len(elements)} elements disponibles per {client} - {project_reference}{batch_info}")
+            for row in all_results:
+                # Crear clau única per element
+                key = f"{row[0]}_{row[4]}"  # element_referència
+                if key not in seen:
+                    seen.add(key)
+                    elements.append({
+                        'element': row[0],
+                        'pieza': row[1], 
+                        'datum': row[2],
+                        'property': row[3],
+                        'ref_client': row[4],
+                        'count': row[5],
+                        'name': row[0]  # Afegir 'name' per compatibilitat
+                    })
+            
+            batch_info = f" per LOT {lot}" if lot else ""
+            logger.info(f"✅ Total: {len(elements)} elements únics{batch_info}")
             return elements
             
         except Exception as e:
-            logger.error(f"Error obtenint elements disponibles: {e}")
+            logger.error(f"❌ Error obtenint elements disponibles: {e}")
             raise
     
     def get_distinct_lots(self, client: str, project_reference: str) -> List[str]:
         """
-        Get distinct LOT codes for a client and project reference
+        Obté LOTs distints per un client i referència
+        Utilitza el nou sistema de mapatge de columnes
         
         Args:
-            client: Client name
-            project_reference: Project reference
+            client: Nom del client
+            project_reference: Referència del projecte
             
         Returns:
-            List of distinct LOT codes
+            Llista de LOTs distints ordenats
         """
         try:
-            logger.info(f"🔍 Getting distinct LOTs for {client}/{project_reference}")
-            
-            # Build search strategies
-            search_strategies = self._build_universal_search_conditions(client, project_reference)
+            logger.info(f"🔍 [NEW SYSTEM] Obtenint LOTs distints")
+            logger.info(f"   Client: '{client}', Referència: '{project_reference}'")
             
             lots = set()
             
-            for strategy in search_strategies:
+            # Variants de referència
+            ref_variants = [
+                project_reference,
+                f"{project_reference}D",
+                f"{project_reference}_D",
+                project_reference.upper(),
+                project_reference.lower()
+            ]
+            
+            for table_key in self.table_keys:
                 try:
-                    # Handle special case for IN clauses
-                    if 'IN ({})' in strategy['ref_condition']:
-                        ref_params = strategy['params'][1:]  # Skip client param
-                        placeholders = ','.join(['%s'] * len(ref_params))
-                        ref_condition = strategy['ref_condition'].replace('{}', placeholders)
-                    else:
-                        ref_condition = strategy['ref_condition']
+                    mapping = self._get_table_mapping(table_key)
+                    table_name = f"{self.schema}.{mapping['table']}"
                     
-                    query_template = f"""
-                        SELECT DISTINCT COALESCE(id_lot, 'Unknown') as lot
-                        FROM mesuresqualitat 
-                        WHERE {strategy['client_condition']} 
-                        AND {ref_condition}
-                        AND id_lot IS NOT NULL
-                        AND id_lot != ''
+                    ref_col = mapping['columns']['id_referencia_client']
+                    lot_col = mapping['columns']['id_lot']
+                    
+                    query = f"""
+                        SELECT DISTINCT {lot_col}
+                        FROM {table_name}
+                        WHERE {ref_col} IN (%s, %s, %s, %s, %s)
+                        AND {lot_col} IS NOT NULL
+                        AND {lot_col} != ''
                     """
                     
-                    query, final_params = self._convert_query_to_union(query_template, tuple(strategy['params']))
-                    results = self.db_connection.fetchall(query, final_params)
+                    results = self.db_connection.fetchall(query, tuple(ref_variants))
                     
                     if results:
                         for row in results:
-                            if row[0] and row[0] != 'Unknown':
+                            if row[0]:
                                 lots.add(row[0])
-                        logger.debug(f"✅ Strategy '{strategy['name']}': found {len(results)} LOTs")
-                        break
+                        logger.info(f"   ✅ {table_key}: {len(results)} LOTs")
                         
                 except Exception as e:
-                    logger.warning(f"⚠️ Error in strategy '{strategy['name']}': {e}")
+                    logger.warning(f"   ⚠️ Error en {table_key}: {e}")
                     continue
             
             lot_list = sorted(list(lots))
-            logger.info(f"✅ Found {len(lot_list)} distinct LOTs")
+            logger.info(f"✅ Total: {len(lot_list)} LOTs distints")
             return lot_list
             
         except Exception as e:
-            logger.error(f"Error getting distinct LOTs: {e}")
+            logger.error(f"❌ Error obtenint LOTs distints: {e}")
             return []
     
     def _build_universal_search_conditions(self, client: str, project_reference: str):
