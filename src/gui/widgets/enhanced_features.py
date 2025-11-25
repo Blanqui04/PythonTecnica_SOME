@@ -652,10 +652,371 @@ class ReferenceTemplateDialog(QDialog):
         )
 
 
+class DimensionalTemplateByLotDialog(QDialog):
+    """
+    Dialog for Dimensional template organized by Reference first, then by LOT.
+    
+    Workflow:
+    1. Select/load reference configuration (elements, tolerances, etc.)
+    2. Browse and select LOTs for that reference
+    3. Apply template to selected LOT(s)
+    
+    Features:
+    - Reference-first approach
+    - LOT browser with filtering
+    - Template persistence
+    - Quick LOT switching
+    """
+    
+    template_applied = pyqtSignal(dict)  # Emitted when template is applied to a LOT
+    
+    def __init__(self, client: str, reference: str, machine: str, 
+                 available_lots: list = None, parent=None):
+        super().__init__(parent)
+        self.client = client
+        self.reference = reference
+        self.machine = machine
+        self.available_lots = available_lots or []
+        self.selected_lots = []
+        self.template_data = None
+        
+        self.setWindowTitle(f"📋 Plantilla Dimensional - {reference}")
+        self.setMinimumSize(900, 650)
+        self._apply_styling()
+        self.init_ui()
+        self._load_template_data()
+    
+    def _apply_styling(self):
+        """Apply professional styling"""
+        self.setStyleSheet("""
+            QDialog {
+                background-color: #f8f9fa;
+                font-family: 'Segoe UI', sans-serif;
+            }
+            QGroupBox {
+                font-weight: bold;
+                border: 2px solid #e9ecef;
+                border-radius: 8px;
+                margin-top: 12px;
+                padding-top: 10px;
+                background-color: #ffffff;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px;
+                color: #2c3e50;
+            }
+            QPushButton {
+                background-color: #3498db;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: 600;
+                min-width: 120px;
+            }
+            QPushButton:hover {
+                background-color: #2980b9;
+            }
+            QPushButton:pressed {
+                background-color: #21618c;
+            }
+            QPushButton:disabled {
+                background-color: #bdc3c7;
+            }
+            QListWidget {
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+            QListWidget::item {
+                padding: 8px;
+                border-bottom: 1px solid #f1f3f4;
+            }
+            QListWidget::item:selected {
+                background-color: #3498db;
+                color: white;
+            }
+            QListWidget::item:hover {
+                background-color: #e8f4fc;
+            }
+            QLineEdit {
+                padding: 8px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                background-color: #ffffff;
+            }
+            QLineEdit:focus {
+                border-color: #3498db;
+            }
+        """)
+    
+    def init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(15)
+        
+        # Header with reference info
+        header_layout = QHBoxLayout()
+        
+        header_label = QLabel(f"📐 Plantilla per Referència: <b>{self.reference}</b>")
+        header_label.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        header_layout.addWidget(header_label)
+        
+        client_label = QLabel(f"Client: {self.client}")
+        client_label.setStyleSheet("color: #6c757d; font-size: 12px;")
+        header_layout.addWidget(client_label)
+        header_layout.addStretch()
+        
+        layout.addLayout(header_layout)
+        
+        # Main content splitter
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # Left panel - LOT Selection
+        left_panel = QWidget()
+        left_layout = QVBoxLayout(left_panel)
+        
+        lot_group = QGroupBox("📦 Selecció de LOTs")
+        lot_layout = QVBoxLayout()
+        
+        # Search/filter
+        filter_layout = QHBoxLayout()
+        filter_layout.addWidget(QLabel("🔍 Filtrar:"))
+        self.lot_filter = QLineEdit()
+        self.lot_filter.setPlaceholderText("Cercar LOT...")
+        self.lot_filter.textChanged.connect(self._filter_lots)
+        filter_layout.addWidget(self.lot_filter)
+        lot_layout.addLayout(filter_layout)
+        
+        # LOT list
+        self.lot_list = QListWidget()
+        self.lot_list.setSelectionMode(QListWidget.ExtendedSelection)
+        self._populate_lot_list()
+        lot_layout.addWidget(self.lot_list)
+        
+        # LOT action buttons
+        lot_btn_layout = QHBoxLayout()
+        
+        select_all_btn = QPushButton("Seleccionar Tot")
+        select_all_btn.clicked.connect(self._select_all_lots)
+        select_all_btn.setStyleSheet("background-color: #6c757d;")
+        lot_btn_layout.addWidget(select_all_btn)
+        
+        clear_btn = QPushButton("Netejar Selecció")
+        clear_btn.clicked.connect(self._clear_lot_selection)
+        clear_btn.setStyleSheet("background-color: #dc3545;")
+        lot_btn_layout.addWidget(clear_btn)
+        
+        lot_layout.addLayout(lot_btn_layout)
+        lot_group.setLayout(lot_layout)
+        left_layout.addWidget(lot_group)
+        
+        splitter.addWidget(left_panel)
+        
+        # Right panel - Template preview and options
+        right_panel = QWidget()
+        right_layout = QVBoxLayout(right_panel)
+        
+        # Template info group
+        template_group = QGroupBox("📋 Configuració de Plantilla")
+        template_layout = QVBoxLayout()
+        
+        # Reference elements summary
+        self.elements_label = QLabel("Elements: Carregant...")
+        template_layout.addWidget(self.elements_label)
+        
+        # Machine selection
+        machine_layout = QHBoxLayout()
+        machine_layout.addWidget(QLabel("Màquina:"))
+        self.machine_combo = QComboBox()
+        self.machine_combo.addItems([
+            'all', 'gompc_projectes', 'gompc_nou', 'hoytom', 'torsio'
+        ])
+        self.machine_combo.setCurrentText(self.machine)
+        machine_layout.addWidget(self.machine_combo)
+        machine_layout.addStretch()
+        template_layout.addLayout(machine_layout)
+        
+        # Options
+        self.copy_config_checkbox = QCheckBox("Copiar configuració d'elements (toleràncies, instruments)")
+        self.copy_config_checkbox.setChecked(True)
+        template_layout.addWidget(self.copy_config_checkbox)
+        
+        self.preserve_measurements_checkbox = QCheckBox("Preservar mesures existents al canviar de LOT")
+        self.preserve_measurements_checkbox.setChecked(False)
+        template_layout.addWidget(self.preserve_measurements_checkbox)
+        
+        template_group.setLayout(template_layout)
+        right_layout.addWidget(template_group)
+        
+        # Preview group
+        preview_group = QGroupBox("👁️ Previsualització")
+        preview_layout = QVBoxLayout()
+        
+        self.preview_table = QTableWidget()
+        self.preview_table.setColumnCount(5)
+        self.preview_table.setHorizontalHeaderLabels([
+            "Element ID", "Descripció", "Nominal", "Tolerància", "Instrument"
+        ])
+        self.preview_table.horizontalHeader().setStretchLastSection(True)
+        self.preview_table.setMaximumHeight(200)
+        preview_layout.addWidget(self.preview_table)
+        
+        preview_group.setLayout(preview_layout)
+        right_layout.addWidget(preview_group)
+        
+        # Selected LOTs summary
+        self.selection_label = QLabel("LOTs seleccionats: 0")
+        self.selection_label.setStyleSheet("font-weight: bold; color: #3498db;")
+        right_layout.addWidget(self.selection_label)
+        
+        splitter.addWidget(right_panel)
+        
+        # Set splitter sizes
+        splitter.setSizes([350, 550])
+        layout.addWidget(splitter)
+        
+        # Bottom buttons
+        button_layout = QHBoxLayout()
+        
+        refresh_btn = QPushButton("🔄 Actualitzar LOTs")
+        refresh_btn.clicked.connect(self._refresh_lots)
+        refresh_btn.setStyleSheet("background-color: #17a2b8;")
+        button_layout.addWidget(refresh_btn)
+        
+        button_layout.addStretch()
+        
+        apply_btn = QPushButton("✅ Aplicar Plantilla")
+        apply_btn.clicked.connect(self._apply_template)
+        apply_btn.setStyleSheet("background-color: #28a745; min-width: 150px;")
+        button_layout.addWidget(apply_btn)
+        
+        cancel_btn = QPushButton("❌ Cancel·lar")
+        cancel_btn.clicked.connect(self.reject)
+        cancel_btn.setStyleSheet("background-color: #6c757d;")
+        button_layout.addWidget(cancel_btn)
+        
+        layout.addLayout(button_layout)
+        
+        # Connect selection changes
+        self.lot_list.itemSelectionChanged.connect(self._update_selection_summary)
+    
+    def _populate_lot_list(self):
+        """Populate LOT list"""
+        self.lot_list.clear()
+        for lot in self.available_lots:
+            self.lot_list.addItem(str(lot))
+    
+    def _filter_lots(self, text):
+        """Filter LOT list based on search text"""
+        text = text.lower()
+        for i in range(self.lot_list.count()):
+            item = self.lot_list.item(i)
+            item.setHidden(text not in item.text().lower())
+    
+    def _select_all_lots(self):
+        """Select all visible LOTs"""
+        for i in range(self.lot_list.count()):
+            item = self.lot_list.item(i)
+            if not item.isHidden():
+                item.setSelected(True)
+    
+    def _clear_lot_selection(self):
+        """Clear LOT selection"""
+        self.lot_list.clearSelection()
+    
+    def _update_selection_summary(self):
+        """Update selection summary label"""
+        selected = self.lot_list.selectedItems()
+        self.selection_label.setText(f"LOTs seleccionats: {len(selected)}")
+    
+    def _refresh_lots(self):
+        """Refresh LOT list from database"""
+        try:
+            # This would normally query the database for available LOTs
+            # For now, emit a signal that can be handled by the parent
+            QMessageBox.information(
+                self,
+                "Actualització",
+                "La llista de LOTs s'actualitzarà des de la base de dades."
+            )
+        except Exception as e:
+            logger.error(f"Error refreshing LOTs: {e}")
+    
+    def _load_template_data(self):
+        """Load template data for the reference"""
+        try:
+            # This would normally load from database/service
+            # For now, set placeholder data
+            self.elements_label.setText(
+                f"Elements: Configuració carregada per {self.reference}"
+            )
+            
+            # Populate preview table with sample data
+            self.preview_table.setRowCount(3)
+            sample_data = [
+                ["Nº001", "Diàmetre exterior", "25.000", "±0.050", "CMM"],
+                ["Nº002", "Longitud total", "100.000", "±0.100", "3D Scanbox"],
+                ["Nº003", "Planitud superfície", "-", "0.020", "CMM"],
+            ]
+            for row, data in enumerate(sample_data):
+                for col, value in enumerate(data):
+                    item = QTableWidgetItem(value)
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.preview_table.setItem(row, col, item)
+                    
+        except Exception as e:
+            logger.error(f"Error loading template data: {e}")
+            self.elements_label.setText("Elements: Error al carregar")
+    
+    def _apply_template(self):
+        """Apply template to selected LOTs"""
+        selected_items = self.lot_list.selectedItems()
+        
+        if not selected_items:
+            QMessageBox.warning(
+                self,
+                "Cap LOT Seleccionat",
+                "Si us plau, selecciona almenys un LOT per aplicar la plantilla."
+            )
+            return
+        
+        selected_lots = [item.text() for item in selected_items]
+        
+        template_config = {
+            'client': self.client,
+            'reference': self.reference,
+            'machine': self.machine_combo.currentText(),
+            'lots': selected_lots,
+            'copy_config': self.copy_config_checkbox.isChecked(),
+            'preserve_measurements': self.preserve_measurements_checkbox.isChecked(),
+            'created_at': datetime.now().isoformat()
+        }
+        
+        self.template_applied.emit(template_config)
+        
+        QMessageBox.information(
+            self,
+            "Plantilla Aplicada",
+            f"Plantilla aplicada correctament a {len(selected_lots)} LOT(s):\n" + 
+            "\n".join(f"  • {lot}" for lot in selected_lots[:5]) +
+            (f"\n  ... i {len(selected_lots) - 5} més" if len(selected_lots) > 5 else "")
+        )
+        
+        self.accept()
+    
+    def set_available_lots(self, lots: list):
+        """Update the available LOTs list"""
+        self.available_lots = lots
+        self._populate_lot_list()
+
+
 # Export classes
 __all__ = [
     'SearchHistoryManager',
     'SearchHistoryDialog',
     'MultiLOTComparisonDialog',
-    'ReferenceTemplateDialog'
+    'ReferenceTemplateDialog',
+    'DimensionalTemplateByLotDialog'
 ]

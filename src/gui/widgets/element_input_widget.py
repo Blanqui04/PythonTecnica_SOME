@@ -16,7 +16,8 @@ from .enhanced_features import (
     SearchHistoryManager,
     SearchHistoryDialog,
     MultiLOTComparisonDialog,
-    ReferenceTemplateDialog
+    ReferenceTemplateDialog,
+    DimensionalTemplateByLotDialog
 )
 import logging
 import math
@@ -26,17 +27,73 @@ logger = logging.getLogger(__name__)
 
 
 class PasteableTableWidget(QTableWidget):
-    """Custom QTableWidget that supports Ctrl+V paste from clipboard"""
+    """
+    Custom QTableWidget that supports full clipboard operations:
+    - Ctrl+C: Copy selected cells to clipboard
+    - Ctrl+V: Paste from clipboard
+    - Ctrl+X: Cut (copy and clear)
+    - Delete/Backspace: Clear selected cells
+    """
     
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.numeric_only = True  # Only accept numeric values
+        self.decimal_places = 3
         
     def keyPressEvent(self, event):
-        """Handle key press events, especially Ctrl+V"""
+        """Handle key press events for clipboard operations"""
+        # Ctrl+C - Copy
+        if event.matches(QKeySequence.Copy):
+            self._copy_to_clipboard()
+            return
+            
+        # Ctrl+V - Paste
         if event.matches(QKeySequence.Paste):
             self._paste_from_clipboard()
-        else:
-            super().keyPressEvent(event)
+            return
+        
+        # Ctrl+X - Cut
+        if event.matches(QKeySequence.Cut):
+            self._copy_to_clipboard()
+            self._clear_selected_cells()
+            return
+        
+        # Ctrl+A - Select All
+        if event.matches(QKeySequence.SelectAll):
+            self.selectAll()
+            return
+        
+        # Delete/Backspace - Clear
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            self._clear_selected_cells()
+            return
+            
+        super().keyPressEvent(event)
+    
+    def _copy_to_clipboard(self):
+        """Copy selected cells to clipboard"""
+        selected = self.selectedIndexes()
+        if not selected:
+            return
+        
+        # Get selection bounds
+        rows = sorted(set(index.row() for index in selected))
+        cols = sorted(set(index.column() for index in selected))
+        
+        # Build text matrix
+        clipboard_text = []
+        for row in rows:
+            row_data = []
+            for col in cols:
+                item = self.item(row, col)
+                row_data.append(item.text() if item else "")
+            clipboard_text.append("\t".join(row_data))
+        
+        # Set clipboard
+        clipboard = QApplication.clipboard()
+        clipboard.setText("\n".join(clipboard_text))
+        
+        logger.info(f"Copied {len(rows)} row(s) to clipboard")
     
     def _paste_from_clipboard(self):
         """Paste data from clipboard into table"""
@@ -52,55 +109,78 @@ class PasteableTableWidget(QTableWidget):
         # Get current selection or start from row 0
         selected = self.selectedIndexes()
         if selected:
-            start_row = selected[0].row()
+            start_row = min(idx.row() for idx in selected)
+            start_col = min(idx.column() for idx in selected)
         else:
             start_row = 0
-        
-        # Clear existing values from start_row onwards
-        for row in range(start_row, self.rowCount()):
-            item = self.item(row, 0)
-            if item:
-                item.setText("")
+            start_col = 0
         
         # Paste values
-        row_idx = start_row
         pasted_count = 0
+        skipped_count = 0
         
-        for line in lines:
-            if row_idx >= self.rowCount():
+        for row_offset, line in enumerate(lines):
+            target_row = start_row + row_offset
+            
+            if target_row >= self.rowCount():
                 # Add more rows if needed
-                self.setRowCount(row_idx + 10)
+                self.setRowCount(target_row + 10)
                 for new_row in range(self.rowCount() - 10, self.rowCount()):
                     new_item = QTableWidgetItem("")
                     new_item.setTextAlignment(Qt.AlignCenter)
                     self.setItem(new_row, 0, new_item)
             
-            # Split by tab or comma (Excel can use either)
-            values = line.replace(',', '\t').split('\t')
+            # Split by tab, comma, or semicolon (Excel/CSV compatibility)
+            values = line.replace(';', '\t').replace(',', '\t').split('\t')
             
-            # Take first value (in case of multiple columns)
-            value = values[0].strip()
-            
-            if value:  # Only paste non-empty values
-                try:
-                    # Validate it's a number
-                    float(value)
-                    item = self.item(row_idx, 0)
-                    if item:
-                        item.setText(value)
-                        pasted_count += 1
-                    row_idx += 1
-                except ValueError:
-                    # Skip non-numeric values
-                    pass
+            for col_offset, value in enumerate(values):
+                target_col = start_col + col_offset
+                
+                if target_col >= self.columnCount():
+                    continue
+                
+                value = value.strip()
+                
+                if not value:
+                    continue
+                
+                # Validate numeric if required
+                if self.numeric_only:
+                    try:
+                        # Handle different decimal separators
+                        numeric_val = float(value.replace(',', '.'))
+                        value = f"{numeric_val:.{self.decimal_places}f}"
+                    except ValueError:
+                        skipped_count += 1
+                        continue
+                
+                item = self.item(target_row, target_col)
+                if not item:
+                    item = QTableWidgetItem()
+                    item.setTextAlignment(Qt.AlignCenter)
+                    self.setItem(target_row, target_col, item)
+                
+                item.setText(value)
+                pasted_count += 1
         
         if pasted_count > 0:
-            logger.info(f"Pasted {pasted_count} values from clipboard")
+            message = f"Enganxats {pasted_count} valor(s)"
+            if skipped_count > 0:
+                message += f" ({skipped_count} valor(s) no numèric(s) omès(os))"
+            logger.info(message)
             QMessageBox.information(
                 self, 
-                "Values Pasted", 
-                f"Successfully pasted {pasted_count} numeric values"
+                "Valors Enganxats", 
+                message
             )
+    
+    def _clear_selected_cells(self):
+        """Clear content of selected cells"""
+        selected = self.selectedIndexes()
+        for index in selected:
+            item = self.item(index.row(), index.column())
+            if item:
+                item.setText("")
 
 
 class ElementInputWidget(QWidget, ResponsiveWidget):

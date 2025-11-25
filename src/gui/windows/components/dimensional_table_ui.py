@@ -13,13 +13,220 @@ from PyQt5.QtWidgets import (
     QAbstractItemView,
     QMenu,
     QDialog,
+    QApplication,
 )
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor, QFont
+from PyQt5.QtGui import QColor, QFont, QKeySequence
 import sip  # type: ignore
 
 from src.models.dimensional.gdt_interpreter import GDTInterpreter
 from src.gui.utils.responsive_utils import ResponsiveWidget, get_screen_utils
+
+
+class ClipboardEnabledTable(QTableWidget):
+    """
+    Enhanced QTableWidget with full clipboard support (Ctrl+C/Ctrl+V).
+    
+    Features:
+    - Copy selected cells/rows to clipboard
+    - Paste from clipboard (supports Excel, CSV)
+    - Smart handling of combo boxes and calculated columns
+    """
+    
+    # Columns that are calculated and should not be directly edited
+    CALCULATED_COLUMNS = [17, 18, 19, 20, 21, 22, 23]  # min, max, mean, std, pp, ppk, status
+    
+    # Columns that should be formatted as numbers
+    NUMERIC_COLUMNS = [9, 10, 11, 12, 13, 14, 15, 16]  # nominal, tolerances, measurements
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parent_ui = None
+    
+    def set_parent_ui(self, parent_ui):
+        """Set reference to parent UI for callbacks"""
+        self.parent_ui = parent_ui
+    
+    def keyPressEvent(self, event):
+        """Handle key press events for clipboard operations"""
+        # Ctrl+C - Copy
+        if event.matches(QKeySequence.Copy):
+            self._copy_to_clipboard()
+            return
+        
+        # Ctrl+V - Paste
+        if event.matches(QKeySequence.Paste):
+            self._paste_from_clipboard()
+            return
+        
+        # Ctrl+X - Cut (Copy then clear)
+        if event.matches(QKeySequence.Cut):
+            self._cut_to_clipboard()
+            return
+        
+        # Ctrl+A - Select All
+        if event.matches(QKeySequence.SelectAll):
+            self.selectAll()
+            return
+        
+        # Delete/Backspace - Clear selected cells
+        if event.key() in (Qt.Key_Delete, Qt.Key_Backspace):
+            self._clear_selected_cells()
+            return
+        
+        # Default key handling
+        super().keyPressEvent(event)
+    
+    def _copy_to_clipboard(self):
+        """Copy selected cells to clipboard in tab-separated format"""
+        selected = self.selectedIndexes()
+        if not selected:
+            return
+        
+        # Get selection bounds
+        rows = sorted(set(index.row() for index in selected))
+        cols = sorted(set(index.column() for index in selected))
+        
+        # Build text matrix
+        clipboard_text = []
+        for row in rows:
+            row_data = []
+            for col in cols:
+                # Handle combo box cells
+                cell_widget = self.cellWidget(row, col)
+                if isinstance(cell_widget, QComboBox):
+                    row_data.append(cell_widget.currentText())
+                else:
+                    item = self.item(row, col)
+                    row_data.append(item.text() if item else "")
+            clipboard_text.append("\t".join(row_data))
+        
+        # Set clipboard
+        clipboard = QApplication.clipboard()
+        clipboard.setText("\n".join(clipboard_text))
+        
+        # Log action
+        if self.parent_ui and hasattr(self.parent_ui, '_log_message'):
+            self.parent_ui._log_message(
+                f"📋 Copiat: {len(rows)} fila(es), {len(cols)} columna(es)"
+            )
+    
+    def _paste_from_clipboard(self):
+        """Paste data from clipboard to table"""
+        clipboard = QApplication.clipboard()
+        text = clipboard.text()
+        
+        if not text:
+            return
+        
+        # Get starting position
+        selected = self.selectedIndexes()
+        if selected:
+            start_row = min(idx.row() for idx in selected)
+            start_col = min(idx.column() for idx in selected)
+        else:
+            start_row = 0
+            start_col = 0
+        
+        # Parse clipboard text
+        lines = text.strip().split('\n')
+        pasted_count = 0
+        
+        for row_offset, line in enumerate(lines):
+            # Handle tab-separated or comma-separated values
+            if '\t' in line:
+                values = line.split('\t')
+            else:
+                values = line.split(',')
+            
+            target_row = start_row + row_offset
+            
+            if target_row >= self.rowCount():
+                continue  # Don't auto-expand rows
+            
+            for col_offset, value in enumerate(values):
+                target_col = start_col + col_offset
+                
+                if target_col >= self.columnCount():
+                    continue
+                
+                # Skip calculated columns
+                if target_col in self.CALCULATED_COLUMNS:
+                    continue
+                
+                value = value.strip()
+                
+                # Handle combo box cells
+                cell_widget = self.cellWidget(target_row, target_col)
+                if isinstance(cell_widget, QComboBox):
+                    items = [cell_widget.itemText(i) for i in range(cell_widget.count())]
+                    if value in items:
+                        cell_widget.setCurrentText(value)
+                        pasted_count += 1
+                    elif cell_widget.isEditable():
+                        cell_widget.setCurrentText(value)
+                        pasted_count += 1
+                    continue
+                
+                item = self.item(target_row, target_col)
+                if not item:
+                    item = QTableWidgetItem()
+                    self.setItem(target_row, target_col, item)
+                
+                if not (item.flags() & Qt.ItemIsEditable):
+                    continue
+                
+                # Format numeric values
+                if target_col in self.NUMERIC_COLUMNS and value:
+                    try:
+                        numeric_val = float(value.replace(',', '.'))
+                        value = f"{numeric_val:.3f}"
+                    except ValueError:
+                        pass  # Keep original value if not numeric
+                
+                item.setText(value)
+                pasted_count += 1
+        
+        if pasted_count > 0:
+            # Log action and mark changes
+            if self.parent_ui:
+                if hasattr(self.parent_ui, '_log_message'):
+                    self.parent_ui._log_message(f"📋 Enganxat: {pasted_count} cel·la(es)")
+                if hasattr(self.parent_ui, '_mark_unsaved_changes'):
+                    self.parent_ui._mark_unsaved_changes()
+    
+    def _cut_to_clipboard(self):
+        """Cut selected cells (copy then clear)"""
+        self._copy_to_clipboard()
+        self._clear_selected_cells()
+    
+    def _clear_selected_cells(self):
+        """Clear content of selected editable cells"""
+        selected = self.selectedIndexes()
+        cleared_count = 0
+        
+        for index in selected:
+            row, col = index.row(), index.column()
+            
+            # Skip calculated columns
+            if col in self.CALCULATED_COLUMNS:
+                continue
+            
+            # Check if cell has a combo box
+            cell_widget = self.cellWidget(row, col)
+            if isinstance(cell_widget, QComboBox):
+                if cell_widget.count() > 0:
+                    cell_widget.setCurrentIndex(0)
+                    cleared_count += 1
+            else:
+                item = self.item(row, col)
+                if item and (item.flags() & Qt.ItemIsEditable):
+                    item.setText("")
+                    cleared_count += 1
+        
+        if cleared_count > 0 and self.parent_ui:
+            if hasattr(self.parent_ui, '_mark_unsaved_changes'):
+                self.parent_ui._mark_unsaved_changes()
 
 
 class DimensionalTableUI(ResponsiveWidget):
@@ -139,8 +346,9 @@ class DimensionalTableUI(ResponsiveWidget):
             print(f"[{level}] {message}")
 
     def _create_results_table(self) -> QTableWidget:
-        """Create enhanced results table with process capability columns"""
-        table = QTableWidget()
+        """Create enhanced results table with process capability columns and clipboard support"""
+        table = ClipboardEnabledTable()
+        table.set_parent_ui(self)
         table.setColumnCount(len(self.display_columns))
         table.setHorizontalHeaderLabels(self.column_headers)
 

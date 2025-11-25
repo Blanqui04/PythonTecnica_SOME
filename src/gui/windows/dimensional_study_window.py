@@ -31,6 +31,7 @@ from ..workers.dimensional_processing_thread import ProcessingThread
 from ..utils.styles import global_style, get_color_palette
 from ..utils.responsive_utils import make_window_responsive, ResponsiveWidget
 from ..widgets.buttons import ModernButton, CompactButton  # , ActionButton
+from ..widgets.enhanced_features import DimensionalTemplateByLotDialog
 
 
 class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
@@ -736,10 +737,45 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
 
         session_group.setLayout(session_layout)
 
+        # Template controls - NEW
+        template_group = QGroupBox("📋 Plantilles")
+        template_group.setStyleSheet("""
+            QGroupBox {
+                font-weight: 600;
+                font-size: 13px;
+                border: none;
+                border-radius: 8px;
+                margin: 8px 0;
+                padding: 10px;
+                background-color: white;
+                color: #2c3e50;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 15px;
+                padding: 5px 12px;
+                background-color: #f8f9fa;
+                border-radius: 4px;
+                color: #2c3e50;
+            }
+        """)
+        template_layout = QHBoxLayout()
+        template_layout.setContentsMargins(10, 20, 10, 10)
+        template_layout.setSpacing(8)
+
+        self.template_button = ModernButton("📐 Plantilla per Lot")
+        self.template_button.setMinimumSize(140, 40)
+        self.template_button.setToolTip("Crear plantilla dimensional per referència i canviar entre LOTs")
+        self.template_button.clicked.connect(self._show_template_dialog)
+        template_layout.addWidget(self.template_button)
+
+        template_group.setLayout(template_layout)
+
         layout.addWidget(mode_group)
         layout.addWidget(manual_group)
         layout.addWidget(analysis_group)
         layout.addWidget(session_group)
+        layout.addWidget(template_group)
         layout.addStretch()
 
         control_frame.setLayout(layout)
@@ -2125,3 +2161,134 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
                     
         except Exception as e:
             self._log_message(f"Error scaling layouts: {e}", "WARNING")
+
+    def _show_template_dialog(self):
+        """
+        Show dimensional template dialog for Reference → LOT workflow.
+        
+        This allows users to:
+        1. Set up a template based on the current reference
+        2. Select specific LOTs to analyze
+        3. Apply consistent configuration across LOTs
+        """
+        try:
+            # Get available LOTs from database
+            available_lots = self._get_available_lots()
+            
+            # Create and show dialog
+            dialog = DimensionalTemplateByLotDialog(
+                client=self.client_name,
+                reference=self.project_ref,
+                machine='all',
+                available_lots=available_lots,
+                parent=self
+            )
+            
+            # Connect signal to handle template application
+            dialog.template_applied.connect(self._apply_dimensional_template)
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            self._log_message(f"❌ Error showing template dialog: {str(e)}", "ERROR")
+            QMessageBox.warning(
+                self,
+                "Error",
+                f"No s'ha pogut obrir el diàleg de plantilles:\n{str(e)}"
+            )
+    
+    def _get_available_lots(self) -> list:
+        """Get available LOTs for the current reference from database"""
+        try:
+            from src.services.measurement_history_service import MeasurementHistoryService
+            
+            service = MeasurementHistoryService()
+            
+            # Query available LOTs for this client/reference
+            lots = service.get_available_lots(
+                client=self.client_name,
+                reference=self.project_ref
+            )
+            
+            service.close()
+            
+            return lots if lots else [self.batch_number]
+            
+        except Exception as e:
+            self._log_message(f"⚠️ Could not get available LOTs: {str(e)}", "WARNING")
+            # Return current batch as fallback
+            return [self.batch_number]
+    
+    def _apply_dimensional_template(self, template_config: dict):
+        """
+        Apply the dimensional template configuration.
+        
+        Args:
+            template_config: Dictionary containing:
+                - client: Client name
+                - reference: Reference/project code
+                - machine: Selected machine
+                - lots: List of selected LOTs
+                - copy_config: Whether to copy element configuration
+                - preserve_measurements: Whether to preserve existing measurements
+        """
+        try:
+            self._log_message(f"📋 Applying template for {len(template_config.get('lots', []))} LOT(s)", "INFO")
+            
+            # Get the selected LOTs
+            selected_lots = template_config.get('lots', [])
+            
+            if not selected_lots:
+                QMessageBox.warning(self, "Cap LOT", "No s'han seleccionat LOTs.")
+                return
+            
+            # If multiple LOTs, create tabs for each
+            if len(selected_lots) > 1:
+                # Clear existing data tabs
+                self._clear_data_tabs_only()
+                
+                for lot in selected_lots:
+                    # Create table for each LOT
+                    table = self.table_manager._create_results_table()
+                    self.results_tabs.addTab(table, f"📦 LOT {lot}")
+                    
+                    # Add initial row with lot number
+                    table.setRowCount(1)
+                    self.table_manager._populate_default_row(table, 0)
+                    
+                    # Set the batch number for this table
+                    batch_item = table.item(0, 1)
+                    if batch_item:
+                        batch_item.setText(str(lot))
+                
+                self._log_message(f"✅ Created {len(selected_lots)} LOT tabs", "INFO")
+            else:
+                # Single LOT - update current view
+                lot = selected_lots[0]
+                
+                # Ensure manual mode is enabled
+                if not self.manual_mode:
+                    self.mode_toggle.setChecked(True)
+                    self._toggle_mode(True)
+                
+                # Update batch number in current data
+                current_table = self.results_tabs.currentWidget()
+                if isinstance(current_table, QTableWidget):
+                    for row in range(current_table.rowCount()):
+                        batch_item = current_table.item(row, 1)
+                        if batch_item:
+                            batch_item.setText(str(lot))
+                
+                self._log_message(f"✅ Template applied to LOT {lot}", "INFO")
+            
+            # Enable analysis
+            self.run_study_button.setEnabled(True)
+            self._mark_unsaved_changes()
+            
+        except Exception as e:
+            self._log_message(f"❌ Error applying template: {str(e)}", "ERROR")
+            QMessageBox.critical(
+                self,
+                "Error",
+                f"Error aplicant la plantilla:\n{str(e)}"
+            )
