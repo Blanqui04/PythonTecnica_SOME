@@ -2166,12 +2166,15 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
         """
         Show dimensional template dialog for Reference → LOT workflow.
         
-        This allows users to:
-        1. Set up a template based on the current reference
-        2. Select specific LOTs to analyze
-        3. Apply consistent configuration across LOTs
+        Flux de treball:
+        1. CREAR/CARREGAR PLANTILLA BASE: Configurar elements, toleràncies, instruments
+        2. TREBALLAR PER LOT: Seleccionar un LOT específic i treballar amb la plantilla
+        3. GUARDAR/CARREGAR ESTUDIS PER LOT: Estudis individuals per cada LOT
         """
         try:
+            # Get current elements configuration from table
+            current_elements = self._get_current_elements_config()
+            
             # Get available LOTs from database
             available_lots = self._get_available_lots()
             
@@ -2180,12 +2183,18 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
                 client=self.client_name,
                 reference=self.project_ref,
                 machine='all',
+                current_elements=current_elements,
                 available_lots=available_lots,
                 parent=self
             )
             
-            # Connect signal to handle template application
-            dialog.template_applied.connect(self._apply_dimensional_template)
+            # Connect signals
+            dialog.template_loaded.connect(self._on_template_loaded)
+            dialog.lot_selected.connect(self._on_lot_selected_from_template)
+            dialog.study_loaded.connect(self._on_study_loaded)
+            
+            # Store reference for saving studies later
+            self._template_dialog = dialog
             
             dialog.exec_()
             
@@ -2219,76 +2228,230 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
             # Return current batch as fallback
             return [self.batch_number]
     
-    def _apply_dimensional_template(self, template_config: dict):
-        """
-        Apply the dimensional template configuration.
-        
-        Args:
-            template_config: Dictionary containing:
-                - client: Client name
-                - reference: Reference/project code
-                - machine: Selected machine
-                - lots: List of selected LOTs
-                - copy_config: Whether to copy element configuration
-                - preserve_measurements: Whether to preserve existing measurements
-        """
+    def _get_current_elements_config(self) -> list:
+        """Get current elements configuration from the table"""
+        elements = []
         try:
-            self._log_message(f"📋 Applying template for {len(template_config.get('lots', []))} LOT(s)", "INFO")
+            current_table = self.results_tabs.currentWidget()
+            if isinstance(current_table, QTableWidget):
+                for row in range(current_table.rowCount()):
+                    element = {
+                        'element_id': self._get_cell_text(current_table, row, 0),  # Element ID
+                        'description': self._get_cell_text(current_table, row, 2),  # Description
+                        'nominal': self._get_cell_text(current_table, row, 3),  # Nominal
+                        'tolerance_upper': self._get_cell_text(current_table, row, 4),  # Upper tol
+                        'tolerance_lower': self._get_cell_text(current_table, row, 5),  # Lower tol
+                        'instrument': self._get_cell_text(current_table, row, 6) if current_table.columnCount() > 6 else ''
+                    }
+                    if element['element_id']:  # Only add if has element ID
+                        elements.append(element)
+        except Exception as e:
+            self._log_message(f"⚠️ Error getting elements config: {e}", "WARNING")
+        
+        return elements
+    
+    def _get_cell_text(self, table: QTableWidget, row: int, col: int) -> str:
+        """Safely get cell text from table"""
+        item = table.item(row, col)
+        return item.text() if item else ''
+    
+    def _on_template_loaded(self, template_data: dict):
+        """Handle template loaded event - update UI with template elements"""
+        try:
+            self._log_message(f"📋 Plantilla carregada: {template_data.get('name', '-')}", "INFO")
             
-            # Get the selected LOTs
-            selected_lots = template_config.get('lots', [])
+            # Get elements from template
+            elements = template_data.get('elements', [])
             
-            if not selected_lots:
-                QMessageBox.warning(self, "Cap LOT", "No s'han seleccionat LOTs.")
-                return
+            if elements:
+                # Apply elements to the table
+                self._apply_elements_to_table(elements)
             
-            # If multiple LOTs, create tabs for each
-            if len(selected_lots) > 1:
-                # Clear existing data tabs
-                self._clear_data_tabs_only()
-                
-                for lot in selected_lots:
-                    # Create table for each LOT
-                    table = self.table_manager._create_results_table()
-                    self.results_tabs.addTab(table, f"📦 LOT {lot}")
-                    
-                    # Add initial row with lot number
-                    table.setRowCount(1)
-                    self.table_manager._populate_default_row(table, 0)
-                    
-                    # Set the batch number for this table
-                    batch_item = table.item(0, 1)
+        except Exception as e:
+            self._log_message(f"❌ Error loading template: {e}", "ERROR")
+    
+    def _on_lot_selected_from_template(self, lot: str, template_data: dict):
+        """Handle LOT selection from template dialog"""
+        try:
+            self._log_message(f"📦 LOT seleccionat: {lot}", "INFO")
+            
+            # Update batch number
+            self.batch_number = lot
+            
+            # Apply template elements if they exist
+            elements = template_data.get('elements', [])
+            if elements:
+                self._apply_elements_to_table(elements)
+            
+            # Update batch column in table
+            current_table = self.results_tabs.currentWidget()
+            if isinstance(current_table, QTableWidget):
+                for row in range(current_table.rowCount()):
+                    batch_item = current_table.item(row, 1)
                     if batch_item:
                         batch_item.setText(str(lot))
-                
-                self._log_message(f"✅ Created {len(selected_lots)} LOT tabs", "INFO")
-            else:
-                # Single LOT - update current view
-                lot = selected_lots[0]
-                
-                # Ensure manual mode is enabled
-                if not self.manual_mode:
-                    self.mode_toggle.setChecked(True)
-                    self._toggle_mode(True)
-                
-                # Update batch number in current data
-                current_table = self.results_tabs.currentWidget()
-                if isinstance(current_table, QTableWidget):
-                    for row in range(current_table.rowCount()):
-                        batch_item = current_table.item(row, 1)
-                        if batch_item:
-                            batch_item.setText(str(lot))
-                
-                self._log_message(f"✅ Template applied to LOT {lot}", "INFO")
+            
+            # Ensure manual mode is enabled
+            if not self.manual_mode:
+                self.mode_toggle.setChecked(True)
+                self._toggle_mode(True)
             
             # Enable analysis
             self.run_study_button.setEnabled(True)
             self._mark_unsaved_changes()
             
+            self._log_message(f"✅ Preparat per treballar amb LOT {lot}", "INFO")
+            
         except Exception as e:
-            self._log_message(f"❌ Error applying template: {str(e)}", "ERROR")
-            QMessageBox.critical(
-                self,
-                "Error",
-                f"Error aplicant la plantilla:\n{str(e)}"
-            )
+            self._log_message(f"❌ Error applying LOT: {e}", "ERROR")
+    
+    def _on_study_loaded(self, lot: str, study_data: dict):
+        """Handle study loaded event - restore measurements for a LOT"""
+        try:
+            self._log_message(f"📊 Estudi carregat per LOT: {lot}", "INFO")
+            
+            # Update batch number
+            self.batch_number = lot
+            
+            # Apply measurements
+            measurements = study_data.get('measurements', [])
+            results = study_data.get('results', {})
+            
+            if measurements:
+                self._apply_measurements_to_table(measurements)
+            
+            if results:
+                # Update summary if we have results
+                pass  # Results will be recalculated
+            
+            # Enable analysis
+            self.run_study_button.setEnabled(True)
+            self._mark_unsaved_changes()
+            
+            self._log_message(f"✅ Estudi restaurat per LOT {lot}", "INFO")
+            
+        except Exception as e:
+            self._log_message(f"❌ Error loading study: {e}", "ERROR")
+    
+    def _apply_elements_to_table(self, elements: list):
+        """Apply template elements to the current table"""
+        try:
+            current_table = self.results_tabs.currentWidget()
+            if not isinstance(current_table, QTableWidget):
+                return
+            
+            # Ensure enough rows
+            if current_table.rowCount() < len(elements):
+                current_table.setRowCount(len(elements))
+            
+            for row, element in enumerate(elements):
+                if isinstance(element, dict):
+                    # Set element ID
+                    item = QTableWidgetItem(element.get('element_id', ''))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    current_table.setItem(row, 0, item)
+                    
+                    # Set batch number
+                    item = QTableWidgetItem(str(self.batch_number))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    current_table.setItem(row, 1, item)
+                    
+                    # Set description
+                    item = QTableWidgetItem(element.get('description', ''))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    current_table.setItem(row, 2, item)
+                    
+                    # Set nominal
+                    item = QTableWidgetItem(str(element.get('nominal', '')))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    current_table.setItem(row, 3, item)
+                    
+                    # Set tolerances
+                    item = QTableWidgetItem(str(element.get('tolerance_upper', '')))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    current_table.setItem(row, 4, item)
+                    
+                    item = QTableWidgetItem(str(element.get('tolerance_lower', '')))
+                    item.setTextAlignment(Qt.AlignCenter)
+                    current_table.setItem(row, 5, item)
+            
+            self._log_message(f"✅ {len(elements)} elements aplicats a la taula", "INFO")
+            
+        except Exception as e:
+            self._log_message(f"❌ Error applying elements: {e}", "ERROR")
+    
+    def _apply_measurements_to_table(self, measurements: list):
+        """Apply loaded measurements to the current table"""
+        try:
+            current_table = self.results_tabs.currentWidget()
+            if not isinstance(current_table, QTableWidget):
+                return
+            
+            # This would restore measurement values from a saved study
+            # Implementation depends on the measurement data structure
+            
+            for measurement in measurements:
+                row = measurement.get('row', 0)
+                if row < current_table.rowCount():
+                    # Restore measurement values (columns depend on table structure)
+                    values = measurement.get('values', [])
+                    start_col = 7  # First measurement column
+                    for i, value in enumerate(values):
+                        col = start_col + i
+                        if col < current_table.columnCount():
+                            item = QTableWidgetItem(str(value) if value else '')
+                            item.setTextAlignment(Qt.AlignCenter)
+                            current_table.setItem(row, col, item)
+            
+        except Exception as e:
+            self._log_message(f"❌ Error applying measurements: {e}", "ERROR")
+    
+    def _save_current_study_for_lot(self):
+        """Save current study for the current LOT - to be called from save menu"""
+        try:
+            if hasattr(self, '_template_dialog') and self._template_dialog:
+                measurements = self._collect_current_measurements()
+                results = {}  # Could include calculated results
+                
+                filename = self._template_dialog.save_study_for_lot(
+                    lot=self.batch_number,
+                    measurements=measurements,
+                    results=results
+                )
+                
+                self._log_message(f"💾 Estudi guardat: {filename}", "INFO")
+                QMessageBox.information(
+                    self,
+                    "Estudi Guardat",
+                    f"Estudi guardat correctament per LOT {self.batch_number}"
+                )
+            else:
+                QMessageBox.warning(
+                    self,
+                    "Cap Plantilla",
+                    "Cal carregar una plantilla primer per guardar estudis per LOT."
+                )
+        except Exception as e:
+            self._log_message(f"❌ Error saving study: {e}", "ERROR")
+            QMessageBox.critical(self, "Error", f"Error guardant estudi: {e}")
+    
+    def _collect_current_measurements(self) -> list:
+        """Collect current measurements from the table"""
+        measurements = []
+        try:
+            current_table = self.results_tabs.currentWidget()
+            if isinstance(current_table, QTableWidget):
+                for row in range(current_table.rowCount()):
+                    row_data = {
+                        'row': row,
+                        'values': []
+                    }
+                    # Collect measurement columns (typically starting from col 7)
+                    for col in range(7, current_table.columnCount()):
+                        item = current_table.item(row, col)
+                        row_data['values'].append(item.text() if item else '')
+                    measurements.append(row_data)
+        except Exception as e:
+            self._log_message(f"⚠️ Error collecting measurements: {e}", "WARNING")
+        
+        return measurements

@@ -41,12 +41,28 @@ Doble clic a RUN_APP.bat
 
 ---
 
-## 📐 Plantilla per LOT
+## 📐 Plantilles per Referència i LOT
+
+### Crear Plantilla Base
+
+1. Configura tots els elements (toleràncies, instruments)
+2. Clic a **"📐 Plantilla per LOT"**
+3. Pestanya **"📋 Plantilles Base"**
+4. Introdueix nom, client, referència
+5. Clic a **"💾 Guardar com a Nova Plantilla"**
+
+### Treballar amb un LOT
 
 1. Clic a **"📐 Plantilla per LOT"**
-2. Seleccionar els LOTs desitjats
-3. Clic a **"✅ Aplicar"**
-4. Es creen pestanyes per cada LOT
+2. Pestanya **"📋 Plantilles Base"** → Selecciona i **"📂 Carregar"**
+3. Pestanya **"📦 Treballar per LOT"**
+4. Selecciona el LOT
+5. Clic a **"✅ Treballar amb aquest LOT"**
+
+### Guardar/Carregar Estudis
+
+- Pestanya **"📊 Estudis per LOT"** per veure estudis guardats
+- Els estudis es guarden automàticament per LOT
 
 ---
 

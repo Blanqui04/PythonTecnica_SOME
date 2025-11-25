@@ -401,93 +401,230 @@ Excel:                          Aplicació:
 
 ## 8. Plantilles Dimensionals per Referència/LOT
 
-### 8.1 Què és una Plantilla Dimensional?
+### 8.1 Concepte del Sistema de Plantilles
 
-Una plantilla dimensional permet:
-- 📐 **Configurar** tots els elements d'una referència una sola vegada
-- 🔄 **Reutilitzar** la configuració per a diferents LOTs
-- ⚡ **Accelerar** la introducció de dades
-- 📊 **Comparar** resultats entre LOTs
-
-### 8.2 Obrir el Diàleg de Plantilles
-
-1. Feu clic al botó **"📐 Plantilla per LOT"** a la barra de control
-2. S'obrirà el diàleg de plantilles dimensionals
-
-### 8.3 Interfície del Diàleg de Plantilles
+El sistema de plantilles permet organitzar el treball dimensional de forma eficient:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│ 📐 Plantilla Dimensional - [Referència]                        │
+│                    ESTRUCTURA DEL SISTEMA                       │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│ ┌─────────────────────┐  ┌───────────────────────────────────┐ │
-│ │ 📦 SELECCIÓ DE LOTs │  │ 📋 CONFIGURACIÓ DE PLANTILLA     │ │
-│ │                     │  │                                   │ │
-│ │ 🔍 Filtrar: [____]  │  │ Elements: Configuració carregada │ │
-│ │                     │  │                                   │ │
-│ │ ☐ LOT 2024001      │  │ Màquina: [all           ▼]       │ │
-│ │ ☐ LOT 2024002      │  │                                   │ │
-│ │ ☑ LOT 2024003      │  │ ☑ Copiar configuració d'elements │ │
-│ │ ☑ LOT 2024004      │  │ ☐ Preservar mesures existents    │ │
-│ │ ☐ LOT 2024005      │  │                                   │ │
-│ │                     │  ├───────────────────────────────────┤ │
-│ │ [Seleccionar Tot]   │  │ 👁️ PREVISUALITZACIÓ              │ │
-│ │ [Netejar Selecció]  │  │ ┌───────────────────────────────┐│ │
-│ │                     │  │ │ Element | Desc | Nom | Tol   ││ │
-│ └─────────────────────┘  │ │ Nº001   | Diam | 25  | ±0.05 ││ │
-│                          │ │ Nº002   | Long | 100 | ±0.10 ││ │
-│ LOTs seleccionats: 2     │ └───────────────────────────────┘│ │
-│                          └───────────────────────────────────┘ │
+│   PLANTILLA BASE                                                │
+│   (Client + Referència)                                         │
+│   ├── Elements dimensionals                                     │
+│   ├── Toleràncies                                               │
+│   ├── Instruments de mesura                                     │
+│   └── Configuració general                                      │
 │                                                                 │
-│ [🔄 Actualitzar LOTs]              [✅ Aplicar] [❌ Cancel·lar] │
+│         ↓ S'aplica a ↓                                         │
+│                                                                 │
+│   LOT 001 ─────→ Estudi guardat LOT 001                        │
+│   LOT 002 ─────→ Estudi guardat LOT 002                        │
+│   LOT 003 ─────→ Estudi guardat LOT 003                        │
+│   ...                                                           │
+│                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### 8.4 Seleccionar LOTs
+**Avantatges:**
+- 📐 **Configurar una vegada** - Definiu elements i toleràncies una sola vegada
+- 🔄 **Reutilitzar** - Apliqueu la mateixa plantilla a qualsevol LOT
+- 📊 **Organització** - Estudis guardats per LOT independentment
+- ⚡ **Eficiència** - No cal reconfigurar per cada LOT nou
 
-1. **Filtrar** (opcional): Escriviu al camp de cerca per filtrar LOTs
-2. **Seleccionar**:
-   - Clic per seleccionar un LOT individual
-   - Ctrl + Clic per seleccionar múltiples
-   - **"Seleccionar Tot"** per seleccionar tots els visibles
-3. El comptador mostrarà quants LOTs heu seleccionat
+### 8.2 Obrir el Gestor de Plantilles
 
-### 8.5 Opcions de Configuració
+1. Feu clic al botó **"📐 Plantilla per LOT"** a la barra de control
+2. S'obrirà el diàleg amb tres pestanyes principals
 
-| Opció | Descripció |
-|-------|------------|
-| **Màquina** | Seleccioneu la màquina de mesura (o "all" per totes) |
-| **Copiar configuració** | Copia toleràncies, instruments i altres configuracions |
-| **Preservar mesures** | Manté les mesures existents quan canvieu de LOT |
+### 8.3 Pestanya 1: Plantilles Base
 
-### 8.6 Aplicar la Plantilla
-
-1. Seleccioneu els LOTs desitjats
-2. Configureu les opcions
-3. Feu clic a **"✅ Aplicar Plantilla"**
-
-**Resultat:**
-- Si seleccioneu **1 LOT**: S'actualitza la vista actual
-- Si seleccioneu **múltiples LOTs**: Es creen pestanyes separades per cada LOT
-
-### 8.7 Flux de Treball Recomanat
+Aquesta pestanya permet crear, carregar i gestionar plantilles base.
 
 ```
-1. Configurar Referència
-   └── Definir tots els elements (cotes, toleràncies, instruments)
-   
-2. Guardar Sessió
-   └── La configuració es guarda com a plantilla base
-   
-3. Aplicar a Nous LOTs
-   └── Utilitzar "Plantilla per LOT" per seleccionar nous LOTs
-   
-4. Introduir Mesures
-   └── Només cal introduir les mesures, la configuració ja està
-   
-5. Analitzar i Comparar
-   └── Executar anàlisi i comparar resultats entre LOTs
+┌─────────────────────────────────────────────────────────────────┐
+│ 📋 PLANTILLES BASE                                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌─────────────────────┐  ┌───────────────────────────────────┐ │
+│ │ 💾 PLANTILLES       │  │ 📝 INFORMACIÓ DE LA PLANTILLA    │ │
+│ │    GUARDADES        │  │                                   │ │
+│ │                     │  │ Nom: [________________]           │ │
+│ │ 🔍 [Filtrar...]    │  │ Client: [________________]        │ │
+│ │                     │  │ Referència: [________________]    │ │
+│ │ > Plantilla_A       │  │ Màquina: [all           ▼]       │ │
+│ │   Plantilla_B       │  │ Descripció: [________________]    │ │
+│ │   Plantilla_C       │  │                                   │ │
+│ │                     │  ├───────────────────────────────────┤ │
+│ │ [📂 Carregar]       │  │ 📐 ELEMENTS DE LA PLANTILLA      │ │
+│ │ [🗑️ Eliminar]       │  │ ┌───────────────────────────────┐│ │
+│ │                     │  │ │ID  │Desc │Nom │T.Sup│T.Inf│Inst││ │
+│ └─────────────────────┘  │ │E01 │Diam │25  │+0.05│-0.05│CMM ││ │
+│                          │ │E02 │Long │100 │+0.10│-0.10│3D  ││ │
+│                          │ └───────────────────────────────┘│ │
+│                          │                                   │ │
+│                          │ [💾 Guardar com a Nova Plantilla] │ │
+│                          └───────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Crear una Nova Plantilla
+
+1. **Prepareu la configuració** a la taula principal:
+   - Afegiu tots els elements dimensionals
+   - Configureu les toleràncies
+   - Assigneu instruments
+
+2. **Obriu el diàleg** fent clic a "📐 Plantilla per LOT"
+
+3. **Introduïu la informació**:
+   - **Nom**: Un nom descriptiu per la plantilla
+   - **Client**: Nom del client
+   - **Referència**: Codi de referència/projecte
+   - **Màquina**: Màquina de mesura (opcional)
+   - **Descripció**: Notes addicionals (opcional)
+
+4. **Guardeu** fent clic a "💾 Guardar com a Nova Plantilla"
+
+#### Carregar una Plantilla Existent
+
+1. Seleccioneu una plantilla de la llista
+2. Feu clic a **"📂 Carregar"** (o doble clic)
+3. La plantilla es carregarà i podreu seleccionar un LOT
+
+### 8.4 Pestanya 2: Treballar per LOT
+
+Un cop carregada una plantilla, aquesta pestanya permet seleccionar el LOT amb què voleu treballar.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 📦 TREBALLAR PER LOT                                            │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌─ Plantilla Actual Carregada ────────────────────────────────┐ │
+│ │ ✅ Plantilla_A (Client: ACME, Ref: REF-001)                 │ │
+│ │                               [📂 Carregar Plantilla]       │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│ ┌─────────────────────┐  ┌───────────────────────────────────┐ │
+│ │ 📦 SELECCIÓ DE LOT │  │ ⚙️ ACCIONS                        │ │
+│ │                     │  │                                   │ │
+│ │ 🔍 [Filtrar...]    │  │ Estat: Preparat per LOT: 2024003  │ │
+│ │                     │  │                                   │ │
+│ │   LOT 2024001      │  │ ℹ️ En seleccionar un LOT:         │ │
+│ │   LOT 2024002      │  │ • Es carregarà la plantilla base  │ │
+│ │ > LOT 2024003      │  │ • Es prepararà l'estudi           │ │
+│ │   LOT 2024004      │  │ • Podràs introduir les mesures    │ │
+│ │                     │  │ • L'estudi es podrà guardar      │ │
+│ │ LOT manual:        │  │                                   │ │
+│ │ [2024003_______]   │  │                                   │ │
+│ │                     │  │ [✅ Treballar amb aquest LOT]    │ │
+│ └─────────────────────┘  └───────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Seleccionar un LOT
+
+1. **Assegureu-vos** que teniu una plantilla carregada
+2. **Seleccioneu un LOT** de la llista o introduïu-lo manualment
+3. Feu clic a **"✅ Treballar amb aquest LOT"**
+
+**Resultat:**
+- La configuració de la plantilla s'aplicarà a la taula
+- El número de LOT s'actualitzarà
+- Podeu introduir les mesures específiques d'aquest LOT
+
+### 8.5 Pestanya 3: Estudis per LOT
+
+Aquesta pestanya permet gestionar els estudis guardats per cada LOT.
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ 📊 ESTUDIS PER LOT                                              │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│ ┌─ Context Actual ────────────────────────────────────────────┐ │
+│ │ Plantilla: Plantilla_A          LOT: 2024003                │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│                                                                 │
+│ ┌─────────────────────┐  ┌───────────────────────────────────┐ │
+│ │ 💾 ESTUDIS GUARDATS│  │ 📊 INFORMACIÓ DE L'ESTUDI        │ │
+│ │                     │  │                                   │ │
+│ │ 🔍 [Filtrar...]    │  │ Selecciona un estudi per veure   │ │
+│ │                     │  │ la informació.                    │ │
+│ │ > LOT 2024003 -    │  │                                   │ │
+│ │   Plantilla_A      │  │ Els estudis es guarden per:      │ │
+│ │   (2024-11-25)     │  │ • Client + Referència (Plantilla)│ │
+│ │                     │  │ • LOT específic                  │ │
+│ │   LOT 2024002 -    │  │ • Data i hora de creació         │ │
+│ │   Plantilla_A      │  │                                   │ │
+│ │   (2024-11-24)     │  │                                   │ │
+│ │                     │  │ [🔄 Actualitzar Llista]          │ │
+│ │ [📂 Carregar]      │  │                                   │ │
+│ │ [🗑️ Eliminar]      │  │                                   │ │
+│ └─────────────────────┘  └───────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### Carregar un Estudi Guardat
+
+1. Seleccioneu un estudi de la llista
+2. Feu clic a **"📂 Carregar Estudi"** (o doble clic)
+3. Les mesures i configuració es restauraran
+
+#### Eliminar un Estudi
+
+1. Seleccioneu l'estudi a eliminar
+2. Feu clic a **"🗑️ Eliminar"**
+3. Confirmeu l'eliminació
+
+### 8.6 Flux de Treball Recomanat
+
+```
+CONFIGURACIÓ INICIAL (un sol cop per referència)
+═══════════════════════════════════════════════
+1. Configurar tots els elements a la taula
+   └── Afegir cotes, toleràncies, instruments
+
+2. Obrir "📐 Plantilla per LOT"
+   └── Pestanya "📋 Plantilles Base"
+
+3. Guardar com a nova plantilla
+   └── Introduir nom, client, referència
+
+
+TREBALL DIARI (per cada LOT)
+════════════════════════════
+1. Obrir "📐 Plantilla per LOT"
+   └── Pestanya "📋 Plantilles Base"
+   └── Carregar la plantilla corresponent
+
+2. Seleccionar el LOT
+   └── Pestanya "📦 Treballar per LOT"
+   └── Escollir o introduir el número de LOT
+
+3. Introduir mesures
+   └── Les configuracions ja estan aplicades
+   └── Només cal introduir els valors mesurats
+
+4. Executar anàlisi
+   └── "🚀 Run Dimensional Study"
+
+5. Guardar estudi
+   └── L'estudi es guardarà associat al LOT
+
+
+RECUPERAR ESTUDIS ANTERIORS
+═══════════════════════════
+1. Obrir "📐 Plantilla per LOT"
+   └── Pestanya "📊 Estudis per LOT"
+
+2. Seleccionar l'estudi desitjat
+   └── Filtrar per LOT o data si cal
+
+3. Carregar l'estudi
+   └── Es restauraran totes les dades
 ```
 
 ---
