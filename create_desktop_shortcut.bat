@@ -9,21 +9,23 @@ echo.
 REM Obtenir ruta actual
 set CURRENT_DIR=%~dp0
 
-REM Crear script VBS temporal per crear l'accés directe
-echo Set oWS = WScript.CreateObject("WScript.Shell") > CreateShortcut.vbs
-echo sLinkFile = oWS.SpecialFolders("Desktop") ^& "\PythonTecnica SOME.lnk" >> CreateShortcut.vbs
-echo Set oLink = oWS.CreateShortcut(sLinkFile) >> CreateShortcut.vbs
-echo oLink.TargetPath = "%CURRENT_DIR%run_app.bat" >> CreateShortcut.vbs
-echo oLink.WorkingDirectory = "%CURRENT_DIR%" >> CreateShortcut.vbs
-echo oLink.Description = "PythonTecnica SOME - Aplicacio de Control de Qualitat" >> CreateShortcut.vbs
-echo oLink.IconLocation = "%CURRENT_DIR%assets\images\gui\app_icon.ico" >> CreateShortcut.vbs
-echo oLink.Save >> CreateShortcut.vbs
+REM Eliminar barra final si existeix
+if "%CURRENT_DIR:~-1%"=="\" set CURRENT_DIR=%CURRENT_DIR:~0,-1%
 
-REM Executar el script VBS
-cscript CreateShortcut.vbs //nologo
+REM Crear script PowerShell temporal per crear l'accés directe
+echo $WshShell = New-Object -comObject WScript.Shell; > CreateShortcut.ps1
+echo $Shortcut = $WshShell.CreateShortcut("$env:USERPROFILE\Desktop\PythonTecnica SOME.lnk"); >> CreateShortcut.ps1
+echo $Shortcut.TargetPath = "%CURRENT_DIR%\run_app.bat"; >> CreateShortcut.ps1
+echo $Shortcut.WorkingDirectory = "%CURRENT_DIR%"; >> CreateShortcut.ps1
+echo $Shortcut.Description = "PythonTecnica SOME - Aplicacio de Control de Qualitat"; >> CreateShortcut.ps1
+echo $Shortcut.IconLocation = "%CURRENT_DIR%\assets\images\gui\app_icon.ico"; >> CreateShortcut.ps1
+echo $Shortcut.Save(); >> CreateShortcut.ps1
+
+REM Executar el script PowerShell
+powershell -ExecutionPolicy Bypass -File CreateShortcut.ps1
 
 REM Eliminar script temporal
-del CreateShortcut.vbs
+del CreateShortcut.ps1
 
 echo.
 echo ========================================

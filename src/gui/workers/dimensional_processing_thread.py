@@ -32,7 +32,7 @@ class ProcessingThread(QThread):
             self.logger.setLevel(logging.DEBUG)
 
     def run(self):
-        """ENHANCED run method with EXHAUSTIVE LOGGING"""
+        """ENHANCED run method with EXHAUSTIVE LOGGING and better error handling"""
         try:
             self.logger.info("🚀 " + "="*80)
             self.logger.info("🚀 PROCESSING THREAD STARTED - EXHAUSTIVE LOGGING MODE")
@@ -80,6 +80,13 @@ class ProcessingThread(QThread):
             
             self.processing_finished.emit(all_results)
             
+        except MemoryError as e:
+            error_msg = f"MEMORY ERROR: Not enough memory to process data. Try reducing data size or closing other applications."
+            self.logger.error("💥 " + "="*80)
+            self.logger.error(f"💥 {error_msg}")
+            self.logger.error("💥 Memory usage details:", exc_info=True)
+            self.error_occurred.emit(error_msg)
+            
         except Exception as e:
             error_msg = f"CRITICAL PROCESSING FAILURE: {str(e)}"
             self.logger.error("❌ " + "="*80)
@@ -87,6 +94,13 @@ class ProcessingThread(QThread):
             self.logger.error("❌ FULL EXCEPTION DETAILS:")
             self.logger.error("❌ " + "="*80, exc_info=True)
             self.error_occurred.emit(error_msg)
+            
+        finally:
+            # Ensure thread cleanup
+            try:
+                self._cleanup_thread_resources()
+            except Exception as cleanup_error:
+                self.logger.error(f"Error during thread cleanup: {cleanup_error}")
 
     def _log_exhaustive_input_analysis(self):
         """EXHAUSTIVE analysis of input data"""
@@ -387,6 +401,23 @@ class ProcessingThread(QThread):
     def _emit_progress(self, progress: int):
         """Simple progress emission"""
         self.progress_updated.emit(progress)
+
+    def _cleanup_thread_resources(self):
+        """Clean up thread resources to prevent memory leaks"""
+        try:
+            # Clear large data structures
+            if hasattr(self, 'df') and self.df is not None:
+                del self.df
+                self.df = None
+            
+            # Force garbage collection
+            import gc
+            gc.collect()
+            
+            self.logger.debug("Thread resources cleaned up")
+            
+        except Exception as e:
+            self.logger.error(f"Error during thread cleanup: {e}")
 
     def closeEvent(self, event):
         """Handle window close event - FIXED"""

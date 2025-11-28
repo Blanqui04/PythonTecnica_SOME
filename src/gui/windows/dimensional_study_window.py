@@ -1195,15 +1195,127 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
         self.logger.info("-" * 40)
 
     def _start_processing_thread(self, df: pd.DataFrame):
-        """Start the processing thread with the given dataframe"""
-        self._set_ui_enabled(False)
-        self.progress_bar.setVisible(True)
+        """Start processing thread with improved error handling and cleanup"""
+        try:
+            # Check if thread is already running
+            if hasattr(self, "processing_thread") and self.processing_thread and self.processing_thread.isRunning():
+                self._log_message("⚠️ Processing already in progress, please wait", "WARNING")
+                QMessageBox.warning(self, "Processant", "Ja hi ha un procés en marxa. Si us plau, espera que acabi.")
+                return
 
-        self.processing_thread = ProcessingThread(df)
-        self.processing_thread.progress_updated.connect(self.progress_bar.setValue)
-        self.processing_thread.processing_finished.connect(self._on_processing_finished)
-        self.processing_thread.error_occurred.connect(self._on_processing_error)
-        self.processing_thread.start()
+            # Clean up any existing thread
+            self._cleanup_processing_thread()
+
+            # Validate DataFrame
+            if df is None or df.empty:
+                raise ValueError("No data to process")
+
+            # Check memory usage
+            memory_mb = df.memory_usage(deep=True).sum() / (1024 * 1024)
+            if memory_mb > 500:  # Warn if over 500MB
+                reply = QMessageBox.question(
+                    self,
+                    "Dades Grans",
+                    f"Les dades ocupen {memory_mb:.1f} MB de memòria.\n"
+                    "Això podria causar lentitud o congelacions.\n\n"
+                    "Vols continuar igualment?",
+                    QMessageBox.Yes | QMessageBox.No,
+                    QMessageBox.Yes
+                )
+                if reply != QMessageBox.Yes:
+                    return
+
+            self._log_message(f"🔄 Starting processing thread with {len(df)} records", "INFO")
+
+            # Create new thread
+            self.processing_thread = ProcessingThread(df)
+
+            # Connect signals with error handling
+            self.processing_thread.progress_updated.connect(
+                self._safe_progress_update,
+                Qt.QueuedConnection  # Ensure thread safety
+            )
+            self.processing_thread.processing_finished.connect(
+                self._safe_processing_finished,
+                Qt.QueuedConnection
+            )
+            self.processing_thread.error_occurred.connect(
+                self._safe_processing_error,
+                Qt.QueuedConnection
+            )
+
+            # Disable UI during processing
+            self._set_ui_enabled(False)
+            self.progress_bar.setVisible(True)
+            self.progress_bar.setValue(0)
+
+            # Start thread
+            self.processing_thread.start()
+
+            self._log_message("✅ Processing thread started", "INFO")
+
+        except Exception as e:
+            self._log_message(f"❌ Error starting processing thread: {str(e)}", "ERROR")
+            self._set_ui_enabled(True)
+            self.progress_bar.setVisible(False)
+            QMessageBox.critical(self, "Error", f"Error iniciant el processament:\n{str(e)}")
+
+    def _safe_progress_update(self, progress: int):
+        """Thread-safe progress update"""
+        try:
+            if hasattr(self, 'progress_bar') and self.progress_bar:
+                self.progress_bar.setValue(progress)
+        except Exception as e:
+            self._log_message(f"Error updating progress: {e}", "ERROR")
+
+    def _safe_processing_finished(self, results: list):
+        """Thread-safe processing finished handler"""
+        try:
+            self._on_processing_finished(results)
+        except Exception as e:
+            self._log_message(f"Error in processing finished handler: {e}", "ERROR")
+        finally:
+            # Always cleanup thread
+            self._cleanup_processing_thread()
+
+    def _safe_processing_error(self, error_msg: str):
+        """Thread-safe processing error handler"""
+        try:
+            self._on_processing_error(error_msg)
+        except Exception as e:
+            self._log_message(f"Error in processing error handler: {e}", "ERROR")
+        finally:
+            # Always cleanup thread
+            self._cleanup_processing_thread()
+
+    def _cleanup_processing_thread(self):
+        """Clean up processing thread safely"""
+        try:
+            if hasattr(self, "processing_thread") and self.processing_thread:
+                # Disconnect signals first
+                try:
+                    self.processing_thread.progress_updated.disconnect()
+                    self.processing_thread.processing_finished.disconnect()
+                    self.processing_thread.error_occurred.disconnect()
+                except:
+                    pass  # Signals might already be disconnected
+
+                # If thread is running, terminate it
+                if self.processing_thread.isRunning():
+                    self._log_message("Terminating running processing thread", "WARNING")
+                    self.processing_thread.terminate()
+                    self.processing_thread.wait(5000)  # Wait up to 5 seconds
+
+                # Clean up reference
+                self.processing_thread = None
+
+        except Exception as e:
+            self._log_message(f"Error cleaning up processing thread: {e}", "ERROR")
+
+        # Re-enable UI
+        self._set_ui_enabled(True)
+        if hasattr(self, 'progress_bar'):
+            self.progress_bar.setVisible(False)
 
     def _handle_error(self, context: str, error: Exception):
         """Centralized error handling with logging"""
@@ -1969,9 +2081,7 @@ class DimensionalStudyWindow(BaseDimensionalWindow, ResponsiveWidget):
                     self._log_message(f"Summary widget cleanup error: {str(e)}", "DEBUG")
 
             # Clean up processing thread if running
-            if hasattr(self, "processing_thread") and self.processing_thread and self.processing_thread.isRunning():
-                self.processing_thread.terminate()
-                self.processing_thread.wait(3000)  # Wait up to 3 seconds
+            self._cleanup_processing_thread()
 
             # Clean up any pending timers
             if hasattr(self, "_pending_summary_update"):

@@ -328,7 +328,9 @@ class ExcelReportService:
                         facility: str = "",
                         dimension_class: str = "critical",
                         open_file: bool = True,
-                        chart_config: Dict[str, Any] = None) -> Tuple[bool, str]:
+                        chart_config: Dict[str, Any] = None,
+                        custom_filename: str = None,
+                        custom_output_path: str = None) -> Tuple[bool, str]:
         """
         Generate only the Excel report (assumes charts already exist)
         UPDATED: Accept chart configuration
@@ -366,7 +368,8 @@ class ExcelReportService:
                     methodology=methodology_display,
                     facility=facility,
                     dimension_class=dimension_class_code,
-                    #chart_config=chart_config  # Pass chart config
+                    custom_filename=custom_filename,
+                    custom_output_path=custom_output_path
                 )
             except Exception as excel_error:
                 error_msg = f"Error creating Excel report: {excel_error}"

@@ -767,7 +767,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
             info_parts.append(f"Nominal: {element_data['nominal']:.3f}")
         if 'tolerance' in element_data and isinstance(element_data['tolerance'], list):
             tol_minus, tol_plus = element_data['tolerance']
-            info_parts.append(f"Tolerance: {tol_minus:.3f} / +{tol_plus:.3f}")
+            info_parts.append(f"Tolerance: +{tol_plus:.3f} / {tol_minus:.3f}")
         if 'sample_size' in element_data:
             info_parts.append(f"Sample Size: {element_data['sample_size']}")
         
@@ -990,6 +990,12 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
             if not file_name.endswith(".xlsx"):
                 file_name += ".xlsx"
             
+            # Extract directory and filename
+            from pathlib import Path
+            file_path = Path(file_name)
+            custom_filename = file_path.name
+            custom_output_path = str(file_path.parent)
+            
             # Generate report
             success, result = export_service.generate_excel_only(
                 part_description=f"{self.ref_project} - Batch {self.batch_number}",
@@ -997,7 +1003,9 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
                 methodology="cmm",
                 facility="Manufacturing Facility",
                 dimension_class="critical",
-                open_file=True
+                open_file=True,
+                custom_filename=custom_filename,
+                custom_output_path=custom_output_path
             )
             
             if success:

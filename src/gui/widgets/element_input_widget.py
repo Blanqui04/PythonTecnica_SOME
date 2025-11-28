@@ -389,17 +389,28 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         info_layout.addWidget(QLabel("Instrument:"), 3, 0)
         self.instrument_combo = ModernComboBox()
         self.instrument_combo.addItems([
-            "3D Scanner",  # Default
-            "CMM (Coordinate Measuring Machine)",
-            "Optical CMM",
-            "Laser Scanner",
+            "3D Scanner",
             "Caliper",
             "Micrometer",
+            "Projector",
+            "CMM",
+            "Radius gages",
             "Height Gauge",
-            "Manual Measurement",
+            "Salt spray chamber",
+            "Climatic chamber",
+            "Microscope",
+            "Dial comparator",
+            "Plug gauge",
+            "Thickness detector",
+            "Traction Machine",
+            "Hardness machine",
+            "Vision system",
+            "Torquemeter",
+            "Threat gauge",
             "Other"
         ])
         self.instrument_combo.setCurrentIndex(0)  # Default to 3D Scanner
+        self.instrument_combo.currentIndexChanged.connect(self._on_instrument_changed)
         info_layout.addWidget(self.instrument_combo, 3, 1, 1, 2)
         
         # Row 5: Nominal
@@ -407,42 +418,7 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         self.nominal_input = ModernLineEdit("0.0000")
         info_layout.addWidget(self.nominal_input, 4, 1, 1, 2)
 
-        # Row 6: Tolerance - (with checkbox)
-        tol_minus_layout = QHBoxLayout()
-        self.tol_minus_check = QCheckBox("Tolerance -:")
-        self.tol_minus_check.setChecked(True)  # Active by default
-        self.tol_minus_check.setStyleSheet("""
-            QCheckBox {
-                color: #2c3e50;
-                font-weight: normal;
-                spacing: 5px;
-            }
-            QCheckBox::indicator {
-                width: 18px;
-                height: 18px;
-                border-radius: 3px;
-            }
-            QCheckBox::indicator:checked {
-                background-color: #28a745;
-                border: 2px solid #28a745;
-            }
-            QCheckBox::indicator:unchecked {
-                background-color: #e9ecef;
-                border: 2px solid #ced4da;
-            }
-            QCheckBox::indicator:checked:hover {
-                background-color: #218838;
-                border: 2px solid #218838;
-            }
-        """)
-        self.tol_minus_check.stateChanged.connect(self._toggle_tol_minus)
-        tol_minus_layout.addWidget(self.tol_minus_check)
-        info_layout.addLayout(tol_minus_layout, 5, 0)
-        
-        self.tol_minus_input = ModernLineEdit("-0.0000")
-        info_layout.addWidget(self.tol_minus_input, 5, 1, 1, 2)
-
-        # Row 7: Tolerance + (with checkbox)
+        # Row 6: Tolerance + (with checkbox)
         tol_plus_layout = QHBoxLayout()
         self.tol_plus_check = QCheckBox("Tolerance +:")
         self.tol_plus_check.setChecked(True)  # Active by default
@@ -472,10 +448,45 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
         """)
         self.tol_plus_check.stateChanged.connect(self._toggle_tol_plus)
         tol_plus_layout.addWidget(self.tol_plus_check)
-        info_layout.addLayout(tol_plus_layout, 6, 0)
+        info_layout.addLayout(tol_plus_layout, 5, 0)
         
         self.tol_plus_input = ModernLineEdit("+0.0000")
-        info_layout.addWidget(self.tol_plus_input, 6, 1, 1, 2)
+        info_layout.addWidget(self.tol_plus_input, 5, 1, 1, 2)
+
+        # Row 7: Tolerance - (with checkbox)
+        tol_minus_layout = QHBoxLayout()
+        self.tol_minus_check = QCheckBox("Tolerance -:")
+        self.tol_minus_check.setChecked(True)  # Active by default
+        self.tol_minus_check.setStyleSheet("""
+            QCheckBox {
+                color: #2c3e50;
+                font-weight: normal;
+                spacing: 5px;
+            }
+            QCheckBox::indicator {
+                width: 18px;
+                height: 18px;
+                border-radius: 3px;
+            }
+            QCheckBox::indicator:checked {
+                background-color: #28a745;
+                border: 2px solid #28a745;
+            }
+            QCheckBox::indicator:unchecked {
+                background-color: #e9ecef;
+                border: 2px solid #ced4da;
+            }
+            QCheckBox::indicator:checked:hover {
+                background-color: #218838;
+                border: 2px solid #218838;
+            }
+        """)
+        self.tol_minus_check.stateChanged.connect(self._toggle_tol_minus)
+        tol_minus_layout.addWidget(self.tol_minus_check)
+        info_layout.addLayout(tol_minus_layout, 6, 0)
+        
+        self.tol_minus_input = ModernLineEdit("-0.0000")
+        info_layout.addWidget(self.tol_minus_input, 6, 1, 1, 2)
 
         layout.addWidget(self.info_frame)
         
@@ -987,6 +998,17 @@ class ElementInputWidget(QWidget, ResponsiveWidget):
                 self.element_selector.addItem("Select an element...")
                 # Notify user to reload
                 logger.info("Machine changed. Please reload elements from database.")
+    
+    def _on_instrument_changed(self, index):
+        """Handle instrument selection change - make editable when 'Other' is selected"""
+        selected_text = self.instrument_combo.itemText(index)
+        if selected_text == "Other":
+            self.instrument_combo.setEditable(True)
+            # Clear the text and set focus for immediate typing
+            self.instrument_combo.setCurrentText("")
+            self.instrument_combo.setFocus()
+        else:
+            self.instrument_combo.setEditable(False)
     
     def _toggle_tol_minus(self, state):
         """Enable/disable lower tolerance field"""

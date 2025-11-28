@@ -14,7 +14,8 @@ class ModernButton(QPushButton):
         
         if icon:
             self.setIcon(icon)
-            self.setIconSize(icon.actualSize(icon.availableSizes()[0]) if icon.availableSizes() else (16, 16))
+            from PyQt5.QtCore import QSize
+            self.setIconSize(icon.actualSize(icon.availableSizes()[0]) if icon.availableSizes() else QSize(16, 16))
             
         self.setStyle()
         

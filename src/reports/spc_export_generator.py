@@ -239,7 +239,9 @@ class ExcelSPCReportGenerator:
                     drawing_number: str = "",
                     methodology: str = "CMM",
                     facility: str = "",
-                    dimension_class: str = "CC") -> str:
+                    dimension_class: str = "CC",
+                    custom_filename: str = None,
+                    custom_output_path: str = None) -> str:
         """Create the complete professional Excel SPC report"""
         try:
             if not self.load_data():
@@ -280,8 +282,10 @@ class ExcelSPCReportGenerator:
             if sheets_created == 0:
                 raise ValueError("No sheets were created successfully")
             
-            filename = f"{self.client}_{self.ref_project}_{self.batch_number}_SPC_Analysis_Report.xlsx"
-            output_file = self.output_path / filename
+            filename = custom_filename if custom_filename else f"{self.client}_{self.ref_project}_{self.batch_number}_SPC_Analysis_Report.xlsx"
+            output_path = Path(custom_output_path) if custom_output_path else self.output_path
+            output_path.mkdir(parents=True, exist_ok=True)
+            output_file = output_path / filename
             
             self.workbook.save(output_file)
             self.logger.info(f"✅ Report created: {output_file}")

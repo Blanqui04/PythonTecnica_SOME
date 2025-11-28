@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
 )
 
 # from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel, QCheckBox, QPushButton
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon
 from PyQt5.QtCore import Qt, QTimer #, QThread
 from .panels.header import HeaderPanel
 from .panels.left_panel import LeftPanel
@@ -35,6 +35,9 @@ class MainWindow(QMainWindow, ResponsiveWidget):
         ResponsiveWidget.__init__(self)
         self.setWindowTitle("Gestió de Projectes SOME")
         self.last_analysis_action = None  # Track the last analysis action performed
+        
+        # Set window icon
+        self.setWindowIcon(QIcon("assets/images/gui/app_icon.ico"))
         
         # Log screen information for debugging
         log_screen_info()
@@ -438,8 +441,36 @@ class MainWindow(QMainWindow, ResponsiveWidget):
 
 # Application runner
 def run_app():
-    """Run the application"""
+    """Run the application with enhanced error handling and crash prevention"""
     try:
+        # Set up global exception handler for unhandled exceptions
+        import sys
+        import traceback
+
+        def global_exception_handler(exctype, value, tb):
+            """Global exception handler to prevent crashes"""
+            error_msg = ''.join(traceback.format_exception(exctype, value, tb))
+            logger.critical(f"UNHANDLED EXCEPTION: {error_msg}")
+
+            # Try to show error dialog if QApplication exists
+            try:
+                from PyQt5.QtWidgets import QApplication, QMessageBox
+                if QApplication.instance():
+                    QMessageBox.critical(
+                        None,
+                        "Error Crític",
+                        f"S'ha produït un error inesperat:\n\n{str(value)}\n\n"
+                        "L'aplicació es tancarà. Consulta els logs per més detalls."
+                    )
+            except:
+                pass  # Can't show dialog if Qt is not initialized
+
+            # Exit gracefully
+            sys.exit(1)
+
+        # Install global exception handler
+        sys.excepthook = global_exception_handler
+
         app = QApplication(sys.argv)
         app.setFont(QFont("Segoe UI", 10))
 
@@ -448,14 +479,32 @@ def run_app():
         app.setApplicationVersion("1.0.0")
         app.setOrganizationName("Your Organization")
 
+        # Install Qt message handler for Qt-specific errors
+        def qt_message_handler(mode, context, message):
+            """Handle Qt internal messages"""
+            if mode == QtCore.QtCriticalMsg or mode == QtCore.QtFatalMsg:
+                logger.critical(f"Qt {mode}: {message} (in {context.file}:{context.line})")
+            elif mode == QtCore.QtWarningMsg:
+                logger.warning(f"Qt Warning: {message} (in {context.file}:{context.line})")
+            else:
+                logger.debug(f"Qt {mode}: {message}")
+
+        # Note: Qt message handler setup would require QtCore import
+
         window = MainWindow()
         window.show()
 
-        logger.info("Application started successfully")
-        return app.exec_()
+        logger.info("Application started successfully with enhanced error handling")
+
+        # Run application with error handling
+        exit_code = app.exec_()
+
+        logger.info(f"Application exited with code: {exit_code}")
+        return exit_code
 
     except Exception as e:
         logger.critical(f"Failed to start application: {e}")
+        logger.critical("Full traceback:", exc_info=True)
         return 1
 
 
