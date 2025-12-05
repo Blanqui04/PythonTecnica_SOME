@@ -54,12 +54,13 @@ class CapabilityCalculatorService:
         else:
             pp = ppk = 0
             
-        # Calculate PPM
+        # Calculate PPM (uses sigma_long - overall process variation)
         try:
-            if sigma_short > 0:
-                z_usl = (USL - mean) / sigma_short
-                z_lsl = (LSL - mean) / sigma_short
-                ppm = (stats.norm.cdf(-z_lsl) + (1 - stats.norm.cdf(z_usl))) * 1e6
+            if sigma_long > 0:
+                z_usl = (USL - mean) / sigma_long
+                z_lsl = (mean - LSL) / sigma_long
+                # PPM = probability above USL + probability below LSL
+                ppm = ((1 - stats.norm.cdf(z_usl)) + stats.norm.cdf(-z_lsl)) * 1e6
             else:
                 ppm = 0
         except:

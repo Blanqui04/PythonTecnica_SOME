@@ -114,36 +114,30 @@ def perform_capability_study(
                 
                 logger.info(f"\n{'='*60}")
                 logger.info(f"PROCESSING ELEMENT {idx+1}/{len(elements)}: {element_id}")
-                logger.info(f"  All values count: {len(all_values)}")
-                logger.info(f"  Original values: {len(original_values)}")
+                logger.info(f"  All values count (for charts): {len(all_values)}")
+                logger.info(f"  Original sample values: {len(original_values)}")
                 logger.info(f"  Has extrapolation: {has_extrapolation}")
                 logger.info(f"  Extrapolated count: {len(extrapolated_values)}")
+                logger.info(f"  TOTAL for export: {len(all_values)} values")
                 logger.info(f"  Class: {element_class}, Instrument: {instrument}, Sigma: {sigma}")
                 
                 # CRITICAL: Calculate Anderson-Darling for ORIGINAL sample
                 ad_statistic, p_value = calculate_anderson_darling(original_values)
                 logger.info(f"  Anderson-Darling: A²={ad_statistic:.4f}, p={p_value:.4f}")
                 
-                # Get metrics (custom or calculate from ALL values)
-                custom_metrics = element.get('metrics')
-                
-                if custom_metrics:
-                    mean = custom_metrics.get('average')
-                    sigma_short = custom_metrics.get('sigma_short')
-                    sigma_long = custom_metrics.get('sigma_long')
-                    logger.info(f"  Using CUSTOM metrics")
+                # ALWAYS calculate metrics from ALL values (original + extrapolated)
+                # This ensures consistency between chart data and displayed metrics
+                # Custom metrics are ignored to maintain data integrity
+                mean = sum(all_values) / len(all_values)
+                if len(all_values) > 1:
+                    variance = sum((x - mean) ** 2 for x in all_values) / (len(all_values) - 1)
+                    sigma_long = variance ** 0.5
+                    moving_ranges = [abs(all_values[i] - all_values[i-1]) for i in range(1, len(all_values))]
+                    mr_bar = sum(moving_ranges) / len(moving_ranges) if moving_ranges else 0
+                    sigma_short = mr_bar / 1.128
                 else:
-                    # Calculate from ALL values
-                    mean = sum(all_values) / len(all_values)
-                    if len(all_values) > 1:
-                        variance = sum((x - mean) ** 2 for x in all_values) / (len(all_values) - 1)
-                        sigma_long = variance ** 0.5
-                        moving_ranges = [abs(all_values[i] - all_values[i-1]) for i in range(1, len(all_values))]
-                        mr_bar = sum(moving_ranges) / len(moving_ranges) if moving_ranges else 0
-                        sigma_short = mr_bar / 1.128
-                    else:
-                        sigma_long = sigma_short = 0
-                    logger.info(f"  Calculated metrics from ALL values")
+                    sigma_long = sigma_short = 0
+                logger.info(f"  Metrics calculated from {len(all_values)} values (ensuring chart consistency)")
                 
                 # Calculate capability
                 nominal = element['nominal']
@@ -190,7 +184,7 @@ def perform_capability_study(
                     "sigma": sigma,
                     "nominal": nominal,
                     "tolerance": [element['tol_minus'], element['tol_plus']],
-                    "original_values": all_values,  # ALL values for charts
+                    "original_values": all_values,  # ALL values (original + extrapolated) for charts and export
                     "statistics": {
                         "mean": mean,
                         "std_short": sigma_short,

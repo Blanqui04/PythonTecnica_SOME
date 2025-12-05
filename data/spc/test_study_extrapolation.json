@@ -1,0 +1,30 @@
+[
+  {
+    "element_name": "Diameter_1",
+    "extrapolated_values": [],
+    "ad_statistic": 0.0,
+    "p_value": 0.0,
+    "was_extrapolated": false
+  },
+  {
+    "element_name": "Dimensio_Anomaly",
+    "extrapolated_values": [],
+    "ad_statistic": 0.0,
+    "p_value": 0.0,
+    "was_extrapolated": false
+  },
+  {
+    "element_name": "Dimensio_1",
+    "extrapolated_values": [],
+    "ad_statistic": 0.0,
+    "p_value": 0.0,
+    "was_extrapolated": false
+  },
+  {
+    "element_name": "Traccio_1",
+    "extrapolated_values": [],
+    "ad_statistic": 0.0,
+    "p_value": 0.0,
+    "was_extrapolated": false
+  }
+]

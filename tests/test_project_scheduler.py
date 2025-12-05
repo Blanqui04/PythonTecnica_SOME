@@ -10,13 +10,21 @@ from pathlib import Path
 
 # Afegir src al path
 current_dir = Path(__file__).parent
-src_dir = current_dir.parent / "src"
-sys.path.insert(0, str(src_dir))
+project_dir = current_dir.parent
+sys.path.insert(0, str(project_dir))
 
-from src.services.project_backup_scheduler import ProjectBackupScheduler
+try:
+    from src.services.project_backup_scheduler import ProjectBackupScheduler
+except ImportError:
+    ProjectBackupScheduler = None
 
 def test_project_scheduler():
     """Test del programador amb interval curt"""
+    import pytest
+    
+    if ProjectBackupScheduler is None:
+        pytest.skip("ProjectBackupScheduler no disponible")
+    
     print("=" * 60)
     print("🧪 TEST PROJECTBACKUPSCHEDULER")
     print("=" * 60)

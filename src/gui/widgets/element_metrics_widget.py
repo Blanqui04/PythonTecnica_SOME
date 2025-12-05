@@ -9,10 +9,12 @@ import math
 from scipy import stats
 import logging
 
+from src.gui.utils.responsive_utils import ResponsiveWidget
+
 logger = logging.getLogger(__name__)
 
 
-class ElementMetricsWidget(QFrame):
+class ElementMetricsWidget(QFrame, ResponsiveWidget):
     """Improved readable widget to display element info"""
     metricsChanged = pyqtSignal(str, dict)
     removeRequested = pyqtSignal(object)
@@ -20,6 +22,7 @@ class ElementMetricsWidget(QFrame):
     
     def __init__(self, element_data, parent=None):
         super().__init__(parent)
+        ResponsiveWidget.__init__(self)
         self.element_data = element_data.copy()
         self.element_id = element_data['element_id']
         self.sigma = element_data.get('sigma', '6σ')
@@ -62,13 +65,13 @@ class ElementMetricsWidget(QFrame):
         
         # Element ID - Large and Bold
         element_label = QLabel(f"📋 {self.element_id}")
-        element_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        element_label.setFont(QFont("Segoe UI", self.get_responsive_font_size(11), QFont.Bold))
         element_label.setStyleSheet("color: #2c3e50; background: transparent; border: none;")
         header_layout.addWidget(element_label)
         
         if self.has_extrapolation:
             extrap_badge = QLabel("🔬")
-            extrap_badge.setFont(QFont("Segoe UI", 10))
+            extrap_badge.setFont(QFont("Segoe UI", self.get_responsive_font_size(10)))
             extrap_badge.setStyleSheet("color: #17a2b8; background: transparent; border: none;")
             extrap_badge.setToolTip(f"Extrapolated: {len(self.extrapolated_values)} values")
             header_layout.addWidget(extrap_badge)
@@ -78,7 +81,7 @@ class ElementMetricsWidget(QFrame):
         # Action buttons
         edit_btn = QPushButton("✏️")
         edit_btn.setToolTip("Edit Values & Metrics")
-        edit_btn.setFixedSize(28, 28)
+        edit_btn.setFixedSize(*self.screen_utils.scale_size(28, 28))
         edit_btn.setStyleSheet("""
             QPushButton {
                 background-color: #007bff;
@@ -94,7 +97,7 @@ class ElementMetricsWidget(QFrame):
         
         remove_btn = QPushButton("🗑️")
         remove_btn.setToolTip("Remove")
-        remove_btn.setFixedSize(28, 28)
+        remove_btn.setFixedSize(*self.screen_utils.scale_size(28, 28))
         remove_btn.setStyleSheet("""
             QPushButton {
                 background-color: #dc3545;
@@ -177,7 +180,7 @@ class ElementMetricsWidget(QFrame):
         layout.addLayout(self.metrics_layout)
         
         self.setLayout(layout)
-        self.setFixedHeight(200)
+        self.setFixedHeight(int(200 * self.screen_utils.scale_factor))
     
     def calculate_and_display_metrics(self):
         """Calculate metrics and update display"""

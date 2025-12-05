@@ -1,7 +1,9 @@
 import json
 import pytest
+import sys
 from pathlib import Path
-from models.dimensional.dimensional_analyzer import DimensionalAnalyzer
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from src.models.dimensional.dimensional_analyzer import DimensionalAnalyzer
 
 @pytest.fixture
 def sample_dimensional_rows():

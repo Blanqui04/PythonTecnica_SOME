@@ -473,22 +473,22 @@ class ExcelSPCReportGenerator:
         # Parameters - INCLUDING AD and p-value
         left_params = [
             ('sample_size', 'Sample Size (n)', ''),
-            ('nominal', 'Nominal Target', '.3f'),
-            ('tolerance', 'Tolerance Range', '.3f'),
-            ('mean', 'Mean (X̄)', '.4f'),
+            ('nominal', 'Nominal Target', '.2f'),
+            ('tolerance', 'Tolerance Range', '.2f'),
+            ('mean', 'Mean (X̄)', '.2f'),
             ('std_long', 'Long-term Std Dev (σ)', '.4f'),
             ('std_short', 'Short-term Std Dev (s)', '.4f'),
-            ('ad_value', 'Anderson-Darling (A²)', '.3f'),  # ADDED
+            ('ad_value', 'Anderson-Darling (A²)', '.2f'),  # ADDED
         ]
         
         right_params = [
-            ('cp', 'CP', '.3f'),
-            ('cpk', 'CPK', '.3f'),
-            ('pp', 'PP', '.3f'),
-            ('ppk', 'PPK', '.3f'),
+            ('cp', 'CP', '.2f'),
+            ('cpk', 'CPK', '.2f'),
+            ('pp', 'PP', '.2f'),
+            ('ppk', 'PPK', '.2f'),
             ('ppm_short', 'PPM Defective (Short-term)', '.0f'),
             ('ppm_long', 'PPM Defective (Long-term)', '.0f'),
-            ('p_value', 'Normality p-value', '.4f'),  # ADDED
+            ('p_value', 'Normality p-value', '.2f'),  # ADDED
         ]
         
         max_rows = max(len(left_params), len(right_params))
@@ -712,7 +712,7 @@ class ExcelSPCReportGenerator:
                 if value_idx < len(original_values):
                     col_letter = chr(65 + col_idx)  # A, B, C, ...
                     cell = ws[f'{col_letter}{current_row}']
-                    cell.value = f"{original_values[value_idx]:.4f}"
+                    cell.value = f"{original_values[value_idx]:.2f}"
                     cell.style = 'data_cell'
                     cell.font = Font(name='Arial', size=8)
                 else:
@@ -1154,12 +1154,12 @@ class ExcelSPCReportGenerator:
             ws[f'B{current_row}'].style = 'data_cell'
             
             params = [
-                ('mean', 'C', '.4f'),
-                ('cp', 'D', '.3f'),
-                ('cpk', 'E', '.3f'),
+                ('mean', 'C', '.2f'),
+                ('cp', 'D', '.2f'),
+                ('cpk', 'E', '.2f'),
                 ('std_short', 'F', '.4f'),
-                ('pp', 'G', '.3f'),
-                ('ppk', 'H', '.3f'),
+                ('pp', 'G', '.2f'),
+                ('ppk', 'H', '.2f'),
                 ('std_long', 'I', '.4f')
             ]
             

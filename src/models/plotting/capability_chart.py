@@ -151,13 +151,13 @@ class CapabilityChart(SPCChartBase):
                  linestyle='--', linewidth=1.0, alpha=0.6)
 
         # Limit labels
-        ax.text(data["usl"], 2.55, f'USL = {data["usl"]:.4f}',
+        ax.text(data["usl"], 2.55, f'USL = {data["usl"]:.2f}',
                color=self.COLOR_DANGER_RED, fontsize=self.FONT_SIZE_ANNOTATION,
                ha='center', va='bottom', weight='bold',
                bbox=dict(facecolor='white', edgecolor=self.COLOR_DANGER_RED,
                         boxstyle='round,pad=0.4', alpha=0.95, linewidth=0.8))
         
-        ax.text(data["lsl"], 2.55, f'LSL = {data["lsl"]:.4f}',
+        ax.text(data["lsl"], 2.55, f'LSL = {data["lsl"]:.2f}',
                color=self.COLOR_DANGER_RED, fontsize=self.FONT_SIZE_ANNOTATION,
                ha='center', va='bottom', weight='bold',
                bbox=dict(facecolor='white', edgecolor=self.COLOR_DANGER_RED,
@@ -249,9 +249,9 @@ class CapabilityChart(SPCChartBase):
                 if "PPM" in label:
                     formatted_value = f"{value:.1f}"
                 elif "Std Dev" in label:
-                    formatted_value = f"{value:.5f}"
+                    formatted_value = f"{value:.4f}"
                 else:
-                    formatted_value = f"{value:.3f}"
+                    formatted_value = f"{value:.2f}"
             else:
                 formatted_value = str(value)
             

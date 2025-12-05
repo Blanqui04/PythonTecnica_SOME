@@ -437,6 +437,7 @@ class SPCChartManager:
                 original_values = element_data.get("original_values", [])
                 
                 # CRITICAL FIX: Store both the composite key and original element info
+                # Also include original_values for export purposes
                 summary[element_key] = {
                     "sample_size": len(original_values),
                     "has_extrapolation": len(extrapolated_values) > 0,  # Use actual extrapolated values count
@@ -450,6 +451,8 @@ class SPCChartManager:
                     "class": element_data.get("class", ""),
                     "element_name": element_data.get("element_name"),  # Store original name
                     "extrapolated_count": len(extrapolated_values),  # Additional debug info
+                    "original_values": original_values,  # CRITICAL: Include all values for export
+                    "extrapolated_values": extrapolated_values,  # Include extrapolated values too
                 }
                 
                 # Debug logging for extrapolation

@@ -97,7 +97,10 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         self.current_element_key = None
         
         self.setWindowTitle(f"Capability Study - {client} - {ref_project} - Batch: {batch_number}")
-        self.setMinimumSize(1600, 900)
+        self.setMinimumSize(
+            int(1600 * self.screen_utils.scale_factor),
+            int(900 * self.screen_utils.scale_factor)
+        )
         self.setWindowState(Qt.WindowMaximized)
         self.setWindowFlags(Qt.Window | Qt.WindowMinMaxButtonsHint | Qt.WindowCloseButtonHint)
         
@@ -128,36 +131,41 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         # Main content with tabs
         content_widget = QWidget()
         content_layout = QVBoxLayout(content_widget)
-        content_layout.setContentsMargins(15, 15, 15, 15)
+        content_layout.setContentsMargins(
+            int(15 * self.screen_utils.scale_factor),
+            int(15 * self.screen_utils.scale_factor),
+            int(15 * self.screen_utils.scale_factor),
+            int(15 * self.screen_utils.scale_factor)
+        )
         
         # Tabs
         self.tabs = QTabWidget()
         self.tabs.setTabPosition(QTabWidget.North)
-        self.tabs.setStyleSheet("""
-            QTabWidget::pane {
-                border: 2px solid #dee2e6;
-                border-radius: 8px;
+        self.tabs.setStyleSheet(f"""
+            QTabWidget::pane {{
+                border: {self.screen_utils.scale_size(2)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_size(8)}px;
                 background-color: white;
-            }
-            QTabBar::tab {
-                padding: 10px 20px;
-                margin-right: 5px;
+            }}
+            QTabBar::tab {{
+                padding: {self.screen_utils.scale_size(10)}px {self.screen_utils.scale_size(20)}px;
+                margin-right: {self.screen_utils.scale_size(5)}px;
                 background-color: #f8f9fa;
-                border: 2px solid #dee2e6;
+                border: {self.screen_utils.scale_size(2)}px solid #dee2e6;
                 border-bottom: none;
-                border-top-left-radius: 6px;
-                border-top-right-radius: 6px;
+                border-top-left-radius: {self.screen_utils.scale_size(6)}px;
+                border-top-right-radius: {self.screen_utils.scale_size(6)}px;
                 font-weight: 500;
-                font-size: 10pt;
-            }
-            QTabBar::tab:selected {
+                font-size: {self.screen_utils.scale_size(10)}pt;
+            }}
+            QTabBar::tab:selected {{
                 background-color: white;
                 color: #007bff;
                 font-weight: bold;
-            }
-            QTabBar::tab:hover {
+            }}
+            QTabBar::tab:hover {{
                 background-color: #e9ecef;
-            }
+            }}
         """)
         
         # Tab 1: Configuration
@@ -210,13 +218,18 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
                 border: none;
             }
         """)
-        header.setFixedHeight(60)
+        header.setFixedHeight(int(60 * self.screen_utils.scale_factor))
         
         layout = QHBoxLayout(header)
-        layout.setContentsMargins(20, 10, 20, 10)
+        layout.setContentsMargins(
+            self.screen_utils.scale_size(20),
+            self.screen_utils.scale_size(10),
+            self.screen_utils.scale_size(20),
+            self.screen_utils.scale_size(10)
+        )
         
         title = QLabel(f"🔬 Capability Study - {self.client} / {self.ref_project} / Batch {self.batch_number}")
-        title.setFont(QFont("Segoe UI", 14, QFont.Bold))
+        title.setFont(QFont("Segoe UI", int(14 * self.screen_utils.scale_factor), QFont.Bold))
         title.setStyleSheet("color: white; background: transparent;")
         layout.addWidget(title)
         layout.addStretch()
@@ -226,28 +239,28 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
     def _create_toolbar(self):
         """Create toolbar with session controls"""
         toolbar = QToolBar()
-        toolbar.setStyleSheet("""
-            QToolBar {
+        toolbar.setStyleSheet(f"""
+            QToolBar {{
                 background-color: #f8f9fa;
-                border: 1px solid #dee2e6;
-                padding: 8px;
-                spacing: 10px;
-            }
-            QToolButton {
+                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
+                padding: {self.screen_utils.scale_size(8)}px;
+                spacing: {self.screen_utils.scale_size(10)}px;
+            }}
+            QToolButton {{
                 background-color: white;
-                border: 1px solid #dee2e6;
-                border-radius: 4px;
-                padding: 8px 16px;
-                margin: 0 5px;
+                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_size(4)}px;
+                padding: {self.screen_utils.scale_size(8)}px {self.screen_utils.scale_size(16)}px;
+                margin: 0 {self.screen_utils.scale_size(5)}px;
                 font-weight: 500;
-            }
-            QToolButton:hover {
+            }}
+            QToolButton:hover {{
                 background-color: #e9ecef;
                 border-color: #adb5bd;
-            }
-            QToolButton:pressed {
+            }}
+            QToolButton:pressed {{
                 background-color: #dee2e6;
-            }
+            }}
         """)
         toolbar.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
         
@@ -282,7 +295,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
                 padding: 5px 15px;
             }
         """)
-        status_bar.setFixedHeight(40)
+        status_bar.setFixedHeight(int(40 * self.screen_utils.scale_factor))
         
         layout = QHBoxLayout(status_bar)
         
@@ -468,7 +481,10 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         splitter.addWidget(scroll_area)
         
         # Set splitter proportions
-        splitter.setSizes([350, 1250])
+        splitter.setSizes([
+            int(350 * self.screen_utils.scale_factor),
+            int(1250 * self.screen_utils.scale_factor)
+        ])
         
         self.results_layout.addWidget(splitter)
         
@@ -487,12 +503,17 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
                 border-right: 1px solid #dee2e6;
             }
         """)
-        control_widget.setMinimumWidth(320)
-        control_widget.setMaximumWidth(400)
+        control_widget.setMinimumWidth(int(320 * self.screen_utils.scale_factor))
+        control_widget.setMaximumWidth(int(400 * self.screen_utils.scale_factor))
         
         layout = QVBoxLayout()
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(20)
+        layout.setContentsMargins(
+            int(20 * self.screen_utils.scale_factor),
+            int(20 * self.screen_utils.scale_factor),
+            int(20 * self.screen_utils.scale_factor),
+            int(20 * self.screen_utils.scale_factor)
+        )
+        layout.setSpacing(int(20 * self.screen_utils.scale_factor))
         
         # Element selection group
         element_group = self._create_element_selection_group()
@@ -538,7 +559,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         
         # Element combo box
         self.element_combo = ModernComboBox()
-        self.element_combo.setMinimumHeight(32)
+        self.element_combo.setMinimumHeight(int(32 * self.screen_utils.scale_factor))
         
         # Populate with elements
         for element_key in self.elements_summary.keys():
@@ -558,8 +579,8 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         
         # Element info display
         self.element_info = ModernTextEdit()
-        self.element_info.setMaximumHeight(100)
-        self.element_info.setMinimumHeight(80)
+        self.element_info.setMaximumHeight(int(100 * self.screen_utils.scale_factor))
+        self.element_info.setMinimumHeight(int(80 * self.screen_utils.scale_factor))
         self.element_info.setReadOnly(True)
         self.element_info.setWordWrapMode(True)
         layout.addWidget(self.element_info)
@@ -596,7 +617,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         """)
         
         layout = QVBoxLayout()
-        layout.setSpacing(8)
+        layout.setSpacing(int(8 * self.screen_utils.scale_factor))
         
         # Select all/none buttons
         button_layout = QHBoxLayout()
@@ -624,7 +645,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         for chart_type, display_name in base_charts:
             checkbox = QCheckBox(display_name)
             checkbox.setFont(QFont("Segoe UI", 10))
-            checkbox.setMinimumHeight(22)
+            checkbox.setMinimumHeight(int(22 * self.screen_utils.scale_factor))
             checkbox.setChecked(True)
             checkbox.stateChanged.connect(self._on_chart_selection_changed)
             layout.addWidget(checkbox)
@@ -634,7 +655,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         self.control_chart_group = QWidget()
         self.control_chart_layout = QVBoxLayout(self.control_chart_group)
         self.control_chart_layout.setContentsMargins(0, 0, 0, 0)
-        self.control_chart_layout.setSpacing(8)
+        self.control_chart_layout.setSpacing(int(8 * self.screen_utils.scale_factor))
         layout.addWidget(self.control_chart_group)
         
         group.setLayout(layout)
@@ -684,7 +705,7 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         for chart_type_name, display_name in control_charts:
             checkbox = QCheckBox(display_name)
             checkbox.setFont(QFont("Segoe UI", 10))
-            checkbox.setMinimumHeight(22)
+            checkbox.setMinimumHeight(int(22 * self.screen_utils.scale_factor))
             checkbox.setChecked(True)
             checkbox.stateChanged.connect(self._on_chart_selection_changed)
             self.control_chart_layout.addWidget(checkbox)
@@ -715,8 +736,8 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         layout = QVBoxLayout()
         
         self.stats_info = ModernTextEdit()
-        self.stats_info.setMaximumHeight(120)
-        self.stats_info.setMinimumHeight(100)
+        self.stats_info.setMaximumHeight(int(120 * self.screen_utils.scale_factor))
+        self.stats_info.setMinimumHeight(int(100 * self.screen_utils.scale_factor))
         self.stats_info.setReadOnly(True)
         self.stats_info.setWordWrapMode(True)
         layout.addWidget(self.stats_info)
@@ -764,10 +785,10 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         if cavity:
             info_parts.append(f"Cavity: {cavity}")
         if 'nominal' in element_data:
-            info_parts.append(f"Nominal: {element_data['nominal']:.3f}")
+            info_parts.append(f"Nominal: {element_data['nominal']:.2f}")
         if 'tolerance' in element_data and isinstance(element_data['tolerance'], list):
             tol_minus, tol_plus = element_data['tolerance']
-            info_parts.append(f"Tolerance: +{tol_plus:.3f} / {tol_minus:.3f}")
+            info_parts.append(f"Tolerance: +{tol_plus:.2f} / {tol_minus:.2f}")
         if 'sample_size' in element_data:
             info_parts.append(f"Sample Size: {element_data['sample_size']}")
         
@@ -776,11 +797,11 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         # Update statistics display
         stats_parts = []
         if 'mean' in element_data and element_data['mean'] is not None:
-            stats_parts.append(f"Mean: {element_data['mean']:.4f}")
+            stats_parts.append(f"Mean: {element_data['mean']:.2f}")
         if 'cp' in element_data and element_data['cp'] is not None:
-            stats_parts.append(f"Cp: {element_data['cp']:.3f}")
+            stats_parts.append(f"Cp: {element_data['cp']:.2f}")
         if 'cpk' in element_data and element_data['cpk'] is not None:
-            stats_parts.append(f"Cpk: {element_data['cpk']:.3f}")
+            stats_parts.append(f"Cpk: {element_data['cpk']:.2f}")
         if element_data.get('has_extrapolation', False):
             stats_parts.append(f"Extrapolated: Yes ({element_data.get('extrapolated_count', 0)} values)")
         
