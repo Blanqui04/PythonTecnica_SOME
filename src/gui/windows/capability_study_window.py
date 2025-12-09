@@ -143,20 +143,20 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         self.tabs.setTabPosition(QTabWidget.North)
         self.tabs.setStyleSheet(f"""
             QTabWidget::pane {{
-                border: {self.screen_utils.scale_size(2)}px solid #dee2e6;
-                border-radius: {self.screen_utils.scale_size(8)}px;
+                border: {self.screen_utils.scale_value(2)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_value(8)}px;
                 background-color: white;
             }}
             QTabBar::tab {{
-                padding: {self.screen_utils.scale_size(10)}px {self.screen_utils.scale_size(20)}px;
-                margin-right: {self.screen_utils.scale_size(5)}px;
+                padding: {self.screen_utils.scale_value(10)}px {self.screen_utils.scale_value(20)}px;
+                margin-right: {self.screen_utils.scale_value(5)}px;
                 background-color: #f8f9fa;
-                border: {self.screen_utils.scale_size(2)}px solid #dee2e6;
+                border: {self.screen_utils.scale_value(2)}px solid #dee2e6;
                 border-bottom: none;
-                border-top-left-radius: {self.screen_utils.scale_size(6)}px;
-                border-top-right-radius: {self.screen_utils.scale_size(6)}px;
+                border-top-left-radius: {self.screen_utils.scale_value(6)}px;
+                border-top-right-radius: {self.screen_utils.scale_value(6)}px;
                 font-weight: 500;
-                font-size: {self.screen_utils.scale_size(10)}pt;
+                font-size: {self.screen_utils.scale_value(10)}pt;
             }}
             QTabBar::tab:selected {{
                 background-color: white;
@@ -222,10 +222,10 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         
         layout = QHBoxLayout(header)
         layout.setContentsMargins(
-            self.screen_utils.scale_size(20),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(20),
-            self.screen_utils.scale_size(10)
+            self.screen_utils.scale_value(20),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(20),
+            self.screen_utils.scale_value(10)
         )
         
         title = QLabel(f"🔬 Capability Study - {self.client} / {self.ref_project} / Batch {self.batch_number}")
@@ -242,16 +242,16 @@ class CapabilityStudyWindow(QDialog, ResponsiveWidget):
         toolbar.setStyleSheet(f"""
             QToolBar {{
                 background-color: #f8f9fa;
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
-                padding: {self.screen_utils.scale_size(8)}px;
-                spacing: {self.screen_utils.scale_size(10)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
+                padding: {self.screen_utils.scale_value(8)}px;
+                spacing: {self.screen_utils.scale_value(10)}px;
             }}
             QToolButton {{
                 background-color: white;
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
-                border-radius: {self.screen_utils.scale_size(4)}px;
-                padding: {self.screen_utils.scale_size(8)}px {self.screen_utils.scale_size(16)}px;
-                margin: 0 {self.screen_utils.scale_size(5)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_value(4)}px;
+                padding: {self.screen_utils.scale_value(8)}px {self.screen_utils.scale_value(16)}px;
+                margin: 0 {self.screen_utils.scale_value(5)}px;
                 font-weight: 500;
             }}
             QToolButton:hover {{

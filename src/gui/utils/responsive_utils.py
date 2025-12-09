@@ -96,6 +96,10 @@ class ScreenUtils:
         scaled_height = int(height * self.scale_factor)
         return scaled_width, scaled_height
     
+    def scale_value(self, value: int) -> int:
+        """Scale a single value according to current screen scale factor"""
+        return int(value * self.scale_factor)
+    
     def scale_font_size(self, base_size: int) -> int:
         """Scale font size according to current screen"""
         scaled_size = int(base_size * self.scale_factor)

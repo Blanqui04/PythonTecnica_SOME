@@ -368,9 +368,9 @@ class ChartDisplayWidget(QWidget):
         chart_widget.setStyleSheet("""
             QFrame {
                 background-color: #ffffff;
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
-                border-radius: {self.screen_utils.scale_size(6)}px;
-                padding: {self.screen_utils.scale_size(10)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_value(6)}px;
+                padding: {self.screen_utils.scale_value(10)}px;
             }
         """)
 
@@ -390,7 +390,7 @@ class ChartDisplayWidget(QWidget):
             QLabel {
                 color: #343a40;
                 background-color: transparent;
-                margin-bottom: {self.screen_utils.scale_size(8)}px;
+                margin-bottom: {self.screen_utils.scale_value(8)}px;
                 padding: 0;
             }
         """)

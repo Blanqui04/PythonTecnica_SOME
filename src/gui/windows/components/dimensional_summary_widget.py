@@ -119,12 +119,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         """Initialize sophisticated UI with proper space utilization"""
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8)
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8)
         )
-        layout.setSpacing(self.screen_utils.scale_size(8))
+        layout.setSpacing(self.screen_utils.scale_value(8))
 
         # Session header
         self.session_header = self._create_session_header()
@@ -134,20 +134,20 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         self.main_tabs = QTabWidget()
         self.main_tabs.setStyleSheet(f"""
             QTabWidget::pane {{
-                border: {self.screen_utils.scale_size(1)}px solid #bdc3c7;
-                border-radius: {self.screen_utils.scale_size(6)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #bdc3c7;
+                border-radius: {self.screen_utils.scale_value(6)}px;
                 background-color: white;
             }}
             QTabBar::tab {{
                 background-color: #ecf0f1;
                 color: #2c3e50;
-                border: {self.screen_utils.scale_size(1)}px solid #bdc3c7;
+                border: {self.screen_utils.scale_value(1)}px solid #bdc3c7;
                 border-bottom-color: transparent;
-                border-radius: {self.screen_utils.scale_size(6)}px {self.screen_utils.scale_size(6)}px 0 0;
-                padding: {self.screen_utils.scale_size(10)}px {self.screen_utils.scale_size(16)}px;
-                margin-right: {self.screen_utils.scale_size(2)}px;
+                border-radius: {self.screen_utils.scale_value(6)}px {self.screen_utils.scale_value(6)}px 0 0;
+                padding: {self.screen_utils.scale_value(10)}px {self.screen_utils.scale_value(16)}px;
+                margin-right: {self.screen_utils.scale_value(2)}px;
                 font-weight: bold;
-                min-width: {self.screen_utils.scale_size(120)}px;
+                min-width: {self.screen_utils.scale_value(120)}px;
             }}
             QTabBar::tab:selected {{
                 background-color: #3498db;
@@ -205,10 +205,10 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         
         layout = QHBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(15),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(15),
-            self.screen_utils.scale_size(8)
+            self.screen_utils.scale_value(15),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(15),
+            self.screen_utils.scale_value(8)
         )
         
         self.session_label = QLabel("🕐 Session: Just started")
@@ -229,12 +229,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6)
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6)
         )
-        main_layout.setSpacing(self.screen_utils.scale_size(8))
+        main_layout.setSpacing(self.screen_utils.scale_value(8))
 
         # Compact metrics section
         metrics_group = QGroupBox("📊 Key Metrics")
@@ -242,22 +242,22 @@ class SummaryWidget(QWidget, ResponsiveWidget):
             QGroupBox {{
                 font-weight: bold; 
                 color: #2c3e50; 
-                font-size: {self.screen_utils.scale_size(11)}px;
-                border: {self.screen_utils.scale_size(2)}px solid #bdc3c7;
-                border-radius: {self.screen_utils.scale_size(6)}px;
-                margin-top: {self.screen_utils.scale_size(8)}px;
-                padding-top: {self.screen_utils.scale_size(8)}px;
+                font-size: {self.screen_utils.scale_value(11)}px;
+                border: {self.screen_utils.scale_value(2)}px solid #bdc3c7;
+                border-radius: {self.screen_utils.scale_value(6)}px;
+                margin-top: {self.screen_utils.scale_value(8)}px;
+                padding-top: {self.screen_utils.scale_value(8)}px;
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
-                left: {self.screen_utils.scale_size(10)}px;
-                padding: 0 {self.screen_utils.scale_size(5)}px 0 {self.screen_utils.scale_size(5)}px;
+                left: {self.screen_utils.scale_value(10)}px;
+                padding: 0 {self.screen_utils.scale_value(5)}px 0 {self.screen_utils.scale_value(5)}px;
             }}
         """)
         metrics_group.setMaximumHeight(int(100 * self.screen_utils.scale_factor))
         
         metrics_layout = QGridLayout()
-        metrics_layout.setSpacing(self.screen_utils.scale_size(6))
+        metrics_layout.setSpacing(self.screen_utils.scale_value(6))
         
         # Compact metric cards - 2 rows, 3 columns
         self.metric_cards = {}
@@ -287,39 +287,39 @@ class SummaryWidget(QWidget, ResponsiveWidget):
             QGroupBox {{
                 font-weight: bold; 
                 color: #2c3e50; 
-                font-size: {self.screen_utils.scale_size(11)}px;
-                border: {self.screen_utils.scale_size(2)}px solid #bdc3c7;
-                border-radius: {self.screen_utils.scale_size(6)}px;
-                margin-top: {self.screen_utils.scale_size(8)}px;
-                padding-top: {self.screen_utils.scale_size(8)}px;
+                font-size: {self.screen_utils.scale_value(11)}px;
+                border: {self.screen_utils.scale_value(2)}px solid #bdc3c7;
+                border-radius: {self.screen_utils.scale_value(6)}px;
+                margin-top: {self.screen_utils.scale_value(8)}px;
+                padding-top: {self.screen_utils.scale_value(8)}px;
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
-                left: {self.screen_utils.scale_size(10)}px;
-                padding: 0 {self.screen_utils.scale_size(5)}px 0 {self.screen_utils.scale_size(5)}px;
+                left: {self.screen_utils.scale_value(10)}px;
+                padding: 0 {self.screen_utils.scale_value(5)}px 0 {self.screen_utils.scale_value(5)}px;
             }}
         """)
         visual_group.setMinimumHeight(int(200 * self.screen_utils.scale_factor))
         visual_group.setMaximumHeight(int(250 * self.screen_utils.scale_factor))
         
         visual_layout = QHBoxLayout()
-        visual_layout.setSpacing(self.screen_utils.scale_size(12))
+        visual_layout.setSpacing(self.screen_utils.scale_value(12))
         
         # Status pie chart section
         status_frame = QFrame()
         status_frame.setMaximumWidth(int(180 * self.screen_utils.scale_factor))
         status_layout = QVBoxLayout()
         status_layout.setContentsMargins(
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4)
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4)
         )
         
         status_title = QLabel("Status Distribution")
         status_title.setFont(QFont("Segoe UI", int(10 * self.screen_utils.scale_factor), QFont.Bold))
         status_title.setAlignment(Qt.AlignCenter)
-        status_title.setStyleSheet(f"color: #2c3e50; margin-bottom: {self.screen_utils.scale_size(5)}px;")
+        status_title.setStyleSheet(f"color: #2c3e50; margin-bottom: {self.screen_utils.scale_value(5)}px;")
         status_layout.addWidget(status_title)
         
         self.status_pie_chart = StatusPieChart({}, int(100 * self.screen_utils.scale_factor))  # Smaller pie chart
@@ -328,12 +328,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         # Compact legend
         self.status_legend = QWidget()
         legend_layout = QVBoxLayout()
-        legend_layout.setSpacing(self.screen_utils.scale_size(2))
+        legend_layout.setSpacing(self.screen_utils.scale_value(2))
         legend_layout.setContentsMargins(
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4)
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4)
         )
         self.status_legend.setLayout(legend_layout)
         status_layout.addWidget(self.status_legend)
@@ -345,7 +345,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         progress_frame = QFrame()
         progress_frame.setMaximumWidth(int(200 * self.screen_utils.scale_factor))
         progress_layout = QGridLayout()
-        progress_layout.setSpacing(self.screen_utils.scale_size(8))
+        progress_layout.setSpacing(self.screen_utils.scale_value(8))
         
         # Success rate
         success_title = QLabel("Success Rate")
@@ -371,18 +371,18 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         # Breakdown information in vertical layout
         breakdown_frame = QFrame()
         breakdown_layout = QVBoxLayout()
-        breakdown_layout.setSpacing(self.screen_utils.scale_size(6))
+        breakdown_layout.setSpacing(self.screen_utils.scale_value(6))
         breakdown_layout.setContentsMargins(
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4),
-            self.screen_utils.scale_size(4)
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4),
+            self.screen_utils.scale_value(4)
         )
         
         # Cavity section
         cavity_title = QLabel("🏭 Cavity Analysis")
         cavity_title.setFont(QFont("Segoe UI", int(9 * self.screen_utils.scale_factor), QFont.Bold))
-        cavity_title.setStyleSheet(f"color: #34495e; margin-bottom: {self.screen_utils.scale_size(3)}px;")
+        cavity_title.setStyleSheet(f"color: #34495e; margin-bottom: {self.screen_utils.scale_value(3)}px;")
         breakdown_layout.addWidget(cavity_title)
         
         cavity_scroll = QScrollArea()
@@ -393,7 +393,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         
         cavity_widget = QWidget()
         self.cavity_layout = QVBoxLayout()
-        self.cavity_layout.setSpacing(self.screen_utils.scale_size(2))
+        self.cavity_layout.setSpacing(self.screen_utils.scale_value(2))
         cavity_widget.setLayout(self.cavity_layout)
         cavity_scroll.setWidget(cavity_widget)
         breakdown_layout.addWidget(cavity_scroll)
@@ -401,7 +401,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         # Classification section
         class_title = QLabel("📋 Classification")
         class_title.setFont(QFont("Segoe UI", int(9 * self.screen_utils.scale_factor), QFont.Bold))
-        class_title.setStyleSheet(f"color: #8e44ad; margin-bottom: {self.screen_utils.scale_size(3)}px;")
+        class_title.setStyleSheet(f"color: #8e44ad; margin-bottom: {self.screen_utils.scale_value(3)}px;")
         breakdown_layout.addWidget(class_title)
         
         class_scroll = QScrollArea()
@@ -412,7 +412,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         
         class_widget = QWidget()
         self.classification_layout = QVBoxLayout()
-        self.classification_layout.setSpacing(self.screen_utils.scale_size(2))
+        self.classification_layout.setSpacing(self.screen_utils.scale_value(2))
         class_widget.setLayout(self.classification_layout)
         class_scroll.setWidget(class_widget)
         breakdown_layout.addWidget(class_scroll)
@@ -420,7 +420,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         # Tolerance section
         tol_title = QLabel("📐 Tolerances")
         tol_title.setFont(QFont("Segoe UI", int(9 * self.screen_utils.scale_factor), QFont.Bold))
-        tol_title.setStyleSheet(f"color: #16a085; margin-bottom: {self.screen_utils.scale_size(3)}px;")
+        tol_title.setStyleSheet(f"color: #16a085; margin-bottom: {self.screen_utils.scale_value(3)}px;")
         breakdown_layout.addWidget(tol_title)
         
         tol_scroll = QScrollArea()
@@ -431,7 +431,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         
         tol_widget = QWidget()
         self.tolerance_layout = QVBoxLayout()
-        self.tolerance_layout.setSpacing(self.screen_utils.scale_size(2))
+        self.tolerance_layout.setSpacing(self.screen_utils.scale_value(2))
         tol_widget.setLayout(self.tolerance_layout)
         tol_scroll.setWidget(tol_widget)
         breakdown_layout.addWidget(tol_scroll)
@@ -453,24 +453,24 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10)
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10)
         )
-        layout.setSpacing(self.screen_utils.scale_size(10))
+        layout.setSpacing(self.screen_utils.scale_value(10))
 
         # Status overview with progress bars
         status_group = QGroupBox("📈 Detailed Status Breakdown")
-        status_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        status_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         self.status_progress_layout = QVBoxLayout()
-        self.status_progress_layout.setSpacing(self.screen_utils.scale_size(6))
+        self.status_progress_layout.setSpacing(self.screen_utils.scale_value(6))
         status_group.setLayout(self.status_progress_layout)
         layout.addWidget(status_group)
 
         # Evaluation type status matrix
         matrix_group = QGroupBox("🔧 Status by Evaluation Type")
-        matrix_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        matrix_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         
         self.status_matrix_table = QTableWidget()
         self.status_matrix_table.setColumnCount(7)
@@ -488,7 +488,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
 
         # Status recommendations
         rec_group = QGroupBox("💡 Status Analysis & Recommendations")
-        rec_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        rec_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         self.status_recommendations = QTextEdit()
         self.status_recommendations.setMaximumHeight(int(150 * self.screen_utils.scale_factor))
         self.status_recommendations.setReadOnly(True)
@@ -506,12 +506,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8)
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8)
         )
-        layout.setSpacing(self.screen_utils.scale_size(8))
+        layout.setSpacing(self.screen_utils.scale_value(8))
 
         # Quality summary header
         summary_frame = QFrame()
@@ -519,19 +519,19 @@ class SummaryWidget(QWidget, ResponsiveWidget):
             QFrame {{
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:0, 
                     stop:0 #fff5f5, stop:1 #ffe6e6);
-                border: {self.screen_utils.scale_size(2)}px solid #fed7d7;
-                border-radius: {self.screen_utils.scale_size(8)}px;
-                padding: {self.screen_utils.scale_size(8)}px;
+                border: {self.screen_utils.scale_value(2)}px solid #fed7d7;
+                border-radius: {self.screen_utils.scale_value(8)}px;
+                padding: {self.screen_utils.scale_value(8)}px;
             }}
         """)
         summary_frame.setMaximumHeight(int(60 * self.screen_utils.scale_factor))
         
         summary_layout = QHBoxLayout()
         summary_layout.setContentsMargins(
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8),
-            self.screen_utils.scale_size(8)
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8),
+            self.screen_utils.scale_value(8)
         )
         
         # Failed dimensions summary
@@ -550,8 +550,8 @@ class SummaryWidget(QWidget, ResponsiveWidget):
                 background-color: #3498db;
                 color: white;
                 border: none;
-                border-radius: {self.screen_utils.scale_size(4)}px;
-                padding: {self.screen_utils.scale_size(6)}px {self.screen_utils.scale_size(12)}px;
+                border-radius: {self.screen_utils.scale_value(4)}px;
+                padding: {self.screen_utils.scale_value(6)}px {self.screen_utils.scale_value(12)}px;
                 font-weight: bold;
             }}
             QPushButton:hover {{
@@ -568,17 +568,17 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         quality_tabs = QTabWidget()
         quality_tabs.setStyleSheet(f"""
             QTabWidget::pane {{
-                border: {self.screen_utils.scale_size(1)}px solid #bdc3c7;
-                border-radius: {self.screen_utils.scale_size(4)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #bdc3c7;
+                border-radius: {self.screen_utils.scale_value(4)}px;
             }}
             QTabBar::tab {{
                 background-color: #f8f9fa;
                 color: #495057;
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
                 border-bottom: none;
-                border-radius: {self.screen_utils.scale_size(4)}px {self.screen_utils.scale_size(4)}px 0 0;
-                padding: {self.screen_utils.scale_size(8)}px {self.screen_utils.scale_size(16)}px;
-                margin-right: {self.screen_utils.scale_size(2)}px;
+                border-radius: {self.screen_utils.scale_value(4)}px {self.screen_utils.scale_value(4)}px 0 0;
+                padding: {self.screen_utils.scale_value(8)}px {self.screen_utils.scale_value(16)}px;
+                margin-right: {self.screen_utils.scale_value(2)}px;
                 font-weight: bold;
             }}
             QTabBar::tab:selected {{
@@ -611,12 +611,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6)
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6)
         )
-        layout.setSpacing(self.screen_utils.scale_size(6))
+        layout.setSpacing(self.screen_utils.scale_value(6))
 
         # Failed dimensions table
         self.failed_table = QTableWidget()
@@ -646,20 +646,20 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         # Style the table
         self.failed_table.setStyleSheet(f"""
             QTableWidget {{
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
-                border-radius: {self.screen_utils.scale_size(4)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_value(4)}px;
                 background-color: white;
                 selection-background-color: #fff3cd;
                 gridline-color: #dee2e6;
             }}
             QTableWidget::item {{
-                padding: {self.screen_utils.scale_size(8)}px;
-                border-bottom: {self.screen_utils.scale_size(1)}px solid #f1f3f4;
+                padding: {self.screen_utils.scale_value(8)}px;
+                border-bottom: {self.screen_utils.scale_value(1)}px solid #f1f3f4;
             }}
             QHeaderView::section {{
                 background-color: #f8f9fa;
-                padding: {self.screen_utils.scale_size(8)}px;
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
+                padding: {self.screen_utils.scale_value(8)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
                 font-weight: bold;
             }}
         """)
@@ -673,12 +673,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6)
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6)
         )
-        layout.setSpacing(self.screen_utils.scale_size(6))
+        layout.setSpacing(self.screen_utils.scale_value(6))
 
         # Warning dimensions table
         self.warning_table = QTableWidget()
@@ -706,20 +706,20 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         # Style the table
         self.warning_table.setStyleSheet(f"""
             QTableWidget {{
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
-                border-radius: {self.screen_utils.scale_size(4)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_value(4)}px;
                 background-color: white;
                 selection-background-color: #fff3cd;
                 gridline-color: #dee2e6;
             }}
             QTableWidget::item {{
-                padding: {self.screen_utils.scale_size(8)}px;
-                border-bottom: {self.screen_utils.scale_size(1)}px solid #f1f3f4;
+                padding: {self.screen_utils.scale_value(8)}px;
+                border-bottom: {self.screen_utils.scale_value(1)}px solid #f1f3f4;
             }}
             QHeaderView::section {{
                 background-color: #fff3cd;
-                padding: {self.screen_utils.scale_size(8)}px;
-                border: {self.screen_utils.scale_size(1)}px solid #ffeaa7;
+                padding: {self.screen_utils.scale_value(8)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #ffeaa7;
                 font-weight: bold;
                 color: #856404;
             }}
@@ -734,21 +734,21 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6),
-            self.screen_utils.scale_size(6)
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6),
+            self.screen_utils.scale_value(6)
         )
-        layout.setSpacing(self.screen_utils.scale_size(8))
+        layout.setSpacing(self.screen_utils.scale_value(8))
 
         # Quality metrics overview
         metrics_frame = QFrame()
         metrics_frame.setStyleSheet(f"""
             QFrame {{
                 background-color: #f8f9fa;
-                border: {self.screen_utils.scale_size(1)}px solid #dee2e6;
-                border-radius: {self.screen_utils.scale_size(6)}px;
-                padding: {self.screen_utils.scale_size(8)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #dee2e6;
+                border-radius: {self.screen_utils.scale_value(6)}px;
+                padding: {self.screen_utils.scale_value(8)}px;
             }}
         """)
         metrics_frame.setMaximumHeight(int(80 * self.screen_utils.scale_factor))
@@ -780,16 +780,16 @@ class SummaryWidget(QWidget, ResponsiveWidget):
             QGroupBox {{
                 font-weight: bold; 
                 color: #2c3e50; 
-                font-size: {self.screen_utils.scale_size(11)}px;
-                border: {self.screen_utils.scale_size(2)}px solid #3498db;
-                border-radius: {self.screen_utils.scale_size(6)}px;
-                margin-top: {self.screen_utils.scale_size(8)}px;
-                padding-top: {self.screen_utils.scale_size(8)}px;
+                font-size: {self.screen_utils.scale_value(11)}px;
+                border: {self.screen_utils.scale_value(2)}px solid #3498db;
+                border-radius: {self.screen_utils.scale_value(6)}px;
+                margin-top: {self.screen_utils.scale_value(8)}px;
+                padding-top: {self.screen_utils.scale_value(8)}px;
             }}
             QGroupBox::title {{
                 subcontrol-origin: margin;
-                left: {self.screen_utils.scale_size(10)}px;
-                padding: 0 {self.screen_utils.scale_size(5)}px 0 {self.screen_utils.scale_size(5)}px;
+                left: {self.screen_utils.scale_value(10)}px;
+                padding: 0 {self.screen_utils.scale_value(5)}px 0 {self.screen_utils.scale_value(5)}px;
             }}
         """)
         
@@ -799,12 +799,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         self.quality_insights_text.setReadOnly(True)
         self.quality_insights_text.setStyleSheet(f"""
             QTextEdit {{
-                border: {self.screen_utils.scale_size(1)}px solid #bdc3c7;
-                border-radius: {self.screen_utils.scale_size(4)}px;
-                padding: {self.screen_utils.scale_size(8)}px;
+                border: {self.screen_utils.scale_value(1)}px solid #bdc3c7;
+                border-radius: {self.screen_utils.scale_value(4)}px;
+                padding: {self.screen_utils.scale_value(8)}px;
                 background-color: white;
                 font-family: 'Segoe UI';
-                font-size: {self.screen_utils.scale_size(10)}px;
+                font-size: {self.screen_utils.scale_value(10)}px;
                 line-height: 1.4;
             }}
         """)
@@ -821,17 +821,17 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10)
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10)
         )
-        layout.setSpacing(self.screen_utils.scale_size(10))
+        layout.setSpacing(self.screen_utils.scale_value(10))
 
         # Capability overview
         capability_frame = QFrame()
         capability_layout = QHBoxLayout()
-        capability_layout.setSpacing(self.screen_utils.scale_size(15))
+        capability_layout.setSpacing(self.screen_utils.scale_value(15))
 
         # PP/PPK visualization
         pp_group = QGroupBox("📊 Process Performance (Pp)")
@@ -884,7 +884,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
 
         # Capability details table
         details_group = QGroupBox("📋 Capability Details (CC, SC, IC Dimensions)")
-        details_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        details_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         
         self.capability_table = QTableWidget()
         self.capability_table.setColumnCount(6)
@@ -908,16 +908,16 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10)
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10)
         )
-        layout.setSpacing(self.screen_utils.scale_size(10))
+        layout.setSpacing(self.screen_utils.scale_value(10))
 
         # Evaluation type summary
         summary_frame = QFrame()
-        summary_frame.setStyleSheet(f"background-color: #f0f8ff; border: {self.screen_utils.scale_size(1)}px solid #bee3f8; border-radius: {self.screen_utils.scale_size(6)}px; padding: {self.screen_utils.scale_size(10)}px;")
+        summary_frame.setStyleSheet(f"background-color: #f0f8ff; border: {self.screen_utils.scale_value(1)}px solid #bee3f8; border-radius: {self.screen_utils.scale_value(6)}px; padding: {self.screen_utils.scale_value(10)}px;")
         summary_layout = QGridLayout()
         
         self.eval_summary_cards = {}
@@ -940,7 +940,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
 
         # Detailed evaluation breakdown table
         eval_group = QGroupBox("🔧 Detailed Evaluation Type Analysis")
-        eval_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        eval_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         
         self.eval_table = QTableWidget()
         self.eval_table.setColumnCount(8)
@@ -958,7 +958,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
 
         # Special analysis
         special_group = QGroupBox("🎯 Special Analysis & Insights")
-        special_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        special_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         self.special_analysis_text = QTextEdit()
         self.special_analysis_text.setReadOnly(True)
         self.special_analysis_text.setMaximumHeight(int(200 * self.screen_utils.scale_factor))
@@ -975,16 +975,16 @@ class SummaryWidget(QWidget, ResponsiveWidget):
         widget = QWidget()
         layout = QVBoxLayout()
         layout.setContentsMargins(
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10),
-            self.screen_utils.scale_size(10)
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10),
+            self.screen_utils.scale_value(10)
         )
-        layout.setSpacing(self.screen_utils.scale_size(10))
+        layout.setSpacing(self.screen_utils.scale_value(10))
 
         # Change summary
         change_frame = QFrame()
-        change_frame.setStyleSheet(f"background-color: #fffaf0; border: {self.screen_utils.scale_size(1)}px solid #fbd38d; border-radius: {self.screen_utils.scale_size(6)}px; padding: {self.screen_utils.scale_size(10)}px;")
+        change_frame.setStyleSheet(f"background-color: #fffaf0; border: {self.screen_utils.scale_value(1)}px solid #fbd38d; border-radius: {self.screen_utils.scale_value(6)}px; padding: {self.screen_utils.scale_value(10)}px;")
         change_layout = QHBoxLayout()
         
         self.change_summary_cards = {}
@@ -1004,7 +1004,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
 
         # Detailed modifications table
         mod_group = QGroupBox("📝 Detailed Modifications")
-        mod_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        mod_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         
         self.modifications_table = QTableWidget()
         self.modifications_table.setColumnCount(4)
@@ -1021,7 +1021,7 @@ class SummaryWidget(QWidget, ResponsiveWidget):
 
         # Session comparison info
         session_group = QGroupBox("📊 Session Information")
-        session_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_size(12)}px;")
+        session_group.setStyleSheet(f"font-weight: bold; color: #2c3e50; font-size: {self.screen_utils.scale_value(12)}px;")
         self.session_info_text = QTextEdit()
         self.session_info_text.setReadOnly(True)
         self.session_info_text.setMaximumHeight(int(150 * self.screen_utils.scale_factor))
@@ -1511,12 +1511,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
             cavity_frame.setMaximumHeight(int(25 * self.screen_utils.scale_factor))
             cavity_layout = QHBoxLayout()
             cavity_layout.setContentsMargins(
-                self.screen_utils.scale_size(4),
-                self.screen_utils.scale_size(2),
-                self.screen_utils.scale_size(4),
-                self.screen_utils.scale_size(2)
+                self.screen_utils.scale_value(4),
+                self.screen_utils.scale_value(2),
+                self.screen_utils.scale_value(4),
+                self.screen_utils.scale_value(2)
             )
-            cavity_layout.setSpacing(self.screen_utils.scale_size(6))
+            cavity_layout.setSpacing(self.screen_utils.scale_value(6))
             
             # Cavity indicator
             indicator = QLabel("🏭")
@@ -1565,12 +1565,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
                 class_frame.setMaximumHeight(int(25 * self.screen_utils.scale_factor))
                 class_layout = QHBoxLayout()
                 class_layout.setContentsMargins(
-                    self.screen_utils.scale_size(4),
-                    self.screen_utils.scale_size(2),
-                    self.screen_utils.scale_size(4),
-                    self.screen_utils.scale_size(2)
+                    self.screen_utils.scale_value(4),
+                    self.screen_utils.scale_value(2),
+                    self.screen_utils.scale_value(4),
+                    self.screen_utils.scale_value(2)
                 )
-                class_layout.setSpacing(self.screen_utils.scale_size(6))
+                class_layout.setSpacing(self.screen_utils.scale_value(6))
                 
                 # Color indicator
                 indicator = QLabel("●")
@@ -1619,12 +1619,12 @@ class SummaryWidget(QWidget, ResponsiveWidget):
                 tol_frame.setMaximumHeight(int(25 * self.screen_utils.scale_factor))
                 tol_layout = QHBoxLayout()
                 tol_layout.setContentsMargins(
-                    self.screen_utils.scale_size(4),
-                    self.screen_utils.scale_size(2),
-                    self.screen_utils.scale_size(4),
-                    self.screen_utils.scale_size(2)
+                    self.screen_utils.scale_value(4),
+                    self.screen_utils.scale_value(2),
+                    self.screen_utils.scale_value(4),
+                    self.screen_utils.scale_value(2)
                 )
-                tol_layout.setSpacing(self.screen_utils.scale_size(6))
+                tol_layout.setSpacing(self.screen_utils.scale_value(6))
                 
                 # Icon
                 icon_label = QLabel(icon)
@@ -1688,10 +1688,10 @@ class SummaryWidget(QWidget, ResponsiveWidget):
                 item_frame = QFrame()
                 item_layout = QHBoxLayout()
                 item_layout.setContentsMargins(
-                    self.screen_utils.scale_size(4),
-                    self.screen_utils.scale_size(2),
-                    self.screen_utils.scale_size(4),
-                    self.screen_utils.scale_size(2)
+                    self.screen_utils.scale_value(4),
+                    self.screen_utils.scale_value(2),
+                    self.screen_utils.scale_value(4),
+                    self.screen_utils.scale_value(2)
                 )
                 
                 # Color indicator
@@ -1734,10 +1734,10 @@ class SummaryWidget(QWidget, ResponsiveWidget):
                     progress_frame = QFrame()
                     progress_layout = QHBoxLayout()
                     progress_layout.setContentsMargins(
-                        self.screen_utils.scale_size(8),
-                        self.screen_utils.scale_size(4),
-                        self.screen_utils.scale_size(8),
-                        self.screen_utils.scale_size(4)
+                        self.screen_utils.scale_value(8),
+                        self.screen_utils.scale_value(4),
+                        self.screen_utils.scale_value(8),
+                        self.screen_utils.scale_value(4)
                     )
                     
                     # Icon and label
@@ -1753,13 +1753,13 @@ class SummaryWidget(QWidget, ResponsiveWidget):
                     progress.setStyleSheet(f"""
                         QProgressBar::chunk {{
                             background-color: {color};
-                            border-radius: {self.screen_utils.scale_size(2)}px;
+                            border-radius: {self.screen_utils.scale_value(2)}px;
                         }}
                         QProgressBar {{
-                            border: {self.screen_utils.scale_size(1)}px solid #ddd;
-                            border-radius: {self.screen_utils.scale_size(2)}px;
+                            border: {self.screen_utils.scale_value(1)}px solid #ddd;
+                            border-radius: {self.screen_utils.scale_value(2)}px;
                             text-align: center;
-                            font-size: {self.screen_utils.scale_size(9)}px;
+                            font-size: {self.screen_utils.scale_value(9)}px;
                             font-weight: bold;
                         }}
                     """)
