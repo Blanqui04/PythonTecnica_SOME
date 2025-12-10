@@ -34,7 +34,6 @@ class AutoUpdater:
         self.github_repo = github_repo
         self.current_version = APP_VERSION
         self.temp_dir = Path("temp_update")
-        self.api_url = f"https://api.github.com/repos/{self.github_owner}/{self.github_repo}"
 
     def check_for_updates(self) -> dict:
         """
@@ -45,7 +44,7 @@ class AutoUpdater:
         """
         try:
             print("🔍 Comprovant actualitzacions a GitHub...")
-            url = f"{self.api_url}/releases/latest"
+            url = f"https://api.github.com/repos/{self.github_owner}/{self.github_repo}/releases/latest"
             response = requests.get(url, timeout=5)
             response.raise_for_status()
 
