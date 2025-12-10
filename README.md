@@ -392,7 +392,7 @@ See `requirements.txt` for all dependencies. Each is commented for clarity.
 
 ## License
 
-[Specify your license here]
+© 2025 Ernest Ceballos
 
 ---
 
