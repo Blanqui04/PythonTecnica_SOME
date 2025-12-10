@@ -1,5 +1,6 @@
 import sys
 import os  # noqa: F401
+import time
 from pathlib import Path
 from src.gui.main_window import run_app
 # Afegir el directori de deployment al path si existeix
@@ -101,13 +102,24 @@ def main():
             update_info = updater.check_for_updates()
             
             if update_info.get("update_available"):
-                print(f"\n✨ NOVA VERSIÓ DISPONIBLE: {update_info['version']}")
-                print("⬇️  Descargando e instalando...")
+                new_version = update_info['version']
+                print(f"\n✨ NOVA VERSIÓ DISPONIBLE: {new_version}")
+                print("📥 Iniciant actualització automàtica...")
+                print("\nPer defer l'actualització, premi Ctrl+C ara (10 segons)")
+                print("Altrament s'actualitzarà automàticament...\n")
                 
-                # Descargar e instalar, esto cerrará la app
-                updater.download_and_install(update_info['download_url'])
-                # Si llegamos aquí, algo salió mal
-                print("⚠️ No se pudo aplicar la actualización. Continuando con la versión actual...")
+                # Esperar 10 segons per que l'usuari pugui cancel·lar
+                try:
+                    for i in range(10, 0, -1):
+                        print(f"\rActualitzant en {i} segons...", end="", flush=True)
+                        time.sleep(1)
+                    print("\n")
+                    
+                    # Descarregar e instalar
+                    updater.download_and_install(update_info['download_url'], new_version)
+                except KeyboardInterrupt:
+                    print("\n\n⏭️  Actualització deferida per l'usuari")
+                    print("L'aplicació s'actualitzarà en el proper inici")
             else:
                 print(f"✅ L'aplicació està actualitzada (versió {update_info.get('version', 'desconeguda')})")
         
