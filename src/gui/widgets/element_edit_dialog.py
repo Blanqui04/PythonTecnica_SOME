@@ -713,13 +713,13 @@ class ElementEditDialog(QDialog):
             self.exec_()
     
     def _run_extrapolation(self):
-        """Run extrapolation - COMPLETELY FIXED"""
+        """Run extrapolation - FIXED: Properly handle re-extrapolation"""
         try:
             target_size = self.target_size_spin.value()
             p_value_target = self.p_value_spin.value()
             max_attempts = self.max_attempts_spin.value()
             
-            # Get current values
+            # Get current values from table (ONLY original measured values, not extrapolated)
             current_values = []
             for row in range(self.values_table.rowCount()):
                 item = self.values_table.item(row, 1)
@@ -742,11 +742,11 @@ class ElementEditDialog(QDialog):
             
             logger.info(f"Running extrapolation: target={target_size}, sigma={sigma_long:.4f}")
             
-            # Store original if first time
-            if not self.has_extrapolation:
-                self.original_values = current_values.copy()
+            # FIX: Always use only the MEASURED values as base, not previous extrapolations
+            # This handles re-extrapolation: user removes old extrapolations and creates new ones
+            base_values = self.original_values.copy()
             
-            n_extra = target_size - len(current_values)
+            n_extra = target_size - len(base_values)
             if n_extra <= 0:
                 QMessageBox.warning(self, 'Invalid Target', 'Target must be > current size')
                 return
@@ -757,7 +757,7 @@ class ElementEditDialog(QDialog):
             
             for attempt in range(max_attempts):
                 new_vals = np.random.normal(mean, sigma_long, n_extra)
-                combined = np.concatenate([current_values, new_vals])
+                combined = np.concatenate([base_values, new_vals])
                 
                 result = stats.anderson(combined, dist='norm')
                 ad_stat = result.statistic
