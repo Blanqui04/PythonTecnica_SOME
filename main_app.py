@@ -89,26 +89,46 @@ def main():
     """Punt d'entrada principal de l'aplicació"""
     
     try:
+        # Comprovar actualitzacions automàtiques des de GitHub
+        try:
+            from src.updater.auto_updater import AutoUpdater
+            
+            print("\n" + "=" * 60)
+            print("COMPROVANT ACTUALITZACIONS")
+            print("=" * 60)
+            
+            updater = AutoUpdater(github_owner="Blanqui04", github_repo="PythonTecnica_SOME")
+            update_info = updater.check_for_updates()
+            
+            if update_info.get("update_available"):
+                print(f"\n✨ NOVA VERSIÓ DISPONIBLE: {update_info['version']}")
+                print("⬇️  Descargando e instalando...")
+                
+                # Descargar e instalar, esto cerrará la app
+                updater.download_and_install(update_info['download_url'])
+                # Si llegamos aquí, algo salió mal
+                print("⚠️ No se pudo aplicar la actualización. Continuando con la versión actual...")
+            else:
+                print(f"✅ L'aplicació està actualitzada (versió {update_info.get('version', 'desconeguda')})")
+        
+        except ImportError:
+            print("⚠️ Mòdul AutoUpdater no trobat. Verificar que 'requests' estigui instal·lat.")
+            print("   pip install requests")
+        except Exception as e:
+            print(f"⚠️ No s'ha pogut comprovar actualitzacions: {e}")
         
         # Configurar entorn empresarial si estem en mode deployment
         if deployment_dir.exists():
-            from config_manager import ConfigManager
-            from auto_updater import AutoUpdater
-
-            # Configurar automàticament per a l'empresa
-            config_manager = ConfigManager()
-            if not config_manager.verify_config():
-                print("Setting up enterprise configuration...")
-                config_manager.setup_enterprise_config()
-
-            # Comprovar actualitzacions en segon pla (només en mode empresarial)
             try:
-                updater = AutoUpdater()
-                update_info = updater.check_for_updates()
-                if update_info.get("update_available"):
-                    print(f"Update available: {update_info['version']}")
+                from config_manager import ConfigManager
+
+                # Configurar automàticament per a l'empresa
+                config_manager = ConfigManager()
+                if not config_manager.verify_config():
+                    print("Setting up enterprise configuration...")
+                    config_manager.setup_enterprise_config()
             except Exception as e:
-                print(f"Could not check for updates: {e}")
+                print(f"⚠️ Error configurant entorn empresarial: {e}")
         
         # Executar aplicació principal directament
         print("\n" + "=" * 60)
@@ -117,7 +137,7 @@ def main():
         print("📅 Backup GOMPC automàtic configurat per executar-se cada 24 hores")
         print("📅 Backup Scanner Projectes configurat per executar-se cada 24 hores")
         print("🚀 Aplicació iniciada immediatament - backups en segon pla")
-        print("=" * 60)
+        print("=" * 60 + "\n")
         run_app()
 
     except Exception as e:
